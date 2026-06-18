@@ -6896,3 +6896,361 @@ body.impostor-active .app-shell {
     padding-inline: 3px !important;
   }
 }
+
+/* Impostor word-set cards + compact controls + adaptive mobile cards */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.impostor-wordset-section {
+  display: grid;
+  gap: clamp(8px, 1.4vh, 14px);
+}
+
+.impostor-wordset-section .section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.impostor-wordset-section h3 {
+  margin: 0;
+  color: #fff4c4;
+  font-size: clamp(0.9rem, 1.9vh, 1.15rem);
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.impostor-wordset-section .section-heading span {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: clamp(0.7rem, 1.45vh, 0.9rem);
+  font-weight: 800;
+}
+
+.impostor-wordset-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 1.2vw, 14px);
+}
+
+.impostor-wordset-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon title"
+    "icon count";
+  align-items: center;
+  gap: 2px 10px;
+  min-height: clamp(64px, 12vh, 96px);
+  padding: clamp(9px, 1.7vh, 16px);
+  text-align: left;
+  color: #fffaf2;
+  border: 2px solid rgba(247, 213, 126, 0.32);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(13, 30, 43, 0.96), rgba(21, 122, 110, 0.78)),
+    #0d1b27;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.impostor-wordset-card:nth-child(2) {
+  background:
+    linear-gradient(135deg, rgba(25, 20, 46, 0.97), rgba(149, 47, 97, 0.78)),
+    #171429;
+}
+
+.impostor-wordset-card span {
+  grid-area: icon;
+  display: grid;
+  width: clamp(32px, 6vh, 50px);
+  height: clamp(32px, 6vh, 50px);
+  place-items: center;
+  border-radius: 10px;
+  color: #111827;
+  background: #f7d57e;
+  font-size: clamp(1rem, 3vh, 1.55rem);
+  font-weight: 950;
+}
+
+.impostor-wordset-card strong {
+  grid-area: title;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff4c4;
+  font-size: clamp(0.82rem, 1.9vh, 1.15rem);
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.impostor-wordset-card small {
+  grid-area: count;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: clamp(0.66rem, 1.45vh, 0.86rem);
+  font-weight: 850;
+}
+
+.impostor-wordset-card.is-selected {
+  border-color: #ffe34d;
+  box-shadow: 0 0 0 2px rgba(255, 227, 77, 0.22), 0 18px 34px rgba(0, 0, 0, 0.34);
+}
+
+.impostor-control-strip button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: clamp(18px, 3vh, 25px) !important;
+  padding: 1px clamp(6px, 0.8vw, 10px) !important;
+  line-height: 1 !important;
+}
+
+.impostor-control-strip .button-icon {
+  display: inline-grid;
+  place-items: center;
+  font-size: 1em;
+  line-height: 1;
+}
+
+#impostorGuessButton[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .impostor-wordset-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .impostor-wordset-card {
+    min-height: 58px;
+  }
+
+  .impostor-control-strip button {
+    min-height: 19px !important;
+    padding: 1px 3px !important;
+    font-size: clamp(0.48rem, 1.25vh, 0.62rem) !important;
+  }
+
+  .impostor-chip span {
+    width: var(--chip-icon-size) !important;
+    height: var(--chip-icon-size) !important;
+    font-size: calc(var(--chip-icon-size) * 0.76) !important;
+  }
+
+  .impostor-chip strong {
+    font-size: clamp(9px, calc(22px * var(--chip-content-scale)), 34px) !important;
+    line-height: 1 !important;
+  }
+
+  .impostor-chip small,
+  .impostor-chip b {
+    font-size: clamp(8px, calc(16px * var(--chip-content-scale)), 26px) !important;
+    line-height: 1.06 !important;
+  }
+}
+
+/* Impostor desktop split + final game-state polish */
+@media (min-width: 900px) {
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) {
+    grid-template-columns: minmax(280px, 38vw) minmax(520px, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(22px, 4vw, 64px);
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-header {
+    align-self: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-lobby {
+    align-self: center;
+    min-width: 0;
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-lobby-title {
+    width: 100%;
+    padding-left: clamp(12px, 3vw, 40px);
+    text-align: left;
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-lobby-title h1 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: clamp(4rem, 8.8vw, 10rem);
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-lobby-title p {
+    max-width: 34rem;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-form {
+    justify-self: stretch;
+    width: min(100%, 760px);
+    max-height: calc(100svh - var(--title-bar-height, 62px) - 22px);
+    overflow: auto;
+  }
+}
+
+.impostor-control-strip {
+  align-items: start;
+}
+
+.impostor-control-strip button {
+  min-height: 12px !important;
+  height: 18px !important;
+  padding: 0 4px !important;
+  border-width: 1px !important;
+  font-size: clamp(0.42rem, 0.95vh, 0.58rem) !important;
+  line-height: 1 !important;
+}
+
+.impostor-round-counter {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.impostor-round-counter span {
+  opacity: 0.72;
+}
+
+.impostor-round-counter strong {
+  font-size: clamp(1.2rem, 4vh, 2.2rem) !important;
+}
+
+.impostor-chip {
+  overflow: hidden;
+}
+
+.impostor-chip strong,
+.impostor-chip small,
+.impostor-chip b {
+  min-height: 1.1em;
+  line-height: 1.08 !important;
+  padding-block: 1px;
+}
+
+.impostor-chip small,
+.impostor-chip b {
+  overflow: visible;
+}
+
+.impostor-chip.is-expelled-crew,
+.impostor-chip.is-expelled-impostor {
+  position: relative;
+}
+
+.impostor-chip.is-expelled-crew {
+  border-color: #38d7a7 !important;
+  border-left-color: #38d7a7 !important;
+  box-shadow: inset 0 0 0 2px rgba(56, 215, 167, 0.42), 0 14px 26px rgba(0, 0, 0, 0.32) !important;
+}
+
+.impostor-chip.is-expelled-impostor {
+  border-color: #ff5f73 !important;
+  border-left-color: #ff5f73 !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 95, 115, 0.46), 0 14px 26px rgba(0, 0, 0, 0.32) !important;
+}
+
+.impostor-chip.is-expelled-crew::after,
+.impostor-chip.is-expelled-impostor::after {
+  content: "×";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ff254d;
+  font-size: clamp(2rem, 9cqh, 6rem);
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 3px 0 rgba(32, 8, 14, 0.8), 0 0 18px rgba(255, 37, 77, 0.55);
+  pointer-events: none;
+}
+
+.impostor-tie-vote-choices {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.impostor-tie-vote-choices > span {
+  color: #fff4c4;
+  font-size: clamp(0.82rem, 1.8vh, 1rem);
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.impostor-tie-vote-choices > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.impostor-tie-vote-choices button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 2px solid rgba(247, 213, 126, 0.4);
+  border-radius: 8px;
+  color: #fff8d8;
+  background: rgba(13, 27, 39, 0.92);
+  font-weight: 900;
+}
+
+.impostor-tie-vote-choices button span {
+  font-size: 1.45rem;
+}
+
+.impostor-tie-vote-choices button strong {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.impostor-tie-vote-choices button:disabled {
+  opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  .impostor-control-strip button {
+    height: 16px !important;
+    min-height: 10px !important;
+    padding: 0 3px !important;
+    font-size: clamp(0.4rem, 1vh, 0.54rem) !important;
+  }
+
+  .impostor-chip strong {
+    font-size: clamp(8px, calc(20px * var(--chip-content-scale)), 30px) !important;
+    line-height: 1.05 !important;
+  }
+
+  .impostor-chip small,
+  .impostor-chip b {
+    font-size: clamp(7px, calc(13.5px * var(--chip-content-scale)), 22px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .impostor-tie-vote-choices > div {
+    grid-template-columns: 1fr;
+  }
+}

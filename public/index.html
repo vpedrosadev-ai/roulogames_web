@@ -190,7 +190,7 @@
                 </label>
                 <label>
                   <span>Word set</span>
-                  <select id="impostorCreateWordSet">
+                  <select id="impostorCreateWordSet" class="sr-only" tabindex="-1" aria-hidden="true">
                     <option value="general">General words</option>
                     <option value="celebrities">Personajes y celebridades</option>
                   </select>
@@ -200,6 +200,24 @@
                   <span>Hint for impostors</span>
                 </label>
               </div>
+              <section class="impostor-wordset-section" aria-labelledby="impostorWordSetTitle">
+                <div class="section-heading">
+                  <h3 id="impostorWordSetTitle">Lista de palabras</h3>
+                  <span id="impostorWordSetHint">Elige una lista para esta sala.</span>
+                </div>
+                <div id="impostorWordSetCards" class="impostor-wordset-cards" role="group" aria-label="Word set">
+                  <button type="button" class="impostor-wordset-card is-selected" data-impostor-word-set="general" aria-pressed="true">
+                    <span aria-hidden="true">?</span>
+                    <strong>General words</strong>
+                    <small>48 palabras</small>
+                  </button>
+                  <button type="button" class="impostor-wordset-card" data-impostor-word-set="celebrities" aria-pressed="false">
+                    <span aria-hidden="true">★</span>
+                    <strong>Personajes y celebridades</strong>
+                    <small>115 palabras</small>
+                  </button>
+                </div>
+              </section>
               <div class="impostor-form-actions">
                 <button type="button" class="secondary" data-impostor-back>Back</button>
                 <button type="submit">Create room</button>
@@ -232,7 +250,7 @@
               </section>
               <section class="impostor-play-panel">
                 <div class="impostor-control-strip">
-                  <button type="button" id="impostorShareButton" class="secondary">Copiar enlace</button>
+                  <button type="button" id="impostorShareButton" class="secondary"><span class="button-icon" aria-hidden="true">🔗</span> Copiar enlace</button>
                   <button type="button" id="impostorRestartButton" class="secondary" hidden>Reiniciar</button>
                   <button type="button" id="impostorLeaveButton" class="secondary">Atrás</button>
                 </div>

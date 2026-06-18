@@ -171,6 +171,7 @@ const impostorCreatePlayerLimit = document.querySelector("#impostorCreatePlayerL
 const impostorCreateimpostorCount = document.querySelector("#impostorCreateimpostorCount");
 const impostorCreateHint = document.querySelector("#impostorCreateHint");
 const impostorCreateWordSet = document.querySelector("#impostorCreateWordSet");
+const impostorWordSetCards = document.querySelector("#impostorWordSetCards");
 const impostorJoinForm = document.querySelector("#impostorJoinForm");
 const impostorJoinRoomName = document.querySelector("#impostorJoinRoomName");
 const impostorJoinEmoji = document.querySelector("#impostorJoinEmoji");
@@ -242,6 +243,10 @@ const CATEGORY_AUDIO_FILES = new Map([
   ["shadow", "Shadow Records.ogg"],
   ["skrillex", "Skrillex.ogg"]
 ]);
+const IMPOSTOR_WORD_SET_META = {
+  general: { icon: "?", count: 48 },
+  celebrities: { icon: "\u2605", count: 115 }
+};
 const GAME_ENTRY_AUDIO_FILES = ["/audio/GAME_ENTRY_1.ogg", "/audio/GAME_ENTRY_2.ogg"];
 const FAIL_AUDIO_FILES = ["/audio/FAIL_1.ogg", "/audio/FAIL_2.ogg", "/audio/FAIL_3.ogg"];
 const SUCCESS_AUDIO_FILES = [
@@ -969,6 +974,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.wordSet": "Llista de paraules",
     "impostor.generalWords": "Paraules generals",
     "impostor.celebritiesWords": "Personatges i celebritats",
+    "impostor.wordSetHint": "Tria una llista per aquesta sala.",
+    "impostor.wordCount": "{count} paraules",
     "impostor.hintForImpostors": "Pista per als impostors",
     "impostor.room": "Sala",
     "impostor.roomLabel": "SALA: {name}",
@@ -999,6 +1006,9 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.event.guessWinResult": "{name} ha encertat. Guanyen els impostors.",
     "impostor.event.guessFailResult": "{name} ha fallat i queda fora.",
     "impostor.event.start": "Rols assignats. Mantingues la teva carta en secret.",
+    "impostor.expelledCrew": "S'ha expulsat un tripulant.",
+    "impostor.expelledImpostor": "S'ha expulsat un impostor.",
+    "impostor.voteTiebreak": "Vota el desempat",
     "impostor.role.impostor": "impostor",
     "impostor.role.crew": "tripulacio",
     "impostor.youAreImpostor": "Ets impostor",
@@ -1059,6 +1069,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.wordSet": "Lista de palabras",
     "impostor.generalWords": "Palabras generales",
     "impostor.celebritiesWords": "Personajes y celebridades",
+    "impostor.wordSetHint": "Elige una lista para esta sala.",
+    "impostor.wordCount": "{count} palabras",
     "impostor.hintForImpostors": "Pista para impostores",
     "impostor.room": "Sala",
     "impostor.roomLabel": "SALA: {name}",
@@ -1089,6 +1101,9 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.event.guessWinResult": "{name} ha acertado. Ganan los impostores.",
     "impostor.event.guessFailResult": "{name} ha fallado y queda fuera.",
     "impostor.event.start": "Roles asignados. Manten tu carta en secreto.",
+    "impostor.expelledCrew": "Se ha expulsado a un tripulante.",
+    "impostor.expelledImpostor": "Se ha expulsado a un impostor.",
+    "impostor.voteTiebreak": "Vota el desempate",
     "impostor.role.impostor": "impostor",
     "impostor.role.crew": "tripulacion",
     "impostor.youAreImpostor": "Eres impostor",
@@ -1149,6 +1164,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.wordSet": "Word set",
     "impostor.generalWords": "General words",
     "impostor.celebritiesWords": "Characters and celebrities",
+    "impostor.wordSetHint": "Choose a list for this room.",
+    "impostor.wordCount": "{count} words",
     "impostor.hintForImpostors": "Hint for impostors",
     "impostor.room": "Room",
     "impostor.roomLabel": "ROOM: {name}",
@@ -1179,6 +1196,9 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.event.guessWinResult": "{name} guessed correctly. Impostors win.",
     "impostor.event.guessFailResult": "{name} guessed wrong and is out.",
     "impostor.event.start": "Roles assigned. Keep your card secret.",
+    "impostor.expelledCrew": "A crew member was expelled.",
+    "impostor.expelledImpostor": "An impostor was expelled.",
+    "impostor.voteTiebreak": "Vote tiebreak",
     "impostor.role.impostor": "impostor",
     "impostor.role.crew": "crew",
     "impostor.youAreImpostor": "You are an impostor",
@@ -1302,9 +1322,13 @@ const STATIC_TEXT_TARGETS = [
   ["#impostorCreateForm .impostor-config-grid label:nth-child(1) span", "impostor.players"],
   ["#impostorCreateForm .impostor-config-grid label:nth-child(2) span", "impostor.impostors"],
   ["#impostorCreateForm .impostor-config-grid label:nth-child(3) span", "impostor.wordSet"],
+  ["#impostorWordSetTitle", "impostor.wordSet"],
+  ["#impostorWordSetHint", "impostor.wordSetHint"],
   ["#impostorCreateForm .impostor-toggle span", "impostor.hintForImpostors"],
   ["#impostorCreateWordSet option[value='general']", "impostor.generalWords"],
   ["#impostorCreateWordSet option[value='celebrities']", "impostor.celebritiesWords"],
+  ["[data-impostor-word-set='general'] strong", "impostor.generalWords"],
+  ["[data-impostor-word-set='celebrities'] strong", "impostor.celebritiesWords"],
   ["#impostorRoomText", "impostor.room"],
   ["#impostorRoleLabel", "impostor.yourRole"],
   ["#impostorGuessForm h2", "impostor.guessTitle"],
@@ -1525,6 +1549,7 @@ initLanguageSelector();
 applyLanguage();
 populateMultiplayerEmojis();
 populateimpostorEmojis();
+syncimpostorWordSetCards();
 syncimpostorConfigLimits();
 renderClipWaveTrack();
 window.addEventListener("resize", syncClipTrackWidth);
@@ -1628,9 +1653,11 @@ impostorLeaveButton?.addEventListener("click", leaveimpostorToMenu);
 impostorStartButton?.addEventListener("click", startimpostorGame);
 impostorVoteButton?.addEventListener("click", showImpostorVotePopup);
 impostorVoteList?.addEventListener("click", voteimpostorPlayer);
+impostorEventMessage?.addEventListener("click", voteimpostorPlayer);
 impostorGuessButton?.addEventListener("click", showImpostorGuessPopup);
 impostorGuessForm?.addEventListener("submit", guessimpostorWord);
 impostorCreatePlayerLimit?.addEventListener("input", syncimpostorConfigLimits);
+impostorWordSetCards?.addEventListener("click", chooseimpostorWordSet);
 window.addEventListener("pagehide", () => releaseimpostorRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
@@ -2052,6 +2079,28 @@ function populateimpostorEmojis() {
   });
 }
 
+function chooseimpostorWordSet(event) {
+  const card = event.target.closest("[data-impostor-word-set]");
+  if (!card || !impostorCreateWordSet) return;
+  impostorCreateWordSet.value = card.dataset.impostorWordSet || "general";
+  syncimpostorWordSetCards();
+}
+
+function syncimpostorWordSetCards() {
+  if (!impostorWordSetCards || !impostorCreateWordSet) return;
+  const selected = impostorCreateWordSet.value || "general";
+  impostorWordSetCards.querySelectorAll("[data-impostor-word-set]").forEach((card) => {
+    const key = card.dataset.impostorWordSet || "general";
+    const meta = IMPOSTOR_WORD_SET_META[key] || IMPOSTOR_WORD_SET_META.general;
+    card.classList.toggle("is-selected", key === selected);
+    card.setAttribute("aria-pressed", String(key === selected));
+    const icon = card.querySelector("span");
+    const count = card.querySelector("small");
+    if (icon) icon.textContent = meta.icon;
+    if (count) count.textContent = t("impostor.wordCount", { count: meta.count });
+  });
+}
+
 function syncimpostorConfigLimits() {
   if (!impostorCreatePlayerLimit || !impostorCreateimpostorCount) return;
   const playerLimit = clampNumber(Number(impostorCreatePlayerLimit.value) || 6, 3, 16);
@@ -2260,6 +2309,7 @@ async function restartimpostorGame() {
 async function voteimpostorPlayer(event) {
   const button = event.target.closest("[data-vote-player-id]");
   if (!button || !impostorSession) return;
+  event.preventDefault();
   button.disabled = true;
   try {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/vote`, {
@@ -2279,6 +2329,7 @@ async function voteimpostorPlayer(event) {
     impostorLastVotesCast = Number(payload.votesCast || 0);
     renderimpostorRoom(payload, { flash: true });
     hideImpostorVotePopup();
+    hideImpostorEventPopup();
     if (eventChanged) announceImpostorEvent(payload);
     else playimpostorAlarmSound("vote");
   } catch (error) {
@@ -2422,6 +2473,7 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     if (player.id === currentPlayer?.id) chip.classList.add("is-current");
     if (!player.connected) chip.classList.add("is-disconnected");
     if (player.eliminated) chip.classList.add("is-eliminated");
+    if (player.eliminated && player.role) chip.classList.add(`is-expelled-${player.role}`);
     if (player.hasVoted) chip.classList.add("has-voted");
     const roleText = player.role && (revealAll || player.eliminated)
       ? `${t(`impostor.role.${player.role}`)}${player.word ? ` - ${player.word}` : ""}`
@@ -2459,11 +2511,17 @@ function syncimpostorChipContentScale() {
       const rect = chip.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
       const nameLength = chip.querySelector("strong")?.textContent?.length || 1;
-      const heightScale = Math.min(3.4, Math.max(0.42, rect.height / 90));
-      const widthScale = Math.min(3.1, Math.max(0.5, rect.width / 210));
-      const nameScale = Math.min(1, Math.max(0.62, 11 / Math.max(11, nameLength)));
+      const metaLength = Math.max(
+        chip.querySelector("small")?.textContent?.length || 1,
+        chip.querySelector("b")?.textContent?.length || 1
+      );
+      const compact = window.matchMedia?.("(max-width: 760px)")?.matches;
+      const heightScale = Math.min(compact ? 4.6 : 3.7, Math.max(0.5, rect.height / (compact ? 58 : 78)));
+      const widthScale = Math.min(compact ? 4.1 : 3.4, Math.max(0.58, rect.width / (compact ? 128 : 182)));
+      const textLength = Math.max(nameLength, Math.ceil(metaLength * 0.62));
+      const nameScale = Math.min(1.12, Math.max(0.56, (compact ? 13 : 12) / Math.max(compact ? 13 : 12, textLength)));
       const scale = Math.min(heightScale, widthScale) * nameScale;
-      const iconSize = Math.max(16, Math.min(rect.height * 0.46, rect.width * 0.22, 118));
+      const iconSize = Math.max(18, Math.min(rect.height * (compact ? 0.58 : 0.5), rect.width * (compact ? 0.32 : 0.24), compact ? 96 : 118));
       chip.style.setProperty("--chip-content-scale", scale.toFixed(3));
       chip.style.setProperty("--chip-icon-size", `${iconSize.toFixed(1)}px`);
     });
@@ -2501,8 +2559,12 @@ function renderimpostorActions(room, currentPlayer) {
     setButtonLabel(impostorVoteButton, currentPlayer?.hasVoted ? `${t("impostor.voted")} (${room.votesCast || 0}/${room.activeCount || 0})` : voteLabel);
   }
   const canGuess = ["playing", "tiebreak"].includes(status) && currentPlayer?.role === "impostor" && !currentPlayer.eliminated;
-  if (impostorGuessButton) impostorGuessButton.hidden = !canGuess;
-  impostorGuessInput.disabled = !canGuess;
+  if (impostorGuessButton) {
+    impostorGuessButton.hidden = !canGuess;
+    impostorGuessButton.disabled = !canGuess;
+    impostorGuessButton.setAttribute("aria-hidden", String(!canGuess));
+  }
+  if (impostorGuessInput) impostorGuessInput.disabled = !canGuess;
 }
 
 function showImpostorVotePopup() {
@@ -2521,6 +2583,8 @@ function hideImpostorVotePopup() {
 
 function showImpostorGuessPopup() {
   if (!impostorGuessPopup || !impostorGuessInput) return;
+  const player = impostorRoom?.player;
+  if (!["playing", "tiebreak"].includes(impostorRoom?.status) || player?.role !== "impostor" || player?.eliminated) return;
   impostorGuessPopup.hidden = false;
   document.body.classList.add("songs-popup-open");
   impostorGuessInput.focus();
@@ -2561,6 +2625,7 @@ function showImpostorEventPopup(title, message, detail = {}) {
     impostorEventMessage.append(grid);
   }
   if (detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
+  if (detail.tieVoteCandidates?.length) impostorEventMessage.append(renderImpostorTieVoteChoices(detail.tieVoteCandidates));
   impostorEventPopup.hidden = false;
   document.body.classList.add("songs-popup-open");
 }
@@ -2606,6 +2671,27 @@ function renderImpostorVoteResults(results) {
   return section;
 }
 
+function renderImpostorTieVoteChoices(candidates) {
+  const section = document.createElement("section");
+  section.className = "impostor-tie-vote-choices";
+  const title = document.createElement("span");
+  title.textContent = t("impostor.voteTiebreak");
+  const list = document.createElement("div");
+  const canVote = Boolean(impostorRoom?.player && !impostorRoom.player.eliminated && !impostorRoom.player.hasVoted);
+  candidates.forEach((candidate) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.votePlayerId = candidate.id;
+    button.disabled = !canVote;
+    button.innerHTML = `<span></span><strong></strong>`;
+    button.querySelector("span").textContent = candidate.emoji || "";
+    button.querySelector("strong").textContent = candidate.name || "-";
+    list.append(button);
+  });
+  section.append(title, list);
+  return section;
+}
+
 function hideImpostorEventPopup() {
   if (!impostorEventPopup) return;
   impostorEventPopup.hidden = true;
@@ -2623,7 +2709,7 @@ function announceImpostorEvent(room, { force = false } = {}) {
   const message = isVoteResult ? "" : room.status === "finished"
     ? [eventMessage, guessResult, getimpostorStatusMessage(room, room.player)].filter(Boolean).join(" ")
     : [eventMessage, guessResult].filter(Boolean).join(" ");
-  if (message || roleDetails.rows?.length || roleDetails.hero || roleDetails.voteResults?.length) showImpostorEventPopup(title, message, roleDetails);
+  if (message || roleDetails.rows?.length || roleDetails.hero || roleDetails.voteResults?.length || roleDetails.tieVoteCandidates?.length) showImpostorEventPopup(title, message, roleDetails);
   playimpostorAlarmSound(getImpostorEventSoundType(room));
   triggerImpostorOutcomeEffects(room);
 }
@@ -2668,13 +2754,13 @@ function getImpostorPopupDetails(room) {
 
   if (event.type === "eliminated") {
     accentRole = event.role || accentRole;
+    const expelledMessage = event.role === "impostor" ? t("impostor.expelledImpostor") : t("impostor.expelledCrew");
+    rows.push({ label: t("impostor.popup.nextStepHeading"), value: expelledMessage, emphasis: true });
     if (room.status === "finished") {
       rows.push(
         { label: t("impostor.popup.winnerHeading"), value: getImpostorWinnerText(room), emphasis: true },
         { label: t("impostor.popup.yourResultHeading"), value: player?.won ? t("impostor.youWon") : t("impostor.youLost"), emphasis: true }
       );
-    } else {
-      rows.push({ label: t("impostor.popup.nextStepHeading"), value: t("impostor.playingStatus", { votes: room.votesCast || 0, total: room.activeCount || 0 }) });
     }
     return {
       role: accentRole,
@@ -2685,6 +2771,10 @@ function getImpostorPopupDetails(room) {
   }
 
   if (event.type === "tie") {
+    const tiedIds = new Set(room.tieCandidates || []);
+    const tieVoteCandidates = (room.players || [])
+      .filter((candidate) => tiedIds.has(candidate.id) && !candidate.eliminated && candidate.id !== player?.id)
+      .map((candidate) => ({ id: candidate.id, name: candidate.name, emoji: candidate.emoji }));
     rows.push(
       { label: t("impostor.popup.nextStepHeading"), value: t("impostor.tieStatus", { votes: room.votesCast || 0, total: room.activeCount || 0 }) }
     );
@@ -2692,7 +2782,8 @@ function getImpostorPopupDetails(room) {
       role: accentRole,
       hero: { title: t("impostor.popup.tieHeadline") },
       rows,
-      voteResults: event.voteResults || []
+      voteResults: event.voteResults || [],
+      tieVoteCandidates
     };
   }
 
@@ -2916,6 +3007,7 @@ function applyLanguage() {
   });
 
   updateLanguageSelector();
+  syncimpostorWordSetCards();
   if (impostorRoom && !document.querySelector("#impostorView")?.hidden) renderimpostorRoom(impostorRoom);
 }
 
