@@ -7254,3 +7254,202 @@ body.impostor-active .app-shell {
     grid-template-columns: 1fr;
   }
 }
+
+/* Impostor mobile correction pass */
+@media (min-width: 900px) {
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-lobby-title h1 {
+    font-size: clamp(3.4rem, 7.2vw, 8.4rem) !important;
+    white-space: nowrap;
+  }
+}
+
+.impostor-control-strip button {
+  height: auto !important;
+  min-height: 30px !important;
+  padding: 4px 8px !important;
+  border-width: 1px !important;
+  font-size: clamp(0.62rem, 1.35vh, 0.78rem) !important;
+  line-height: 1.05 !important;
+  white-space: normal;
+}
+
+.impostor-control-strip .button-icon {
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active .title-bar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 54px !important;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 6px 6px !important;
+    overflow: visible;
+  }
+
+  body.impostor-active .title-logo,
+  body.impostor-active .title-copy,
+  body.impostor-active .language-selector {
+    display: none !important;
+  }
+
+  body.impostor-active .nav-menu {
+    order: 0;
+    grid-template-columns: minmax(0, 1fr) 48px !important;
+    width: 100%;
+    gap: 6px;
+  }
+
+  body.impostor-active .nav-menu:not(.mobile-menu-open) .nav-link.active,
+  body.impostor-active .nav-menu:not(.mobile-menu-open) .nav-link[data-view-target="impostorView"] {
+    min-height: 38px !important;
+    padding-block: 5px;
+    line-height: 1.05;
+  }
+
+  body.impostor-active .mobile-nav-more {
+    min-height: 38px !important;
+  }
+
+  body.impostor-active .app-shell {
+    min-height: calc(100dvh - var(--title-bar-height, 54px)) !important;
+  }
+
+  body.impostor-active .content {
+    height: calc(100dvh - var(--title-bar-height, 54px)) !important;
+    padding-top: 4px !important;
+  }
+
+  .impostor-board {
+    grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  .impostor-players-panel {
+    padding-inline: 5px !important;
+  }
+
+  .impostor-play-panel {
+    padding-inline: 4px !important;
+  }
+
+  .impostor-control-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+  }
+
+  .impostor-control-strip button {
+    min-height: 30px !important;
+    height: auto !important;
+    padding: 3px 4px !important;
+    font-size: clamp(0.54rem, 1.45vh, 0.68rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  .impostor-chip {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    padding: 4px !important;
+    column-gap: 5px !important;
+  }
+
+  .impostor-chip strong {
+    overflow: visible !important;
+    font-size: clamp(8px, calc(18px * var(--chip-content-scale)), 28px) !important;
+    line-height: 1.04 !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .impostor-chip small,
+  .impostor-chip b {
+    overflow: visible !important;
+    font-size: clamp(7px, calc(12px * var(--chip-content-scale)), 18px) !important;
+    line-height: 1.08 !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Impostor title + mobile header/button correction */
+@media (min-width: 900px) {
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-lobby-title h1 {
+    font-size: clamp(3.2rem, 7vw, 8rem) !important;
+    line-height: 0.9 !important;
+    white-space: normal !important;
+  }
+
+  .impostor-view:not(:has(#impostorGame:not([hidden]))) .impostor-title-break {
+    display: block;
+  }
+}
+
+.impostor-control-strip button {
+  min-height: 36px !important;
+  padding: 7px 10px !important;
+  font-size: clamp(0.72rem, 1.55vh, 0.92rem) !important;
+  line-height: 1.08 !important;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active .title-bar {
+    position: relative !important;
+    top: auto !important;
+    min-height: 72px !important;
+    padding: 14px 8px 8px !important;
+    align-content: center;
+  }
+
+  body.impostor-active .nav-menu {
+    grid-template-columns: minmax(0, 1fr) 52px !important;
+    align-items: stretch;
+  }
+
+  body.impostor-active .nav-menu:not(.mobile-menu-open) .nav-link.active,
+  body.impostor-active .nav-menu:not(.mobile-menu-open) .nav-link[data-view-target="impostorView"] {
+    min-height: 46px !important;
+    padding: 8px 10px !important;
+    align-items: center;
+  }
+
+  body.impostor-active .mobile-nav-more {
+    min-height: 46px !important;
+  }
+
+  body.impostor-active .app-shell {
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+  }
+
+  body.impostor-active .content {
+    height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    padding-top: 5px !important;
+  }
+
+  .impostor-play-panel {
+    grid-template-rows: auto auto auto minmax(28px, auto) auto auto !important;
+  }
+
+  .impostor-control-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  #impostorShareButton {
+    grid-column: 1 / -1;
+  }
+
+  #impostorRestartButton[hidden] + #impostorLeaveButton {
+    grid-column: 1 / -1;
+  }
+
+  .impostor-control-strip button {
+    min-height: 36px !important;
+    padding: 6px 7px !important;
+    font-size: clamp(0.62rem, 1.7vh, 0.82rem) !important;
+    line-height: 1.08 !important;
+  }
+}

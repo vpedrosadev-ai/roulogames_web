@@ -2520,7 +2520,8 @@ function syncimpostorChipContentScale() {
       const widthScale = Math.min(compact ? 4.1 : 3.4, Math.max(0.58, rect.width / (compact ? 128 : 182)));
       const textLength = Math.max(nameLength, Math.ceil(metaLength * 0.62));
       const nameScale = Math.min(1.12, Math.max(0.56, (compact ? 13 : 12) / Math.max(compact ? 13 : 12, textLength)));
-      const scale = Math.min(heightScale, widthScale) * nameScale;
+      const textWidthScale = Math.min(1.12, Math.max(0.42, (rect.width - (compact ? 54 : 70)) / Math.max(1, nameLength * (compact ? 12 : 11))));
+      const scale = Math.min(heightScale, widthScale) * Math.min(nameScale, textWidthScale);
       const iconSize = Math.max(18, Math.min(rect.height * (compact ? 0.58 : 0.5), rect.width * (compact ? 0.32 : 0.24), compact ? 96 : 118));
       chip.style.setProperty("--chip-content-scale", scale.toFixed(3));
       chip.style.setProperty("--chip-icon-size", `${iconSize.toFixed(1)}px`);
