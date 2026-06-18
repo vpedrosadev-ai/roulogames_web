@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ROULOGAMES</title>
+    <link rel="preload" href="/images/perfect-guess.png" as="image">
+    <link rel="preload" href="/images/game-complete.jpeg" as="image">
+    <link rel="preload" href="/images/you-tried.png" as="image">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="arcade-vinyl-field" aria-hidden="true">
+      <span class="arcade-vinyl vinyl-a"></span>
+      <span class="arcade-vinyl vinyl-b"></span>
+      <span class="arcade-vinyl vinyl-c"></span>
+      <span class="arcade-vinyl vinyl-d"></span>
+      <span class="arcade-vinyl vinyl-e"></span>
+      <span class="arcade-vinyl vinyl-f"></span>
+      <span class="arcade-vinyl vinyl-g"></span>
+    </div>
+    <header class="title-bar" aria-label="Application title">
+      <div class="title-logo" aria-hidden="true">
+        <span class="mango mango-a"></span>
+        <span class="mango mango-b"></span>
+      </div>
+      <div class="title-copy">
+        <div class="title-name">ROULOGAMES</div>
+        <div class="title-tagline">Mango-powered games</div>
+      </div>
+      <nav id="mobileNavMenu" class="nav-menu top-nav" aria-label="Main menu">
+        <div class="mobile-nav-dropdown">
+          <div class="mobile-language-options" aria-label="Language">
+            <button type="button" data-language-option="ca">
+              <span class="language-flag flag-ca" aria-hidden="true"></span>
+              <span>Català</span>
+            </button>
+            <button type="button" data-language-option="es">
+              <span class="language-flag flag-es" aria-hidden="true"></span>
+              <span>Español</span>
+            </button>
+            <button type="button" data-language-option="en">
+              <span class="language-flag flag-en" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+              </span>
+              <span>English</span>
+            </button>
+          </div>
+        </div>
+        <button type="button" class="nav-link" data-view-target="gameView"><span class="nav-icon" aria-hidden="true">♪</span>MANGOless game</button>
+        <button type="button" class="nav-link" data-view-target="impostorView"><span class="nav-icon" aria-hidden="true">?</span>Impostor</button>
+        <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
+      </nav>
+      <div id="languageSelector" class="language-selector">
+        <button type="button" id="languageButton" class="language-button" aria-label="Canviar idioma" aria-expanded="false">
+          <span class="language-flag flag-ca" data-current-language-flag aria-hidden="true"></span>
+        </button>
+        <div id="languageMenu" class="language-menu" hidden>
+          <button type="button" data-language-option="ca">
+            <span class="language-flag flag-ca" aria-hidden="true"></span>
+            <span>Català</span>
+          </button>
+          <button type="button" data-language-option="es">
+            <span class="language-flag flag-es" aria-hidden="true"></span>
+            <span>Español</span>
+          </button>
+          <button type="button" data-language-option="en">
+            <span class="language-flag flag-en" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </span>
+            <span>English</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <main class="content">
+        <section id="homeView" class="view home-view active" aria-labelledby="homeTitle">
+          <header class="home-header">
+            <h1 id="homeTitle">ROULOGAMES</h1>
+            <p id="homeSubtitle">Elige a que seccion quieres ir.</p>
+          </header>
+          <div class="home-menu-grid">
+            <button type="button" class="home-menu-card" data-view-target="gameView">
+              <span aria-hidden="true">♪</span>
+              <strong>MANGOless game</strong>
+              <small id="homeGameHint">Music guessing challenge</small>
+            </button>
+            <button type="button" class="home-menu-card" data-view-target="impostorView">
+              <span aria-hidden="true">?</span>
+              <strong>Impostor</strong>
+              <small id="homeImpostorHint">Secret word and voting game</small>
+            </button>
+          </div>
+        </section>
+
+        <section id="generatorView" class="view" aria-labelledby="generatorTitle" hidden>
+          <header class="topbar">
+            <div>
+              <h1 id="generatorTitle">Youtube links generator</h1>
+              <p>Build title/link CSV from URLs, songs, and album searches.</p>
+            </div>
+          </header>
+
+          <div class="tool-stack">
+            <form id="jobForm" class="input-panel">
+              <label for="input">URLs or searches</label>
+              <textarea id="input" name="input" rows="7" spellcheck="false" placeholder="https://www.youtube.com/playlist?list=...&#10;https://www.youtube.com/watch?v=...&#10;https://open.spotify.com/track/...&#10;song: Daft Punk One More Time&#10;album: Radiohead OK Computer"></textarea>
+              <div class="actions">
+                <button type="submit" id="submitButton">
+                  <span aria-hidden="true">&gt;</span>
+                  Generate
+                </button>
+                <button type="button" id="clearButton" class="secondary">
+                  <span aria-hidden="true">x</span>
+                  Clear
+                </button>
+              </div>
+            </form>
+
+            <section class="csv-panel" aria-label="CSV result">
+              <div class="section-heading">
+                <h2>CSV export</h2>
+                <span id="jobTitle">No job</span>
+              </div>
+              <div class="meter-row">
+                <span>Progress</span>
+                <strong id="jobPercent">0%</strong>
+              </div>
+              <div class="meter" aria-hidden="true">
+                <div id="jobBar"></div>
+                <span id="jobBarLabel">0%</span>
+              </div>
+              <div id="jobMessage" class="message">Waiting for input.</div>
+              <div class="result-actions">
+                <a id="downloadLink" class="download" hidden>Download CSV</a>
+                <button type="button" id="copyButton" class="secondary" hidden>Copy CSV</button>
+              </div>
+            </section>
+          </div>
+
+          <section class="queue" aria-label="Generated links">
+            <div class="queue-head">
+              <span>Title</span>
+              <span>YouTube Link</span>
+              <span>Copy</span>
+            </div>
+            <div id="items" class="items"></div>
+          </section>
+        </section>
+
+        <section id="impostorView" class="view impostor-view" aria-labelledby="impostorTitle" hidden>
+          <header class="impostor-header">
+            <div id="impostorLobbyTitle" class="impostor-lobby-title">
+              <h1 id="impostorTitle">Impostor GAME</h1>
+              <p id="impostorSubtitle">Create or join a room, hide the secret word, and vote out suspects.</p>
+            </div>
+          </header>
+
+          <section id="impostorLobby" class="impostor-lobby" aria-label="impostor lobby">
+            <div id="impostorChoice" class="impostor-choice">
+              <button type="button" id="impostorChooseCreate" class="impostor-choice-button">
+                <span aria-hidden="true">+</span>
+                <strong>Create room</strong>
+              </button>
+              <button type="button" id="impostorChooseJoin" class="impostor-choice-button">
+                <span aria-hidden="true">→</span>
+                <strong>Join room</strong>
+              </button>
+            </div>
+
+            <form id="impostorCreateForm" class="impostor-form" hidden>
+              <h2>Create room</h2>
+              <input id="impostorCreateRoomName" maxlength="16" required placeholder="Room name">
+              <div class="player-identity-row">
+                <select id="impostorCreateEmoji" aria-label="Player emoji"></select>
+                <input id="impostorCreatePlayerName" maxlength="16" required placeholder="Your name">
+              </div>
+              <div class="impostor-config-grid">
+                <label>
+                  <span>Players</span>
+                  <input id="impostorCreatePlayerLimit" type="number" min="3" max="16" value="6">
+                </label>
+                <label>
+                  <span>Impostors</span>
+                  <input id="impostorCreateimpostorCount" type="number" min="1" max="5" value="1">
+                </label>
+                <label>
+                  <span>Word set</span>
+                  <select id="impostorCreateWordSet">
+                    <option value="general">General words</option>
+                    <option value="celebrities">Personajes y celebridades</option>
+                  </select>
+                </label>
+                <label class="impostor-toggle">
+                  <input id="impostorCreateHint" type="checkbox" checked>
+                  <span>Hint for impostors</span>
+                </label>
+              </div>
+              <div class="impostor-form-actions">
+                <button type="button" class="secondary" data-impostor-back>Back</button>
+                <button type="submit">Create room</button>
+              </div>
+            </form>
+
+            <form id="impostorJoinForm" class="impostor-form" hidden>
+              <h2>Join room</h2>
+              <input id="impostorJoinRoomName" maxlength="16" required placeholder="Room name">
+              <div class="player-identity-row">
+                <select id="impostorJoinEmoji" aria-label="Player emoji"></select>
+                <input id="impostorJoinPlayerName" maxlength="16" required placeholder="Your name">
+              </div>
+              <div class="impostor-form-actions">
+                <button type="button" class="secondary" data-impostor-back>Back</button>
+                <button type="submit">Join room</button>
+              </div>
+            </form>
+
+            <div id="impostorLobbyMessage" class="message"></div>
+          </section>
+
+          <section id="impostorGame" class="impostor-game" hidden>
+            <div class="impostor-board" aria-live="polite">
+              <section class="impostor-players-panel">
+                <div class="impostor-room-strip">
+                  <strong id="impostorRoomLabel"></strong>
+                </div>
+                <div id="impostorCircle" class="impostor-circle" aria-label="Players"></div>
+              </section>
+              <section class="impostor-play-panel">
+                <div class="impostor-control-strip">
+                  <button type="button" id="impostorShareButton" class="secondary">Copiar enlace</button>
+                  <button type="button" id="impostorRestartButton" class="secondary" hidden>Reiniciar</button>
+                  <button type="button" id="impostorLeaveButton" class="secondary">Atrás</button>
+                </div>
+                <div class="impostor-round-counter">
+                  <span id="impostorRoundLabel">Round</span>
+                  <strong id="impostorRound">0</strong>
+                </div>
+                <section id="impostorRoleCard" class="impostor-role-card" hidden>
+                  <span id="impostorRoleLabel">Your role</span>
+                  <strong id="impostorSecretWord">Waiting...</strong>
+                  <p id="impostorHintText"></p>
+                  <button type="button" id="impostorGuessButton" class="secondary impostor-guess-button" hidden>Adivinar palabra</button>
+                </section>
+                <p id="impostorGameMessage" class="message"></p>
+                <button type="button" id="impostorVoteButton" class="impostor-main-button">Vote</button>
+              </section>
+            </div>
+          </section>
+        </section>
+
+        <section id="impostorVotePopup" class="impostor-popup" hidden aria-modal="true" role="dialog" aria-labelledby="impostorVotePopupTitle">
+          <div class="impostor-popup-card">
+            <header>
+              <h2 id="impostorVotePopupTitle">Vote</h2>
+              <button type="button" id="impostorVotePopupClose" class="secondary compact-button">Close</button>
+            </header>
+            <div id="impostorVoteList" class="impostor-vote-list"></div>
+          </div>
+        </section>
+
+        <section id="impostorEventPopup" class="impostor-popup" hidden aria-modal="true" role="dialog" aria-labelledby="impostorEventTitle">
+          <div class="impostor-popup-card impostor-event-card">
+            <header>
+              <h2 id="impostorEventTitle">Notice</h2>
+              <button type="button" id="impostorEventClose" class="secondary compact-button">Close</button>
+            </header>
+            <div id="impostorEventMessage" class="impostor-event-content"></div>
+          </div>
+        </section>
+
+        <section id="impostorGuessPopup" class="impostor-popup" hidden aria-modal="true" role="dialog" aria-labelledby="impostorGuessPopupTitle">
+          <form id="impostorGuessForm" class="impostor-popup-card impostor-guess-form">
+            <header>
+              <h2 id="impostorGuessPopupTitle">Impostor guess</h2>
+              <button type="button" id="impostorGuessPopupClose" class="secondary compact-button">Close</button>
+            </header>
+            <input id="impostorGuessInput" maxlength="40" placeholder="Secret word">
+            <button type="submit">Adivinar palabra</button>
+          </form>
+        </section>
+
+        <section id="converterView" class="view" aria-labelledby="converterTitle" hidden>
+          <header class="topbar">
+            <div>
+              <h1 id="converterTitle">Playlist converter</h1>
+              <p>Convert playlist tracks between Spotify and YouTube.</p>
+            </div>
+          </header>
+
+          <div class="tool-stack">
+            <form id="converterForm" class="input-panel">
+              <label for="converterInput">Playlist, track, or video URL</label>
+              <textarea id="converterInput" name="input" rows="5" spellcheck="false" placeholder="https://open.spotify.com/playlist/...&#10;https://www.youtube.com/playlist?list=...&#10;https://www.youtube.com/watch?v=..."></textarea>
+
+              <label for="targetPlatform">Convert to</label>
+              <select id="targetPlatform" name="target">
+                <option value="spotify">Spotify</option>
+                <option value="youtube">YouTube</option>
+              </select>
+
+              <div class="actions">
+                <button type="submit" id="convertButton">
+                  <span aria-hidden="true">&gt;</span>
+                  Convert
+                </button>
+                <button type="button" id="clearConverterButton" class="secondary">
+                  <span aria-hidden="true">x</span>
+                  Clear
+                </button>
+              </div>
+            </form>
+
+            <section class="converter-status" aria-live="polite">
+              <div class="section-heading">
+                <h2>Conversion</h2>
+                <span id="converterTitleText">No conversion</span>
+              </div>
+              <div class="meter-row">
+                <span>Results</span>
+                <strong id="converterCount">0 links</strong>
+              </div>
+              <div id="converterMessage" class="message">Waiting for playlist.</div>
+              <div class="meter converter-meter" aria-hidden="true">
+                <div id="converterBar"></div>
+                <span id="converterBarLabel">0%</span>
+              </div>
+              <div class="result-actions">
+                <button type="button" id="copyConvertedButton" class="secondary" hidden>Copy Links</button>
+              </div>
+            </section>
+          </div>
+
+          <section class="queue" aria-label="Converted links">
+            <div class="queue-head converter-head">
+              <span>Track</span>
+              <span>Converted Link</span>
+              <span>Copy</span>
+            </div>
+            <div id="convertedItems" class="items"></div>
+          </section>
+        </section>
+
+        <section id="audioView" class="view" aria-labelledby="audioTitle" hidden>
+          <header class="topbar">
+            <div>
+              <h1 id="audioTitle">Audio downloader</h1>
+              <p>Create a temporary MP3 download from a public YouTube video.</p>
+            </div>
+          </header>
+
+          <div class="tool-stack">
+            <form id="audioForm" class="input-panel">
+              <label for="audioInput">URLs or searches</label>
+              <textarea id="audioInput" name="url" rows="7" spellcheck="false" placeholder="https://www.youtube.com/playlist?list=...&#10;https://open.spotify.com/track/...&#10;song: Daft Punk One More Time&#10;album: Radiohead OK Computer"></textarea>
+              <div class="actions">
+                <button type="submit" id="audioButton">
+                  <span aria-hidden="true">&gt;</span>
+                  Generate .MP3s
+                </button>
+                <button type="button" id="clearAudioButton" class="secondary">
+                  <span aria-hidden="true">x</span>
+                  Clear
+                </button>
+                <div class="audio-options">
+                  <label for="audioConcurrency">
+                    MP3 concurrency
+                    <span>Default 2 is recommended.</span>
+                  </label>
+                  <input id="audioConcurrency" name="concurrency" type="number" min="1" max="6" step="1" value="2" inputmode="numeric">
+                </div>
+              </div>
+            </form>
+
+            <section class="audio-status" aria-live="polite">
+              <div class="section-heading">
+                <h2>ZIP export</h2>
+                <span id="audioTitleText">No audio</span>
+              </div>
+              <div class="meter-row">
+                <span>Progress</span>
+                <strong id="audioPercent">0%</strong>
+              </div>
+              <div class="meter" aria-hidden="true">
+                <div id="audioBar"></div>
+                <span id="audioBarLabel">0%</span>
+              </div>
+              <div id="audioMessage" class="message">Waiting for a video.</div>
+              <div id="audioExpiry" class="message subtle"></div>
+              <div class="result-actions">
+                <a id="audioDownloadLink" class="download" hidden>Download ZIP</a>
+                <button type="button" id="retryAudioButton" class="secondary" hidden>Retry failed</button>
+                <button type="button" id="resumeAudioButton" class="secondary" hidden>Resume</button>
+              </div>
+            </section>
+          </div>
+
+          <section class="queue" aria-label="Audio processing status">
+            <div class="queue-head audio-head">
+              <span>Title</span>
+              <span>YouTube Link</span>
+              <span>Status</span>
+              <span>Download</span>
+            </div>
+            <div id="audioItems" class="items"></div>
+          </section>
+        </section>
+
+        <section id="gameView" class="view game-view" hidden aria-labelledby="gameTitle">
+          <header class="topbar">
+            <div>
+              <h1 id="gameTitle">MANGOless game</h1>
+              <p id="songSource">Choose a category. Songs load from YouTube.</p>
+            </div>
+          </header>
+
+          <section id="gameSetup" class="game-setup" aria-label="MANGOless game setup">
+            <div class="setup-row">
+              <label>Challenge</label>
+              <div class="button-grid" role="group" aria-label="Challenge">
+                <button type="button" data-setup-mode="daily" aria-pressed="false">📅 Daily</button>
+                <button type="button" class="active" data-setup-mode="ten" aria-pressed="true">🎧 10 songs</button>
+              </div>
+            </div>
+            <div class="setup-row">
+              <label>Clip start</label>
+              <div class="button-grid" role="group" aria-label="Clip start">
+                <button type="button" data-start-mode="intro" aria-pressed="false">⏮ Intro</button>
+                <button type="button" class="active" data-start-mode="random" aria-pressed="true">🎲 Random moment</button>
+              </div>
+            </div>
+            <div class="setup-row">
+              <label>Difficulty</label>
+              <div class="button-grid" role="group" aria-label="Difficulty">
+                <button type="button" class="active" data-difficulty-mode="normal" aria-pressed="true">🟢 NORMAL</button>
+                <button type="button" data-difficulty-mode="pro" aria-pressed="false">🔥 PRO</button>
+              </div>
+            </div>
+            <div class="setup-row">
+              <label>Players</label>
+              <div class="button-grid" role="group" aria-label="Players">
+                <button type="button" class="active" data-player-mode="solo" aria-pressed="true">👤 Solo</button>
+                <button type="button" data-player-mode="multiplayer" aria-pressed="false">👥 Multiplayer</button>
+              </div>
+            </div>
+            <section id="multiplayerSetup" class="multiplayer-setup" hidden>
+              <div class="multiplayer-form">
+                <h3>Create room</h3>
+                <input id="createRoomName" maxlength="10" placeholder="Room name">
+                <div class="player-identity-row">
+                  <select id="createPlayerEmoji" aria-label="Player emoji"></select>
+                  <input id="createPlayerName" maxlength="10" placeholder="Player name">
+                </div>
+                <span>Create the room after choosing a category.</span>
+              </div>
+              <div class="multiplayer-form">
+                <h3>Join room</h3>
+                <input id="joinRoomName" maxlength="10" placeholder="Room name">
+                <div class="player-identity-row">
+                  <select id="joinPlayerEmoji" aria-label="Player emoji"></select>
+                  <input id="joinPlayerName" maxlength="10" placeholder="Player name">
+                </div>
+                <button type="button" id="joinRoomButton">Join room</button>
+              </div>
+              <div id="multiplayerSetupMessage" class="message"></div>
+            </section>
+            <button type="button" id="confirmChallengeButton">Choose category</button>
+          </section>
+
+          <section id="groupSetup" class="group-setup" aria-label="Choose category" hidden>
+            <div class="section-heading">
+              <h2>Category</h2>
+              <span>Pick one category or all together.</span>
+            </div>
+            <div id="groupButtons" class="group-cards" role="group" aria-label="Categories"></div>
+            <div class="actions">
+              <button type="button" id="backToChallengeButton" class="secondary">Back</button>
+              <button type="button" id="confirmCategoryButton">Confirm category</button>
+            </div>
+          </section>
+
+          <section id="artistLoading" class="artist-loading" hidden aria-live="polite" aria-label="Loading category songs">
+            <div class="loading-disc" aria-hidden="true"></div>
+            <strong>LOADING...</strong>
+          </section>
+
+          <section id="gameControls" class="game-controls" aria-label="Game controls" hidden>
+            <div class="score-strip" aria-label="Score">
+              <span id="gameProgress">Song 1/1</span>
+              <strong id="scoreTotal">0 pts</strong>
+            </div>
+            <div class="active-config">
+              <span>Playing</span>
+              <strong id="activeConfig">Daily, intro, Shadow Records</strong>
+            </div>
+            <button type="button" id="leaderboardButton" class="leaderboard-button">Leaderboard</button>
+            <a id="clueLink" class="download clue-link" href="https://www.youtube.com/watch?v=Aq5WXmQQooo" target="_blank" rel="noreferrer">Clue</a>
+            <button type="button" id="changeChallengeButton" class="secondary">Change challenge</button>
+          </section>
+
+          <div id="gamePlayArea" class="game-grid" hidden>
+            <aside id="multiplayerPlayersPanel" class="multiplayer-players-panel" hidden>
+              <div class="multiplayer-room-head">
+                <span>Room</span>
+                <strong id="multiplayerRoomLabel"></strong>
+              </div>
+              <div id="multiplayerPlayersList" class="multiplayer-players-list"></div>
+            </aside>
+            <section class="player-panel" aria-label="Song clip player">
+              <div id="artworkProgress" class="artwork-progress" hidden>Canción 1 de 10</div>
+              <div id="gameArtwork" class="artwork" aria-hidden="true">
+                <span>?</span>
+              </div>
+              <div class="clip-console">
+                <div>
+                  <span class="clip-label">Current clip</span>
+                  <strong id="clipLength">0.5s</strong>
+                </div>
+                <button type="button" id="playClipButton" class="round-action">Play</button>
+                <button type="button" id="skipClipButton" class="secondary">Skip</button>
+              </div>
+              <div id="clipTrack" class="clip-track" aria-hidden="true">
+                <div id="clipTrackBase" class="clip-track-wave"></div>
+                <div id="clipTrackFill" class="clip-track-fill">
+                  <div id="clipTrackFillWave" class="clip-track-wave"></div>
+                </div>
+              </div>
+              <div id="clipSteps" class="steps" aria-label="Available clip lengths"></div>
+              <div class="youtube-shell" aria-hidden="true">
+                <div id="youtubePlayer"></div>
+              </div>
+            </section>
+
+            <section class="guess-panel" aria-label="Song guessing">
+              <div class="status-card">
+                <span id="gameRound">Round 1</span>
+                <strong id="gameStatus">Load songs to begin.</strong>
+              </div>
+
+              <form id="guessForm" class="guess-form">
+                <div class="guess-heading">
+                  <label for="guessInput">Song title</label>
+                  <button type="button" id="showSongsButton" class="secondary compact-button">All songs</button>
+                </div>
+                <div class="guess-row">
+                  <input id="guessInput" name="guess" type="text" autocomplete="off" spellcheck="false" placeholder="Type song title">
+                  <button type="submit" id="guessButton">Guess</button>
+                </div>
+                <div id="suggestionList" class="suggestion-list" role="listbox" hidden></div>
+              </form>
+
+              <div id="guessList" class="guess-list" aria-label="Guesses"></div>
+
+              <section id="resultBox" class="result-box" hidden>
+                <span id="resultLabel">Result</span>
+                <strong id="answerText"></strong>
+                <div class="result-actions">
+                  <a id="watchLink" class="download" target="_blank" rel="noreferrer">Watch</a>
+                  <button type="button" id="shareButton" class="secondary">Share</button>
+                  <button type="button" id="nextSongButton">Next song</button>
+                  <button type="button" id="restartRunButton" class="secondary">Restart</button>
+                </div>
+              </section>
+
+              <section id="summaryBox" class="summary-box" hidden>
+                <div class="summary-head">
+                  <div>
+                    <span>Final score</span>
+                    <strong id="finalScore">0 pts</strong>
+                  </div>
+                  <button type="button" id="summaryRestartButton">Play again</button>
+                </div>
+                <section class="leaderboard-panel">
+                  <div class="leaderboard-head">
+                    <div>
+                      <span>Leaderboard</span>
+                      <strong id="leaderboardConfig"></strong>
+                    </div>
+                    <span id="leaderboardMessage"></span>
+                  </div>
+                  <form id="leaderboardForm" class="leaderboard-form">
+                    <input id="leaderboardName" maxlength="24" required autocomplete="nickname" placeholder="Player name">
+                    <button id="leaderboardSubmitButton" type="submit">Save score</button>
+                  </form>
+                  <ol id="leaderboardList" class="leaderboard-list"></ol>
+                </section>
+                <div id="summaryList" class="summary-list"></div>
+              </section>
+            </section>
+          </div>
+
+          <section id="leaderboardTicker" class="leaderboard-ticker" hidden aria-label="Top 10 leaderboard">
+            <strong>TOP 10</strong>
+            <div class="leaderboard-ticker-window">
+              <div id="leaderboardTickerTrack" class="leaderboard-ticker-track"></div>
+            </div>
+          </section>
+
+          <section id="roundPopup" class="round-popup" hidden aria-live="assertive" aria-labelledby="popupTitle">
+            <div class="round-popup-card">
+              <span id="popupMeta">Result</span>
+              <img id="popupCover" class="popup-cover" alt="">
+              <h2 id="popupTitle">Correct</h2>
+              <strong id="popupPoints">0 pts</strong>
+              <p id="popupSong"></p>
+              <p id="popupTime"></p>
+              <div class="result-actions">
+                <a id="popupWatchLink" class="download" target="_blank" rel="noreferrer">Watch</a>
+                <button type="button" id="popupNextButton">Next song</button>
+                <button type="button" id="popupSummaryButton">Summary</button>
+                <button type="button" id="popupCloseButton" class="secondary">Close</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="songsPopup" class="songs-popup" hidden aria-modal="true" role="dialog" aria-labelledby="songsPopupTitle">
+            <div class="songs-popup-card">
+              <div class="songs-popup-head">
+                <div>
+                  <h2 id="songsPopupTitle">Possible songs</h2>
+                  <span id="songsPopupCount"></span>
+                </div>
+                <button type="button" id="songsPopupCloseButton" class="secondary compact-button">Close</button>
+              </div>
+              <div id="songsPopupList" class="songs-popup-list"></div>
+            </div>
+          </section>
+
+          <section id="leaderboardPopup" class="songs-popup leaderboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="leaderboardPopupTitle">
+            <div class="songs-popup-card leaderboard-popup-card">
+              <div class="songs-popup-head">
+                <div>
+                  <h2 id="leaderboardPopupTitle">Top 10 leaderboard</h2>
+                  <span id="leaderboardPopupConfig"></span>
+                </div>
+                <button type="button" id="leaderboardPopupCloseButton" class="secondary compact-button">Close</button>
+              </div>
+              <ol id="leaderboardPopupList" class="leaderboard-popup-list"></ol>
+            </div>
+          </section>
+
+          <section id="customPlaylistPopup" class="songs-popup" hidden aria-modal="true" role="dialog" aria-labelledby="customPlaylistTitle">
+            <form id="customPlaylistForm" class="custom-playlist-card">
+              <div class="songs-popup-head">
+                <div>
+                  <h2 id="customPlaylistTitle">Custom playlist</h2>
+                  <span id="customPlaylistHint">Paste a public YouTube playlist URL.</span>
+                </div>
+                <button type="button" id="customPlaylistCloseButton" class="secondary compact-button">Close</button>
+              </div>
+              <label for="customPlaylistInput">YouTube playlist URL</label>
+              <input id="customPlaylistInput" type="url" required placeholder="https://www.youtube.com/playlist?list=...">
+              <div id="customPlaylistMessage" class="message"></div>
+              <button type="submit" id="customPlaylistLoadButton">Load playlist</button>
+            </form>
+          </section>
+
+          <section id="multiplayerPodiumPopup" class="songs-popup multiplayer-podium-popup" hidden aria-modal="true" role="dialog" aria-labelledby="multiplayerPodiumTitle">
+            <div class="songs-popup-card multiplayer-podium-card">
+              <div class="songs-popup-head">
+                <h2 id="multiplayerPodiumTitle">Final podium</h2>
+                <button type="button" id="multiplayerPodiumCloseButton" class="secondary compact-button">Close</button>
+              </div>
+              <div id="multiplayerPodium" class="multiplayer-podium"></div>
+              <ol id="multiplayerFinalList" class="multiplayer-final-list"></ol>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

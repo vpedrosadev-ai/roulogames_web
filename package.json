@@ -1,0 +1,19 @@
+{
+  "name": "roulogames-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "cloudflare:pages:build": "node scripts/build-pages.js",
+    "cloudflare:dev": "wrangler dev",
+    "cloudflare:deploy": "wrangler deploy"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

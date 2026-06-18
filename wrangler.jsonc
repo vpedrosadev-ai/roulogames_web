@@ -1,0 +1,16 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "roulogames-web",
+	"pages_build_output_dir": "./public",
+	"compatibility_date": "2026-05-21",
+	"vars": {
+		"YOUTUBE_SEARCH_API": "0"
+	},
+	"d1_databases": [
+		{
+			"binding": "LEADERBOARD_DB",
+			"database_name": "music-tools-leaderboard",
+			"database_id": "f4cbb69c-549c-46e0-b6a6-0c3fd2e35997"
+		}
+	]
+}
