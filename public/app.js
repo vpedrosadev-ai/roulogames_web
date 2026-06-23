@@ -1657,6 +1657,8 @@ impostorEventMessage?.addEventListener("click", voteimpostorPlayer);
 impostorGuessButton?.addEventListener("click", showImpostorGuessPopup);
 impostorGuessForm?.addEventListener("submit", guessimpostorWord);
 impostorCreatePlayerLimit?.addEventListener("input", syncimpostorConfigLimits);
+impostorCreatePlayerLimit?.addEventListener("blur", syncimpostorConfigLimits);
+impostorCreateimpostorCount?.addEventListener("input", syncimpostorConfigLimits);
 impostorWordSetCards?.addEventListener("click", chooseimpostorWordSet);
 window.addEventListener("pagehide", () => releaseimpostorRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
@@ -2101,13 +2103,39 @@ function syncimpostorWordSetCards() {
   });
 }
 
+function readimpostorInteger(input) {
+  const raw = String(input?.value ?? "").trim();
+  if (!raw) return null;
+  const number = Number(raw);
+  if (!Number.isFinite(number)) return null;
+  return Math.floor(number);
+}
+
 function syncimpostorConfigLimits() {
   if (!impostorCreatePlayerLimit || !impostorCreateimpostorCount) return;
-  const playerLimit = clampNumber(Number(impostorCreatePlayerLimit.value) || 6, 3, 16);
+  const playerLimit = readimpostorInteger(impostorCreatePlayerLimit);
+  if (!playerLimit || playerLimit < 3) {
+    impostorCreateimpostorCount.removeAttribute("max");
+    return;
+  }
+  impostorCreateimpostorCount.max = String(Math.max(1, Math.floor((playerLimit - 1) / 2)));
+}
+
+function getimpostorCreateConfig() {
+  const playerLimit = readimpostorInteger(impostorCreatePlayerLimit);
+  if (!playerLimit || playerLimit < 3) {
+    impostorLobbyMessage.textContent = "Players must be 3 or more.";
+    impostorCreatePlayerLimit?.focus();
+    return null;
+  }
   const maximpostors = Math.max(1, Math.floor((playerLimit - 1) / 2));
-  impostorCreatePlayerLimit.value = String(playerLimit);
-  impostorCreateimpostorCount.max = String(maximpostors);
-  impostorCreateimpostorCount.value = String(clampNumber(Number(impostorCreateimpostorCount.value) || 1, 1, maximpostors));
+  const impostorCount = readimpostorInteger(impostorCreateimpostorCount);
+  if (!impostorCount || impostorCount < 1 || impostorCount > maximpostors) {
+    impostorLobbyMessage.textContent = `Impostors must be between 1 and ${maximpostors} for ${playerLimit} players.`;
+    impostorCreateimpostorCount?.focus();
+    return null;
+  }
+  return { playerLimit, impostorCount };
 }
 
 function showimpostorLobby() {
@@ -2156,6 +2184,8 @@ async function createimpostorRoom(event) {
   event.preventDefault();
   impostorLobbyMessage.textContent = "";
   syncimpostorConfigLimits();
+  const configInput = getimpostorCreateConfig();
+  if (!configInput) return;
   const roomName = impostorCreateRoomName.value.trim();
   const playerName = impostorCreatePlayerName.value.trim();
   impostorCreateRoomName.value = roomName;
@@ -2169,8 +2199,8 @@ async function createimpostorRoom(event) {
         playerName,
         emoji: impostorCreateEmoji.value,
         config: {
-          playerLimit: Number(impostorCreatePlayerLimit?.value) || 6,
-          impostorCount: Number(impostorCreateimpostorCount?.value) || 1,
+          playerLimit: configInput.playerLimit,
+          impostorCount: configInput.impostorCount,
           impostorHint: Boolean(impostorCreateHint?.checked),
           wordSet: impostorCreateWordSet?.value || "general"
         }

@@ -1318,9 +1318,11 @@ function normalizeNewimpostorRoom(value) {
 }
 
 function normalizeimpostorConfig(value = {}) {
-  const playerLimit = Math.max(3, Math.min(16, Math.floor(Number(value.playerLimit) || 6)));
+  const playerLimit = Math.floor(Number(value.playerLimit));
+  if (!Number.isFinite(playerLimit) || playerLimit < 3) return null;
   const maximpostors = Math.max(1, Math.floor((playerLimit - 1) / 2));
-  const impostorCount = Math.max(1, Math.min(maximpostors, Math.floor(Number(value.impostorCount) || 1)));
+  const impostorCount = Math.floor(Number(value.impostorCount));
+  if (!Number.isFinite(impostorCount) || impostorCount < 1 || impostorCount > maximpostors) return null;
   const wordSet = impostor_WORD_SETS[value.wordSet] ? value.wordSet : "general";
   return { playerLimit, impostorCount, impostorHint: Boolean(value.impostorHint), wordSet };
 }

@@ -5878,11 +5878,9 @@ body.impostor-active .content {
   }
 
   .impostor-board {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "players"
-      "play";
-    gap: 8px;
+    grid-template-columns: minmax(104px, 38vw) minmax(0, 1fr);
+    grid-template-areas: "players play";
+    gap: 6px;
   }
 
   .impostor-players-panel,
@@ -6678,11 +6676,15 @@ body.impostor-active .app-shell {
   }
 
   body.impostor-active .content {
-    height: calc(100svh - var(--title-bar-height));
-    padding-top: max(3px, env(safe-area-inset-top));
+    height: auto;
+    min-height: calc(100svh - var(--title-bar-height));
+    padding-top: max(6px, env(safe-area-inset-top));
+    overflow: visible;
   }
 
   .impostor-board {
+    grid-template-columns: minmax(104px, 38vw) minmax(0, 1fr);
+    grid-template-areas: "players play";
     padding-top: 2px;
   }
 
