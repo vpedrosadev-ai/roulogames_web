@@ -5847,21 +5847,47 @@ body.impostor-active .content {
     min-height: 54px;
   }
 
+  body.impostor-active {
+    overflow: auto;
+  }
+
+  body.impostor-active .app-shell {
+    min-height: calc(100svh - 54px);
+  }
+
   body.impostor-active .content {
     width: calc(100% - 6px);
-    height: calc(100svh - 54px);
-    padding: 3px 0;
+    height: auto;
+    min-height: calc(100svh - 54px);
+    padding: 6px 0 max(16px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .impostor-view {
+    height: auto;
+    min-height: calc(100svh - 66px);
+    overflow: visible;
+  }
+
+  .impostor-game,
+  .impostor-board,
+  .impostor-players-panel,
+  .impostor-play-panel {
+    height: auto;
+    overflow: visible;
   }
 
   .impostor-board {
-    grid-template-columns: minmax(104px, 38vw) minmax(0, 1fr);
-    grid-template-areas: "players play";
-    gap: 4px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "players"
+      "play";
+    gap: 8px;
   }
 
   .impostor-players-panel,
   .impostor-play-panel {
-    padding: 4px;
+    padding: 8px;
     border-radius: 6px;
   }
 
@@ -5892,12 +5918,18 @@ body.impostor-active .content {
   }
 
   .impostor-circle {
-    gap: 2px;
+    height: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: auto;
+    gap: 6px;
   }
 
   .impostor-chip {
     grid-template-columns: auto minmax(0, 1fr);
-    padding: 2px 3px;
+    height: auto;
+    min-height: 58px;
+    padding: 6px;
     border-radius: 5px;
   }
 
