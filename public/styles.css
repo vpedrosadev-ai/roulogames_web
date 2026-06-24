@@ -7740,3 +7740,56 @@ body.impostor-active .app-shell {
     align-self: center !important;
   }
 }
+/* Final player card sizing */
+.impostor-players-panel .impostor-circle {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: auto !important;
+}
+
+.impostor-players-panel .impostor-chip {
+  width: 100% !important;
+  max-width: none !important;
+  justify-self: stretch !important;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    min-height: 60px !important;
+    max-height: 82px !important;
+    padding: 5px !important;
+    grid-template-columns: minmax(26px, 34px) minmax(0, 1fr) !important;
+    align-content: center !important;
+    align-items: center !important;
+    row-gap: 1px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip span {
+    width: clamp(24px, 7vw, 34px) !important;
+    height: clamp(24px, 7vw, 34px) !important;
+    min-width: clamp(24px, 7vw, 34px) !important;
+    font-size: clamp(0.95rem, 4.6vw, 1.45rem) !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip strong {
+    overflow: hidden !important;
+    font-size: clamp(0.72rem, 3vw, 0.9rem) !important;
+    line-height: 1.05 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip small,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip b {
+    overflow: hidden !important;
+    font-size: clamp(0.58rem, 2.45vw, 0.76rem) !important;
+    line-height: 1.05 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
+@media (min-width: 761px) {
+  .impostor-players-panel .impostor-circle {
+    grid-template-columns: repeat(var(--player-columns, 1), minmax(0, 1fr)) !important;
+  }
+}

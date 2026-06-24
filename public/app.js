@@ -2418,7 +2418,7 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   const votesNeeded = activePlayers.length;
   const seatCount = Math.max(1, players.length, Number(config.playerLimit) || 1);
   const compactImpostorLayout = window.matchMedia?.("(max-width: 760px)")?.matches;
-  const playerColumns = compactImpostorLayout ? 1 : seatCount > 8 ? 2 : seatCount > 4 ? 2 : 1;
+  const playerColumns = compactImpostorLayout ? 1 : seatCount >= 5 ? 2 : 1;
   const playerRows = Math.max(1, Math.ceil(seatCount / playerColumns));
   const seatScale = Math.max(0.38, Math.min(0.95, 0.95 - Math.max(0, seatCount - 6) * 0.055 - Math.max(0, playerRows - 8) * 0.035));
   const maxNameLength = Math.max(1, ...players.map((player) => Array.from(player.name || "").length));
