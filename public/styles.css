@@ -7550,3 +7550,82 @@ body.impostor-active .app-shell {
     grid-column: auto !important;
   }
 }
+/* Final Impostor control placement */
+.impostor-control-strip button {
+  min-height: 48px !important;
+  padding: 10px 16px !important;
+  font-size: clamp(0.92rem, 1.7vw, 1.08rem) !important;
+  line-height: 1.12 !important;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .content {
+    height: auto !important;
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    overflow: visible !important;
+    padding-top: 54px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-board {
+    padding-top: 0 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-control-strip {
+    position: fixed !important;
+    top: calc(var(--title-bar-height, 72px) + 4px) !important;
+    left: max(6px, env(safe-area-inset-left)) !important;
+    right: max(6px, env(safe-area-inset-right)) !important;
+    z-index: 18 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    padding: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-control-strip button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42px !important;
+    padding: 7px 6px !important;
+    font-size: clamp(0.66rem, 2.8vw, 0.86rem) !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) #impostorShareButton,
+  body.impostor-active:has(#impostorGame:not([hidden])) #impostorRestartButton,
+  body.impostor-active:has(#impostorGame:not([hidden])) #impostorLeaveButton {
+    grid-column: auto !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-circle {
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+    justify-items: stretch !important;
+    align-items: start !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 56px !important;
+    max-height: 78px !important;
+    justify-self: stretch !important;
+    align-self: start !important;
+    overflow: hidden !important;
+  }
+
+  .impostor-wordset-section .section-heading {
+    display: grid !important;
+    justify-items: start !important;
+    text-align: left !important;
+  }
+
+  .impostor-wordset-section .section-heading span {
+    justify-self: start !important;
+    text-align: left !important;
+  }
+}
