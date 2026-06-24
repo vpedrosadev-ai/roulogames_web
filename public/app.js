@@ -1321,7 +1321,6 @@ const STATIC_TEXT_TARGETS = [
   ["#impostorJoinForm h2", "impostor.joinRoom"],
   ["#impostorCreateForm .impostor-config-grid label:nth-child(1) span", "impostor.players"],
   ["#impostorCreateForm .impostor-config-grid label:nth-child(2) span", "impostor.impostors"],
-  ["#impostorCreateForm .impostor-config-grid label:nth-child(3) span", "impostor.wordSet"],
   ["#impostorWordSetTitle", "impostor.wordSet"],
   ["#impostorWordSetHint", "impostor.wordSetHint"],
   ["#impostorCreateForm .impostor-toggle span", "impostor.hintForImpostors"],
@@ -2114,11 +2113,22 @@ function readimpostorInteger(input) {
 function syncimpostorConfigLimits() {
   if (!impostorCreatePlayerLimit || !impostorCreateimpostorCount) return;
   const playerLimit = readimpostorInteger(impostorCreatePlayerLimit);
-  if (!playerLimit || playerLimit < 3) {
+  impostorCreatePlayerLimit.setCustomValidity("");
+  impostorCreateimpostorCount.setCustomValidity("");
+  if (playerLimit === null) {
     impostorCreateimpostorCount.removeAttribute("max");
     return;
   }
-  impostorCreateimpostorCount.max = String(Math.max(1, Math.floor((playerLimit - 1) / 2)));
+  if (playerLimit < 3) {
+    impostorCreatePlayerLimit.setCustomValidity("Players must be 3 or more.");
+    impostorCreateimpostorCount.removeAttribute("max");
+    return;
+  }
+  const maximpostors = Math.max(1, Math.floor((playerLimit - 1) / 2));
+  impostorCreateimpostorCount.max = String(maximpostors);
+  const impostorCount = readimpostorInteger(impostorCreateimpostorCount);
+  if (impostorCount !== null && impostorCount < 1) impostorCreateimpostorCount.setCustomValidity("Impostors must be 1 or more.");
+  if (impostorCount !== null && impostorCount > maximpostors) impostorCreateimpostorCount.setCustomValidity(`Impostors must be between 1 and ${maximpostors} for ${playerLimit} players.`);
 }
 
 function getimpostorCreateConfig() {
@@ -2401,6 +2411,8 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   const config = room.config || {};
   const currentPlayer = room.player || players.find((player) => player.id === impostorSession?.playerId);
   const activePlayers = players.filter((player) => !player.eliminated);
+  const isHost = Boolean(currentPlayer?.isHost && currentPlayer.id === impostorSession?.playerId);
+  if (impostorSession) impostorSession.isHost = isHost;
   const status = room.status || "lobby";
   const votesCast = room.votesCast || 0;
   const votesNeeded = activePlayers.length;
@@ -2422,10 +2434,10 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
     impostorRoundLabel.textContent = status === "lobby" ? t("impostor.lobby") : status === "finished" ? t("impostor.result") : t("impostor.round");
   }
   if (impostorRoomLabel) impostorRoomLabel.textContent = t("impostor.roomLabel", { name: room.roomName || "" });
-  impostorShareButton.hidden = !impostorSession?.isHost;
+  impostorShareButton.hidden = !isHost;
   if (impostorRestartButton) {
-    impostorRestartButton.hidden = !impostorSession?.isHost || status === "lobby";
-    impostorRestartButton.disabled = !impostorSession?.isHost || activePlayers.length < 3;
+    impostorRestartButton.hidden = !isHost || status === "lobby";
+    impostorRestartButton.disabled = !isHost || activePlayers.length < 3;
   }
   if (options.flash) {
     impostorGame?.classList.add("is-impostor-flashing");
@@ -2436,8 +2448,8 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   renderimpostorPlayers(players, currentPlayer, status);
   renderimpostorActions(room, currentPlayer);
   if (impostorStartButton) {
-    const canStart = impostorSession?.isHost && status === "lobby" && players.length === Number(config.playerLimit || 0);
-    impostorStartButton.hidden = status !== "lobby" || !impostorSession?.isHost;
+    const canStart = isHost && status === "lobby" && players.length === Number(config.playerLimit || 0);
+    impostorStartButton.hidden = status !== "lobby" || !isHost;
     impostorStartButton.disabled = !canStart;
     impostorStartButton.textContent = canStart ? "Start game" : `Waiting ${players.length}/${config.playerLimit || "?"}`;
   }

@@ -7487,3 +7487,66 @@ body.impostor-active .app-shell {
     line-height: 1.08 !important;
   }
 }
+.impostor-form .player-identity-row {
+  grid-template-columns: minmax(88px, 108px) minmax(0, 1fr);
+}
+
+.impostor-form .player-identity-row select {
+  width: 100%;
+}
+
+.impostor-form .impostor-toggle {
+  justify-items: start;
+  text-align: left;
+}
+
+.impostor-form .impostor-toggle span {
+  justify-self: start;
+  text-align: left;
+}
+
+@media (max-width: 760px) {
+  .impostor-form .player-identity-row {
+    grid-template-columns: minmax(82px, 96px) minmax(0, 1fr);
+  }
+
+  .impostor-players-panel .impostor-circle {
+    align-items: start !important;
+  }
+
+  .impostor-players-panel .impostor-chip {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 56px !important;
+    max-height: 78px !important;
+    align-self: start !important;
+    overflow: hidden !important;
+  }
+}
+.impostor-wordset-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .impostor-control-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    justify-content: stretch !important;
+  }
+
+  .impostor-control-strip button {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #impostorShareButton,
+  #impostorRestartButton,
+  #impostorLeaveButton {
+    grid-column: auto !important;
+  }
+
+  #impostorRestartButton[hidden] + #impostorLeaveButton {
+    grid-column: auto !important;
+  }
+}

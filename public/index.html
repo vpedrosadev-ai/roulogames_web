@@ -182,19 +182,18 @@
               <div class="impostor-config-grid">
                 <label>
                   <span>Players</span>
-                  <input id="impostorCreatePlayerLimit" type="number" step="1" inputmode="numeric" value="6">
+                  <input id="impostorCreatePlayerLimit" type="number" min="3" step="1" inputmode="numeric" value="6">
                 </label>
                 <label>
                   <span>Impostors</span>
-                  <input id="impostorCreateimpostorCount" type="number" step="1" inputmode="numeric" value="1">
+                  <input id="impostorCreateimpostorCount" type="number" min="1" step="1" inputmode="numeric" value="1">
                 </label>
-                <label>
-                  <span>Word set</span>
+                <div class="impostor-wordset-hidden">
                   <select id="impostorCreateWordSet" class="sr-only" tabindex="-1" aria-hidden="true">
                     <option value="general">General words</option>
                     <option value="celebrities">Personajes y celebridades</option>
                   </select>
-                </label>
+                </div>
                 <label class="impostor-toggle">
                   <input id="impostorCreateHint" type="checkbox" checked>
                   <span>Hint for impostors</span>
