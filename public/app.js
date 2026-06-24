@@ -2523,7 +2523,7 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     const voteText = ["playing", "tiebreak"].includes(status) && !player.eliminated
       ? (player.hasVoted ? t("impostor.voted") : t("impostor.pendingVote"))
       : "";
-    chip.innerHTML = `<span></span><div class="impostor-chip-copy"><strong></strong><small></small><b></b></div>`;
+    chip.innerHTML = `<span></span><strong></strong><small></small><b></b>`;
     chip.querySelector("span").textContent = player.emoji;
     chip.querySelector("strong").textContent = player.name;
     chip.querySelector("small").textContent = roleText;
