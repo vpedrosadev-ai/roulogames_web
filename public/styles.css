@@ -7629,3 +7629,114 @@ body.impostor-active .app-shell {
     text-align: left !important;
   }
 }
+/* Final Impostor layout correction */
+.impostor-game:not([hidden]) {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+.impostor-game > .impostor-control-strip {
+  justify-self: end !important;
+  width: min(100%, 560px) !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.impostor-game > .impostor-board {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.impostor-circle {
+  width: 100% !important;
+  justify-items: stretch !important;
+  align-items: start !important;
+}
+
+.impostor-chip {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  align-content: center !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+.impostor-chip span {
+  align-self: center !important;
+}
+
+.impostor-chip strong,
+.impostor-chip small,
+.impostor-chip b {
+  align-self: center !important;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .content {
+    height: auto !important;
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    overflow: visible !important;
+    padding-top: 6px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game {
+    gap: 6px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-control-strip,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game > .impostor-control-strip {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: 3 !important;
+    width: 100% !important;
+    justify-self: stretch !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-control-strip button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42px !important;
+    padding: 7px 5px !important;
+    font-size: clamp(0.64rem, 2.65vw, 0.84rem) !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+  }
+
+  .impostor-config-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .impostor-config-grid label:nth-child(1),
+  .impostor-config-grid label:nth-child(2) {
+    grid-column: auto !important;
+  }
+
+  .impostor-config-grid .impostor-toggle {
+    grid-column: 1 / -1 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 56px !important;
+    max-height: 78px !important;
+    align-content: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    padding-block: 6px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip span,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip strong,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip small,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip b {
+    align-self: center !important;
+  }
+}

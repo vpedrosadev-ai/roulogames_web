@@ -240,6 +240,11 @@
           </section>
 
           <section id="impostorGame" class="impostor-game" hidden>
+              <div class="impostor-control-strip">
+                <button type="button" id="impostorShareButton" class="secondary"><span class="button-icon" aria-hidden="true">🔗</span> Copiar enlace</button>
+                <button type="button" id="impostorRestartButton" class="secondary" hidden>Reiniciar</button>
+                <button type="button" id="impostorLeaveButton" class="secondary">Atrás</button>
+              </div>
             <div class="impostor-board" aria-live="polite">
               <section class="impostor-players-panel">
                 <div class="impostor-room-strip">
@@ -248,11 +253,6 @@
                 <div id="impostorCircle" class="impostor-circle" aria-label="Players"></div>
               </section>
               <section class="impostor-play-panel">
-                <div class="impostor-control-strip">
-                  <button type="button" id="impostorShareButton" class="secondary"><span class="button-icon" aria-hidden="true">🔗</span> Copiar enlace</button>
-                  <button type="button" id="impostorRestartButton" class="secondary" hidden>Reiniciar</button>
-                  <button type="button" id="impostorLeaveButton" class="secondary">Atrás</button>
-                </div>
                 <div class="impostor-round-counter">
                   <span id="impostorRoundLabel">Round</span>
                   <strong id="impostorRound">0</strong>
