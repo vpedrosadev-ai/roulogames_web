@@ -8511,3 +8511,98 @@ body.resistance-active .content {
     transform: translateY(-4px) !important;
   }
 }
+
+/* Impostor mobile viewport fit restore */
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) {
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .content {
+    height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-top: 54px !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-view,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game {
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    gap: 0 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game > .impostor-control-strip {
+    position: fixed !important;
+    top: calc(var(--title-bar-height, 72px) + 4px) !important;
+    left: max(6px, env(safe-area-inset-left)) !important;
+    right: max(6px, env(safe-area-inset-right)) !important;
+    width: auto !important;
+    z-index: 18 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game > .impostor-board {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr) !important;
+    grid-template-areas: "players play" !important;
+    gap: 5px !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    align-content: stretch !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-circle {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: repeat(var(--player-rows, 1), minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+    gap: 6px !important;
+    align-items: stretch !important;
+    justify-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 5px 6px 7px !important;
+    align-content: start !important;
+    align-items: start !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip span {
+    align-self: start !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip strong,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip small,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip b {
+    align-self: start !important;
+    transform: translateY(-3px) !important;
+  }
+}
