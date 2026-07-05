@@ -1047,8 +1047,13 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.popup.activePlayersHeading": "Jugadors actius",
     "impostor.popup.voteCountHeading": "Recompte de vots",
     "impostor.popup.tieHeadline": "Empat en la votacio",
+    "impostor.popup.startsHeading": "Primer torn",
     "impostor.wordPrefix": "Paraula: {value}",
-    "impostor.hintPrefix": "Pista: {value}"
+    "impostor.hintPrefix": "Pista: {value}",
+    "impostor.starts": "Comenca {name}",
+    "impostor.youStart": "Comences tu",
+    "impostor.kickPlayer": "Expulsa jugador",
+    "impostor.sessionLost": "Has sortit d'aquesta sala. Torna a entrar amb el teu nom si cal."
   },
   es: {
     "home.subtitle": "Elige a que seccion quieres ir.",
@@ -1142,8 +1147,13 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.popup.activePlayersHeading": "Jugadores activos",
     "impostor.popup.voteCountHeading": "Recuento de votos",
     "impostor.popup.tieHeadline": "Empate en la votacion",
+    "impostor.popup.startsHeading": "Primer turno",
     "impostor.wordPrefix": "Palabra: {value}",
-    "impostor.hintPrefix": "Pista: {value}"
+    "impostor.hintPrefix": "Pista: {value}",
+    "impostor.starts": "Empieza {name}",
+    "impostor.youStart": "Empiezas tu",
+    "impostor.kickPlayer": "Expulsar jugador",
+    "impostor.sessionLost": "Has salido de esta sala. Vuelve a entrar con tu nombre si hace falta."
   },
   en: {
     "home.subtitle": "Choose which section you want.",
@@ -1237,8 +1247,13 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.popup.activePlayersHeading": "Active players",
     "impostor.popup.voteCountHeading": "Vote count",
     "impostor.popup.tieHeadline": "Vote tied",
+    "impostor.popup.startsHeading": "First turn",
     "impostor.wordPrefix": "Word: {value}",
-    "impostor.hintPrefix": "Hint: {value}"
+    "impostor.hintPrefix": "Hint: {value}",
+    "impostor.starts": "{name} starts",
+    "impostor.youStart": "You start",
+    "impostor.kickPlayer": "Kick player",
+    "impostor.sessionLost": "You left this room. Rejoin with your name if needed."
   }
 };
 
@@ -1651,6 +1666,7 @@ impostorRestartButton?.addEventListener("click", restartimpostorGame);
 impostorLeaveButton?.addEventListener("click", leaveimpostorToMenu);
 impostorStartButton?.addEventListener("click", startimpostorGame);
 impostorVoteButton?.addEventListener("click", showImpostorVotePopup);
+impostorCircle?.addEventListener("click", kickimpostorPlayer);
 impostorVoteList?.addEventListener("click", voteimpostorPlayer);
 impostorEventMessage?.addEventListener("click", voteimpostorPlayer);
 impostorGuessButton?.addEventListener("click", showImpostorGuessPopup);
@@ -2280,6 +2296,11 @@ async function pollimpostorRoom() {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}?${params}`);
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Room unavailable");
+    if (!payload.player) {
+      leaveimpostorRoom();
+      impostorLobbyMessage.textContent = t("impostor.sessionLost");
+      return;
+    }
     const previousVotesCast = Number(impostorRoom?.votesCast || impostorLastVotesCast || 0);
     const eventChanged = Boolean(impostorRoom && payload.eventId && payload.eventId !== impostorLastAssignmentId);
     const joinedPlayers = (payload.players || []).filter((player) => !impostorKnownPlayerIds.has(player.id));
@@ -2343,6 +2364,32 @@ async function restartimpostorGame() {
     if (impostorGameMessage) impostorGameMessage.textContent = error.message;
   } finally {
     impostorRestartButton.disabled = false;
+  }
+}
+
+async function kickimpostorPlayer(event) {
+  const button = event.target.closest("[data-kick-player-id]");
+  if (!button || !impostorSession?.isHost) return;
+  event.preventDefault();
+  button.disabled = true;
+  try {
+    const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/kick`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playerId: impostorSession.playerId,
+        token: impostorSession.token,
+        targetPlayerId: button.dataset.kickPlayerId
+      })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "Could not kick player");
+    impostorRoom = payload;
+    impostorKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+    renderimpostorRoom(payload);
+  } catch (error) {
+    if (impostorGameMessage) impostorGameMessage.textContent = error.message;
+    button.disabled = false;
   }
 }
 
@@ -2479,7 +2526,10 @@ function formatimpostorEvent(event) {
   if (event.type === "tie") return t("impostor.event.tie", { names: event.names?.join(", ") || t("impostor.players") });
   if (event.type === "guess-win") return t("impostor.event.guessWin", { name: event.playerName, guess: event.guess || "" });
   if (event.type === "guess-fail") return t("impostor.event.guessFail", { name: event.playerName, guess: event.guess || "" });
-  if (event.type === "start") return t("impostor.event.start");
+  if (event.type === "start") {
+    const starter = event.startingPlayerName ? ` ${t("impostor.starts", { name: event.startingPlayerName })}.` : "";
+    return `${t("impostor.event.start")}${starter}`;
+  }
   return "";
 }
 
@@ -2503,11 +2553,12 @@ function renderimpostorRoleCard(room, currentPlayer) {
     : t("impostor.wordPrefix", { value: currentPlayer.word || t("impostor.secretWord") });
   impostorRoleLabel.textContent = isImpostor ? t("impostor.role.impostor") : t("impostor.role.crew");
   impostorSecretWord.textContent = detail;
-  impostorHintText.textContent = currentPlayer.eliminated ? t("impostor.youAreOut") : "";
+  impostorHintText.textContent = currentPlayer.eliminated ? t("impostor.youAreOut") : currentPlayer.starts ? t("impostor.youStart") : "";
 }
 
 function renderimpostorPlayers(players, currentPlayer, status) {
   const revealAll = status === "finished";
+  const canKick = impostorSession?.isHost && status === "lobby";
   impostorCircle.replaceChildren(...players.map((player) => {
     const chip = document.createElement("article");
     chip.className = "impostor-chip";
@@ -2517,6 +2568,7 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     if (player.eliminated) chip.classList.add("is-eliminated");
     if (player.eliminated && player.role) chip.classList.add(`is-expelled-${player.role}`);
     if (player.hasVoted) chip.classList.add("has-voted");
+    if (player.starts) chip.classList.add("is-starting-player");
     const roleText = player.role && (revealAll || player.eliminated)
       ? `${t(`impostor.role.${player.role}`)}${player.word ? ` - ${player.word}` : ""}`
       : (player.eliminated ? t("impostor.out") : t("impostor.inGame"));
@@ -2528,6 +2580,16 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     chip.querySelector("strong").textContent = player.name;
     chip.querySelector("small").textContent = roleText;
     chip.querySelector("b").textContent = voteText;
+    if (canKick && player.id !== currentPlayer?.id) {
+      const kick = document.createElement("button");
+      kick.type = "button";
+      kick.className = "impostor-kick-button";
+      kick.dataset.kickPlayerId = player.id;
+      kick.setAttribute("aria-label", t("impostor.kickPlayer"));
+      kick.title = t("impostor.kickPlayer");
+      kick.textContent = "×";
+      chip.append(kick);
+    }
     return chip;
   }));
   observeimpostorChipSizing();
@@ -2790,6 +2852,11 @@ function getImpostorPopupDetails(room) {
       {
         label: t("impostor.popup.objectiveHeading"),
         value: isImpostor ? t("impostor.popup.impostorObjective") : t("impostor.popup.crewObjective")
+      },
+      {
+        label: t("impostor.popup.startsHeading"),
+        value: player.starts ? t("impostor.youStart") : t("impostor.starts", { name: room.startingPlayerName || "-" }),
+        emphasis: Boolean(player.starts)
       }
     );
     return { role: player.role, rows };

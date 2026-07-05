@@ -570,6 +570,8 @@ export default {
       if (request.method === "POST" && impostorStartMatch) return startimpostorGame(request, impostorStartMatch[1], env);
       const impostorRestartMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/restart$/);
       if (request.method === "POST" && impostorRestartMatch) return restartimpostorGame(request, impostorRestartMatch[1], env);
+      const impostorKickMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/kick$/);
+      if (request.method === "POST" && impostorKickMatch) return kickimpostorPlayer(request, impostorKickMatch[1], env);
       const impostorVoteMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/vote$/);
       if (request.method === "POST" && impostorVoteMatch) return voteimpostorPlayer(request, impostorVoteMatch[1], env);
       const impostorGuessMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/guess$/);
@@ -1159,9 +1161,18 @@ async function createimpostorRoom(request, env) {
 async function joinimpostorRoom(request, roomName, env) {
   const room = await loadimpostorRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
   const identity = normalizeimpostorIdentity(await request.json().catch(() => ({})));
   if (!identity) return json({ error: "Invalid player details" }, 400);
+  const existingPlayer = room.players.find((player) => player.name === identity.name);
+  if (existingPlayer) {
+    existingPlayer.token = crypto.randomUUID() + crypto.randomUUID();
+    existingPlayer.emoji = identity.emoji;
+    existingPlayer.lastSeen = Date.now();
+    room.updatedAt = Date.now();
+    await saveimpostorRoom(room, env);
+    return json(impostorRoomResponse(room, existingPlayer), 200);
+  }
+  if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
   if (room.players.length >= Number(room.config.playerLimit)) return json({ error: "Room is full" }, 409);
   if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) return json({ error: "Player name is already in use" }, 409);
   const player = createimpostorPlayer(identity, nextimpostorSeatNumber(room));
@@ -1205,6 +1216,25 @@ async function restartimpostorGame(request, roomName, env) {
   return json(impostorRoomResponse(room, player));
 }
 
+async function kickimpostorPlayer(request, roomName, env) {
+  const room = await loadimpostorRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  const hostId = room.hostId || room.players[0]?.id;
+  if (!player || player.id !== hostId) return json({ error: "Only host can kick players" }, 403);
+  if (room.status !== "lobby") return json({ error: "Players can only be kicked before the game starts" }, 409);
+  const targetId = String(body.targetPlayerId || "");
+  if (!targetId || targetId === hostId) return json({ error: "Invalid player to kick" }, 400);
+  const before = room.players.length;
+  room.players = room.players.filter((item) => item.id !== targetId);
+  if (room.players.length === before) return json({ error: "Player not found" }, 404);
+  room._removedPlayerIds = [targetId];
+  room.updatedAt = Date.now();
+  await saveimpostorRoom(room, env);
+  return json(impostorRoomResponse(room, player));
+}
+
 async function voteimpostorPlayer(request, roomName, env) {
   const room = await loadimpostorRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
@@ -1214,6 +1244,8 @@ async function voteimpostorPlayer(request, roomName, env) {
   const target = room.players.find((item) => item.id === body.targetPlayerId && !item.eliminated);
   if (!target || target.id === player.id) return json({ error: "Invalid vote target" }, 400);
   if (room.status === "tiebreak" && !room.tieCandidates?.includes(target.id)) return json({ error: "Vote only tied players" }, 400);
+  room._voteRoundIndex = room.roundIndex;
+  room._voteStatus = room.status;
   room.votes = { ...(room.votes || {}), [player.id]: target.id };
   player.lastSeen = Date.now();
   resolveimpostorVotesIfReady(room);
@@ -1265,17 +1297,34 @@ async function loadimpostorRoom(key, env) {
 
 async function saveimpostorRoom(room, env, create = false) {
   const storageKey = impostorStorageKey(room.key);
-  const version = `${Date.now()}-${crypto.randomUUID()}`;
   if (create) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
     await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
       .bind(storageKey, impostorRoomJson(room), version).run();
     room._version = version;
     return;
   }
-  const result = await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ?")
-    .bind(impostorRoomJson(room), version, storageKey).run();
-  if (!result.meta?.changes) throw new Error("Room not found");
-  room._version = version;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    const previousVersion = room._version || "";
+    const result = previousVersion
+      ? await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+        .bind(impostorRoomJson(room), version, storageKey, previousVersion).run()
+      : await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ?")
+        .bind(impostorRoomJson(room), version, storageKey).run();
+    if (result.meta?.changes) {
+      room._version = version;
+      delete room._removedPlayerIds;
+      delete room._touchOnly;
+      delete room._voteRoundIndex;
+      delete room._voteStatus;
+      return;
+    }
+    const latest = await loadimpostorRoom(room.key, env);
+    if (!latest) throw new Error("Room not found");
+    Object.assign(room, mergeimpostorRooms(latest, room));
+  }
+  throw new Error("Room update conflict");
 }
 
 function impostorStorageKey(key) {
@@ -1285,6 +1334,10 @@ function impostorStorageKey(key) {
 function impostorRoomJson(room) {
   const stored = { ...room };
   delete stored._version;
+  delete stored._removedPlayerIds;
+  delete stored._touchOnly;
+  delete stored._voteRoundIndex;
+  delete stored._voteStatus;
   return JSON.stringify(stored);
 }
 
@@ -1295,7 +1348,7 @@ function normalizeNewimpostorRoom(value) {
   const config = normalizeimpostorConfig(value?.config);
   if (!key || !roomName || !identity || !config) return null;
   const host = createimpostorPlayer(identity, 1);
-  return { key, roomName, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  return { key, roomName, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
 }
 
 function normalizeimpostorConfig(value = {}) {
@@ -1325,6 +1378,7 @@ function nextimpostorSeatNumber(room) {
 function touchimpostorRoom(room, playerId, token) {
   const player = authenticateMultiplayerPlayer(room, { playerId, token });
   if (player) player.lastSeen = Date.now();
+  room._touchOnly = true;
   room.updatedAt = Date.now();
   return player || null;
 }
@@ -1333,6 +1387,7 @@ function assignimpostorRoles(room) {
   const wordSet = impostor_WORD_SETS[room.config.wordSet] || impostor_WORD_SETS.general;
   const secret = wordSet[Math.floor(Math.random() * wordSet.length)];
   const impostorIds = new Set(shuffleimpostorItems(room.players.map((player) => player.id)).slice(0, room.config.impostorCount));
+  const startingPlayer = shuffleimpostorItems(room.players)[0] || null;
   room.players.forEach((player) => {
     player.role = impostorIds.has(player.id) ? "impostor" : "crew";
     player.eliminated = false;
@@ -1345,7 +1400,8 @@ function assignimpostorRoles(room) {
   room.votes = {};
   room.tieCandidates = [];
   room.winner = "";
-  setimpostorEvent(room, { type: "start" });
+  room.startingPlayerId = startingPlayer?.id || "";
+  setimpostorEvent(room, { type: "start", startingPlayerName: startingPlayer?.name || "" });
 }
 
 function resolveimpostorVotesIfReady(room) {
@@ -1427,6 +1483,45 @@ function setimpostorEvent(room, event) {
   room.lastEvent = event || {};
 }
 
+function mergeimpostorRooms(latest, incoming) {
+  const removedIds = new Set(incoming._removedPlayerIds || []);
+  const staleVote = incoming._voteRoundIndex !== undefined
+    && (Number(latest.roundIndex || 0) !== Number(incoming._voteRoundIndex) || latest.status !== incoming._voteStatus);
+  const merged = incoming._touchOnly ? { ...latest } : { ...incoming };
+  if (staleVote) Object.assign(merged, latest);
+  const players = new Map();
+  for (const player of latest.players || []) {
+    if (!removedIds.has(player.id)) players.set(player.id, { ...player });
+  }
+  for (const player of incoming.players || []) {
+    if (removedIds.has(player.id)) continue;
+    const current = players.get(player.id);
+    if ((incoming._touchOnly || staleVote) && current) {
+      players.set(player.id, {
+        ...current,
+        lastSeen: Math.max(Number(current.lastSeen || 0), Number(player.lastSeen || 0))
+      });
+      continue;
+    }
+    players.set(player.id, {
+      ...(current || {}),
+      ...player,
+      lastSeen: Math.max(Number(current?.lastSeen || 0), Number(player.lastSeen || 0))
+    });
+  }
+  merged.players = [...players.values()].sort((a, b) => Number(a.seatNumber || 0) - Number(b.seatNumber || 0));
+  if (!incoming._touchOnly && !staleVote && latest.status === incoming.status && latest.roundIndex === incoming.roundIndex && ["playing", "tiebreak"].includes(incoming.status)) {
+    merged.votes = { ...(latest.votes || {}), ...(incoming.votes || {}) };
+    resolveimpostorVotesIfReady(merged);
+  }
+  merged._version = latest._version;
+  merged._removedPlayerIds = incoming._removedPlayerIds;
+  merged._touchOnly = incoming._touchOnly;
+  merged._voteRoundIndex = incoming._voteRoundIndex;
+  merged._voteStatus = incoming._voteStatus;
+  return merged;
+}
+
 function shuffleimpostorItems(items) {
   const shuffled = [...items];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -1461,6 +1556,8 @@ function impostorRoomResponse(room, privatePlayer = null) {
     lastEvent: room.lastEvent || null,
     status: room.status,
     winner: room.winner || "",
+    startingPlayerId: room.startingPlayerId || "",
+    startingPlayerName: room.players.find((player) => player.id === room.startingPlayerId)?.name || "",
     activeCount,
     votesCast: Object.keys(room.votes || {}).length,
     tieCandidates: room.tieCandidates || [],
@@ -1472,6 +1569,7 @@ function impostorRoomResponse(room, privatePlayer = null) {
       eliminated: Boolean(player.eliminated),
       connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
       hasVoted: Boolean(room.votes?.[player.id]),
+      starts: player.id === room.startingPlayerId,
       role: revealAll || player.eliminated ? player.role : "",
       word: revealAll ? room.word : "",
       won: revealAll ? Boolean(player.won) : undefined
@@ -1483,6 +1581,7 @@ function impostorRoomResponse(room, privatePlayer = null) {
       role: privatePlayer.role,
       eliminated: Boolean(privatePlayer.eliminated),
       hasVoted: Boolean(room.votes?.[privatePlayer.id]),
+      starts: privatePlayer.id === room.startingPlayerId,
       word: privatePlayer.role === "crew" || revealAll ? room.word : "",
       hint: privatePlayer.role === "impostor" && room.config?.impostorHint ? room.hint : "",
       won: revealAll ? Boolean(privatePlayer.won) : undefined

@@ -7834,3 +7834,103 @@ body.impostor-active .app-shell {
     padding: 0 !important;
   }
 }
+
+/* Impostor host kick + player-card centering integration */
+.impostor-chip {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "emoji name kick"
+    "emoji meta kick"
+    "emoji vote kick" !important;
+  grid-template-rows: repeat(3, min-content) !important;
+  align-content: center !important;
+  align-items: center !important;
+  row-gap: 1px !important;
+}
+
+.impostor-chip:has(b:empty) {
+  grid-template-areas:
+    "emoji name kick"
+    "emoji meta kick" !important;
+  grid-template-rows: repeat(2, min-content) !important;
+}
+
+.impostor-chip span,
+.impostor-chip strong,
+.impostor-chip small,
+.impostor-chip b {
+  align-self: center !important;
+}
+
+.impostor-kick-button {
+  grid-area: kick;
+  align-self: center;
+  justify-self: end;
+  display: grid;
+  width: clamp(24px, 4.8vh, 36px);
+  height: clamp(24px, 4.8vh, 36px);
+  min-width: clamp(24px, 4.8vh, 36px);
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 95, 115, 0.72);
+  border-radius: 999px;
+  color: #fff;
+  background: #d61f3f;
+  box-shadow: 0 8px 16px rgba(214, 31, 63, 0.28);
+  font-size: clamp(1rem, 3vh, 1.45rem);
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.impostor-kick-button:hover,
+.impostor-kick-button:focus-visible {
+  background: #ff3156;
+  transform: translateY(-1px);
+}
+
+.impostor-kick-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+  transform: none;
+}
+
+.impostor-chip.is-starting-player:not(.is-eliminated) {
+  box-shadow: inset 0 0 0 2px rgba(247, 213, 126, 0.5), 0 14px 26px rgba(0, 0, 0, 0.32) !important;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    grid-template-columns: minmax(24px, 34px) minmax(0, 1fr) 24px !important;
+    grid-template-areas:
+      "emoji name kick"
+      "emoji meta kick"
+      "emoji vote kick" !important;
+    min-height: 0 !important;
+    padding-block: 3px !important;
+    row-gap: 0 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip:has(b:empty) {
+    grid-template-areas:
+      "emoji name kick"
+      "emoji meta kick" !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip strong {
+    font-size: clamp(8px, calc(16px * var(--chip-content-scale)), 22px) !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip small,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip b {
+    font-size: clamp(7px, calc(10.5px * var(--chip-content-scale)), 15px) !important;
+    line-height: 1.02 !important;
+  }
+
+  .impostor-kick-button {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    font-size: 1rem;
+  }
+}
