@@ -536,6 +536,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/leaderboard") return submitLeaderboardScore(request, env);
       if (request.method === "POST" && url.pathname === "/api/multiplayer/rooms") return createMultiplayerRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(request, env);
+      if (request.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
       if (request.method === "GET" && url.pathname === "/api/shadow-songs") return json(await getSongGroupPayload("shadow", env));
       if (url.pathname.startsWith("/api/audio/jobs")) return unsupportedAudioDownload();
@@ -578,6 +579,25 @@ export default {
       if (request.method === "POST" && impostorGuessMatch) return guessimpostorWord(request, impostorGuessMatch[1], env);
       const impostorLeaveMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/leave$/);
       if (request.method === "POST" && impostorLeaveMatch) return leaveimpostorRoom(request, impostorLeaveMatch[1], env);
+
+      const resistanceRoomMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && resistanceRoomMatch) return getResistanceRoom(resistanceRoomMatch[1], request, env);
+      const resistanceJoinMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/join$/);
+      if (request.method === "POST" && resistanceJoinMatch) return joinResistanceRoom(request, resistanceJoinMatch[1], env);
+      const resistanceStartMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/start$/);
+      if (request.method === "POST" && resistanceStartMatch) return startResistanceGame(request, resistanceStartMatch[1], env);
+      const resistanceKickMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/kick$/);
+      if (request.method === "POST" && resistanceKickMatch) return kickResistancePlayer(request, resistanceKickMatch[1], env);
+      const resistanceTeamMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/team$/);
+      if (request.method === "POST" && resistanceTeamMatch) return proposeResistanceTeam(request, resistanceTeamMatch[1], env);
+      const resistanceTeamVoteMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/team-vote$/);
+      if (request.method === "POST" && resistanceTeamVoteMatch) return voteResistanceTeam(request, resistanceTeamVoteMatch[1], env);
+      const resistanceMissionVoteMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/mission-vote$/);
+      if (request.method === "POST" && resistanceMissionVoteMatch) return voteResistanceMission(request, resistanceMissionVoteMatch[1], env);
+      const resistanceRestartMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/restart$/);
+      if (request.method === "POST" && resistanceRestartMatch) return restartResistanceGame(request, resistanceRestartMatch[1], env);
+      const resistanceLeaveMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/leave$/);
+      if (request.method === "POST" && resistanceLeaveMatch) return leaveResistanceRoom(request, resistanceLeaveMatch[1], env);
 
       const eventsMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)\/events$/);
       if (request.method === "GET" && eventsMatch) return jobEvent(eventsMatch[1]);
@@ -1584,6 +1604,475 @@ function impostorRoomResponse(room, privatePlayer = null) {
       starts: privatePlayer.id === room.startingPlayerId,
       word: privatePlayer.role === "crew" || revealAll ? room.word : "",
       hint: privatePlayer.role === "impostor" && room.config?.impostorHint ? room.hint : "",
+      won: revealAll ? Boolean(privatePlayer.won) : undefined
+    } : undefined
+  };
+}
+
+const RESISTANCE_RULES = {
+  5: { spies: 2, teams: [2, 3, 2, 3, 3] },
+  6: { spies: 2, teams: [2, 3, 4, 3, 4] },
+  7: { spies: 3, teams: [2, 3, 3, 4, 4] },
+  8: { spies: 3, teams: [3, 4, 4, 5, 5] },
+  9: { spies: 3, teams: [3, 4, 4, 5, 5] },
+  10: { spies: 4, teams: [3, 4, 4, 5, 5] }
+};
+
+async function createResistanceRoom(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "Room storage is not configured" }, 503);
+  const room = normalizeNewResistanceRoom(await request.json().catch(() => ({})));
+  if (!room) return json({ error: "Invalid room, player, or Resistance settings" }, 400);
+  const existing = await loadResistanceRoom(room.key, env);
+  if (existing && isResistanceHostConnected(existing)) return json({ error: "Room name is already in use" }, 409);
+  if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(resistanceStorageKey(room.key)).run();
+  await saveResistanceRoom(room, env, true);
+  return json(resistanceRoomResponse(room, room.players[0]), 201);
+}
+
+async function joinResistanceRoom(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const identity = normalizeResistanceIdentity(await request.json().catch(() => ({})));
+  if (!identity) return json({ error: "Invalid player details" }, 400);
+  const existingPlayer = room.players.find((player) => player.name === identity.name);
+  if (existingPlayer) {
+    existingPlayer.token = crypto.randomUUID() + crypto.randomUUID();
+    existingPlayer.emoji = identity.emoji;
+    existingPlayer.lastSeen = Date.now();
+    room.updatedAt = Date.now();
+    await saveResistanceRoom(room, env);
+    return json(resistanceRoomResponse(room, existingPlayer), 200);
+  }
+  if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
+  if (room.players.length >= Number(room.config.playerLimit)) return json({ error: "Room is full" }, 409);
+  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) return json({ error: "Player name is already in use" }, 409);
+  const player = createResistancePlayer(identity, nextResistanceSeatNumber(room));
+  room.players.push(player);
+  room.updatedAt = Date.now();
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player), 201);
+}
+
+async function getResistanceRoom(roomName, request, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const url = new URL(request.url);
+  const player = touchResistanceRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function startResistanceGame(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!isResistanceHost(room, player)) return json({ error: "Only host can start" }, 403);
+  if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
+  if (room.players.length !== Number(room.config.playerLimit)) return json({ error: "Wait for all players before starting" }, 409);
+  assignResistanceRoles(room);
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function restartResistanceGame(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!isResistanceHost(room, player)) return json({ error: "Only host can restart" }, 403);
+  assignResistanceRoles(room);
+  room.updatedAt = Date.now();
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function kickResistancePlayer(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  const hostId = room.hostId || room.players[0]?.id;
+  if (!isResistanceHost(room, player)) return json({ error: "Only host can kick players" }, 403);
+  if (room.status !== "lobby") return json({ error: "Players can only be kicked before the game starts" }, 409);
+  const targetId = String(body.targetPlayerId || "");
+  if (!targetId || targetId === hostId) return json({ error: "Invalid player to kick" }, 400);
+  const before = room.players.length;
+  room.players = room.players.filter((item) => item.id !== targetId);
+  if (room.players.length === before) return json({ error: "Player not found" }, 404);
+  room._removedPlayerIds = [targetId];
+  room.updatedAt = Date.now();
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function proposeResistanceTeam(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "team" || player.id !== getResistanceLeader(room)?.id) return json({ error: "Only current leader can propose" }, 403);
+  const teamIds = Array.isArray(body.teamIds) ? [...new Set(body.teamIds.map(String))] : [];
+  const teamSize = getResistanceTeamSize(room);
+  const validIds = new Set(room.players.map((item) => item.id));
+  if (teamIds.length !== teamSize || teamIds.some((id) => !validIds.has(id))) return json({ error: `Select exactly ${teamSize} players` }, 400);
+  room.currentTeam = teamIds;
+  room.teamVotes = {};
+  room.missionVotes = {};
+  room.status = "voting";
+  room.eventId = crypto.randomUUID();
+  room.lastEvent = { type: "team-proposed", leaderName: player.name, teamNames: teamIds.map((id) => room.players.find((item) => item.id === id)?.name).filter(Boolean) };
+  player.lastSeen = Date.now();
+  room.updatedAt = Date.now();
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function voteResistanceTeam(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "voting") return json({ error: "Invalid team vote" }, 400);
+  room._voteRoundKey = resistanceRoundKey(room, "team");
+  room.teamVotes = { ...(room.teamVotes || {}), [player.id]: Boolean(body.approve) };
+  player.lastSeen = Date.now();
+  resolveResistanceTeamVotes(room);
+  room.updatedAt = Date.now();
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function voteResistanceMission(request, roomName, env) {
+  const room = await loadResistanceRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "mission" || !room.currentTeam?.includes(player.id)) return json({ error: "Only mission team can act" }, 400);
+  const sabotage = player.role === "spy" && Boolean(body.sabotage);
+  room._voteRoundKey = resistanceRoundKey(room, "mission");
+  room.missionVotes = { ...(room.missionVotes || {}), [player.id]: sabotage };
+  player.lastSeen = Date.now();
+  resolveResistanceMissionVotes(room);
+  room.updatedAt = Date.now();
+  await saveResistanceRoom(room, env);
+  return json(resistanceRoomResponse(room, player));
+}
+
+async function leaveResistanceRoom(request, roomName, env) {
+  const key = normalizeRoomKey(roomName);
+  const room = await loadResistanceRoom(key, env);
+  if (!room) return json({ ok: true });
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!isResistanceHost(room, player)) return json({ error: "Only room creator can close room" }, 403);
+  await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(resistanceStorageKey(key)).run();
+  return json({ ok: true });
+}
+
+async function loadResistanceRoom(key, env) {
+  if (!key || !env.LEADERBOARD_DB) return null;
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(resistanceStorageKey(key)).first();
+  return row?.stateJson ? { ...JSON.parse(row.stateJson), _version: row.updatedAt } : null;
+}
+
+async function saveResistanceRoom(room, env, create = false) {
+  const storageKey = resistanceStorageKey(room.key);
+  if (create) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(storageKey, resistanceRoomJson(room), version).run();
+    room._version = version;
+    return;
+  }
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    const previousVersion = room._version || "";
+    const result = previousVersion
+      ? await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+        .bind(resistanceRoomJson(room), version, storageKey, previousVersion).run()
+      : await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ?")
+        .bind(resistanceRoomJson(room), version, storageKey).run();
+    if (result.meta?.changes) {
+      room._version = version;
+      delete room._removedPlayerIds;
+      delete room._touchOnly;
+      delete room._voteRoundKey;
+      return;
+    }
+    const latest = await loadResistanceRoom(room.key, env);
+    if (!latest) throw new Error("Room not found");
+    Object.assign(room, mergeResistanceRooms(latest, room));
+  }
+  throw new Error("Room update conflict");
+}
+
+function resistanceStorageKey(key) {
+  return `resistance:${key}`;
+}
+
+function resistanceRoomJson(room) {
+  const stored = { ...room };
+  delete stored._version;
+  delete stored._removedPlayerIds;
+  delete stored._touchOnly;
+  delete stored._voteRoundKey;
+  return JSON.stringify(stored);
+}
+
+function normalizeNewResistanceRoom(value) {
+  const key = normalizeRoomKey(value?.roomName);
+  const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
+  const identity = normalizeResistanceIdentity(value);
+  const playerLimit = Math.floor(Number(value?.config?.playerLimit || value?.playerLimit));
+  if (!key || !roomName || !identity || !RESISTANCE_RULES[playerLimit]) return null;
+  const host = createResistancePlayer(identity, 1);
+  return {
+    key,
+    roomName,
+    config: { playerLimit },
+    status: "lobby",
+    hostId: host.id,
+    leaderIndex: 0,
+    missionIndex: 0,
+    rejectCount: 0,
+    currentTeam: [],
+    teamVotes: {},
+    missionVotes: {},
+    missionResults: [],
+    winner: "",
+    eventId: "",
+    lastEvent: null,
+    players: [host],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+function normalizeResistanceIdentity(value) {
+  const name = String(value?.playerName || "").trim().replace(/\s+/g, " ").slice(0, 16);
+  const emoji = Array.from(String(value?.emoji || "").trim())[0] || "";
+  return name && emoji ? { name, emoji } : null;
+}
+
+function createResistancePlayer(identity, seatNumber) {
+  return { id: crypto.randomUUID(), token: crypto.randomUUID() + crypto.randomUUID(), ...identity, seatNumber, role: "", lastSeen: Date.now() };
+}
+
+function nextResistanceSeatNumber(room) {
+  return Math.max(0, ...room.players.map((player) => Number(player.seatNumber) || 0)) + 1;
+}
+
+function touchResistanceRoom(room, playerId, token) {
+  const player = authenticateMultiplayerPlayer(room, { playerId, token });
+  if (player) player.lastSeen = Date.now();
+  room._touchOnly = true;
+  room.updatedAt = Date.now();
+  return player || null;
+}
+
+function assignResistanceRoles(room) {
+  const shuffledIds = shuffleimpostorItems(room.players.map((player) => player.id));
+  const spyIds = new Set(shuffledIds.slice(0, getResistanceRules(room).spies));
+  const leader = shuffleimpostorItems(room.players)[0] || room.players[0];
+  room.players.forEach((player) => {
+    player.role = spyIds.has(player.id) ? "spy" : "resistance";
+    delete player.won;
+  });
+  room.leaderIndex = Math.max(0, room.players.findIndex((player) => player.id === leader?.id));
+  room.missionIndex = 0;
+  room.rejectCount = 0;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  room.missionResults = [];
+  room.winner = "";
+  room.status = "team";
+  setResistanceEvent(room, { type: "start", leaderName: getResistanceLeader(room)?.name || "" });
+}
+
+function resolveResistanceTeamVotes(room) {
+  if (room.players.some((player) => room.teamVotes?.[player.id] === undefined)) return;
+  const approvals = Object.values(room.teamVotes || {}).filter(Boolean).length;
+  const rejected = room.players.length - approvals;
+  if (approvals > room.players.length / 2) {
+    room.status = "mission";
+    room.missionVotes = {};
+    setResistanceEvent(room, { type: "team-approved", approvals, rejected, teamNames: getResistanceTeamNames(room) });
+    return;
+  }
+  room.rejectCount = Number(room.rejectCount || 0) + 1;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  if (room.rejectCount >= 5) {
+    finishResistanceGame(room, "spies", { type: "five-rejections", approvals, rejected });
+    return;
+  }
+  advanceResistanceLeader(room);
+  room.status = "team";
+  setResistanceEvent(room, { type: "team-rejected", approvals, rejected, leaderName: getResistanceLeader(room)?.name || "" });
+}
+
+function resolveResistanceMissionVotes(room) {
+  if ((room.currentTeam || []).some((playerId) => room.missionVotes?.[playerId] === undefined)) return;
+  const sabotages = Object.values(room.missionVotes || {}).filter(Boolean).length;
+  const requiredFails = getResistanceFailsRequired(room);
+  const failed = sabotages >= requiredFails;
+  room.missionResults.push({ failed, sabotages, requiredFails, teamIds: [...(room.currentTeam || [])] });
+  const failedMissions = room.missionResults.filter((mission) => mission.failed).length;
+  const successfulMissions = room.missionResults.length - failedMissions;
+  const event = { type: failed ? "mission-failed" : "mission-succeeded", sabotages, requiredFails, missionNumber: room.missionIndex + 1 };
+  if (successfulMissions >= 3) {
+    finishResistanceGame(room, "resistance", event);
+    return;
+  }
+  if (failedMissions >= 3) {
+    finishResistanceGame(room, "spies", event);
+    return;
+  }
+  room.missionIndex += 1;
+  room.rejectCount = 0;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  advanceResistanceLeader(room);
+  room.status = "team";
+  setResistanceEvent(room, { ...event, nextLeaderName: getResistanceLeader(room)?.name || "" });
+}
+
+function finishResistanceGame(room, winner, event) {
+  room.status = "finished";
+  room.winner = winner;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  room.players.forEach((player) => { player.won = winner === "spies" ? player.role === "spy" : player.role === "resistance"; });
+  setResistanceEvent(room, event || { type: "finished" });
+}
+
+function setResistanceEvent(room, event) {
+  room.eventId = crypto.randomUUID();
+  room.lastEvent = event || {};
+}
+
+function advanceResistanceLeader(room) {
+  room.leaderIndex = (Number(room.leaderIndex || 0) + 1) % Math.max(1, room.players.length);
+}
+
+function getResistanceRules(room) {
+  return RESISTANCE_RULES[Number(room.config?.playerLimit) || room.players.length] || RESISTANCE_RULES[5];
+}
+
+function getResistanceTeamSize(room) {
+  return getResistanceRules(room).teams[Math.max(0, Math.min(4, Number(room.missionIndex || 0)))] || 2;
+}
+
+function getResistanceFailsRequired(room) {
+  return Number(room.config?.playerLimit || room.players.length) >= 7 && Number(room.missionIndex || 0) === 3 ? 2 : 1;
+}
+
+function getResistanceLeader(room) {
+  return room.players[Number(room.leaderIndex || 0) % Math.max(1, room.players.length)] || room.players[0] || null;
+}
+
+function getResistanceTeamNames(room) {
+  return (room.currentTeam || []).map((id) => room.players.find((player) => player.id === id)?.name).filter(Boolean);
+}
+
+function isResistanceHost(room, player) {
+  return Boolean(player && player.id === (room.hostId || room.players[0]?.id));
+}
+
+function isResistanceHostConnected(room) {
+  const host = room.players.find((player) => player.id === (room.hostId || room.players[0]?.id));
+  return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
+}
+
+function resistanceRoundKey(room, kind) {
+  return `${kind}:${room.status}:${room.missionIndex}:${room.rejectCount}:${(room.currentTeam || []).join(",")}`;
+}
+
+function mergeResistanceRooms(latest, incoming) {
+  const removedIds = new Set(incoming._removedPlayerIds || []);
+  const staleVote = incoming._voteRoundKey && incoming._voteRoundKey !== resistanceRoundKey(latest, incoming._voteRoundKey.split(":")[0]);
+  const merged = incoming._touchOnly || staleVote ? { ...latest } : { ...incoming };
+  const players = new Map();
+  for (const player of latest.players || []) {
+    if (!removedIds.has(player.id)) players.set(player.id, { ...player });
+  }
+  for (const player of incoming.players || []) {
+    if (removedIds.has(player.id)) continue;
+    const current = players.get(player.id);
+    if ((incoming._touchOnly || staleVote) && current) {
+      players.set(player.id, { ...current, lastSeen: Math.max(Number(current.lastSeen || 0), Number(player.lastSeen || 0)) });
+      continue;
+    }
+    players.set(player.id, { ...(current || {}), ...player, lastSeen: Math.max(Number(current?.lastSeen || 0), Number(player.lastSeen || 0)) });
+  }
+  merged.players = [...players.values()].sort((a, b) => Number(a.seatNumber || 0) - Number(b.seatNumber || 0));
+  if (!incoming._touchOnly && !staleVote && latest.status === incoming.status && latest.missionIndex === incoming.missionIndex) {
+    if (incoming.status === "voting") {
+      merged.teamVotes = { ...(latest.teamVotes || {}), ...(incoming.teamVotes || {}) };
+      resolveResistanceTeamVotes(merged);
+    } else if (incoming.status === "mission") {
+      merged.missionVotes = { ...(latest.missionVotes || {}), ...(incoming.missionVotes || {}) };
+      resolveResistanceMissionVotes(merged);
+    }
+  }
+  merged._version = latest._version;
+  merged._removedPlayerIds = incoming._removedPlayerIds;
+  merged._touchOnly = incoming._touchOnly;
+  merged._voteRoundKey = incoming._voteRoundKey;
+  return merged;
+}
+
+function resistanceRoomResponse(room, privatePlayer = null) {
+  const now = Date.now();
+  const revealAll = room.status === "finished";
+  const leader = getResistanceLeader(room);
+  const spyNames = privatePlayer?.role === "spy" || revealAll
+    ? room.players.filter((player) => player.role === "spy").map((player) => player.name)
+    : [];
+  return {
+    roomName: room.roomName,
+    config: room.config,
+    status: room.status,
+    eventId: room.eventId || "",
+    lastEvent: room.lastEvent || null,
+    missionIndex: Number(room.missionIndex || 0),
+    missionNumber: Number(room.missionIndex || 0) + 1,
+    missionResults: room.missionResults || [],
+    teamSize: getResistanceTeamSize(room),
+    failsRequired: getResistanceFailsRequired(room),
+    rejectCount: Number(room.rejectCount || 0),
+    leaderId: leader?.id || "",
+    leaderName: leader?.name || "",
+    currentTeam: room.currentTeam || [],
+    teamVotesCast: Object.keys(room.teamVotes || {}).length,
+    missionVotesCast: Object.keys(room.missionVotes || {}).length,
+    winner: room.winner || "",
+    players: room.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      emoji: player.emoji,
+      seatNumber: player.seatNumber,
+      connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
+      isLeader: player.id === leader?.id,
+      onTeam: (room.currentTeam || []).includes(player.id),
+      hasTeamVoted: room.teamVotes?.[player.id] !== undefined,
+      hasMissionVoted: room.missionVotes?.[player.id] !== undefined,
+      role: revealAll ? player.role : "",
+      won: revealAll ? Boolean(player.won) : undefined
+    })).sort((a, b) => a.seatNumber - b.seatNumber),
+    player: privatePlayer ? {
+      id: privatePlayer.id,
+      token: privatePlayer.token,
+      isHost: isResistanceHost(room, privatePlayer),
+      role: privatePlayer.role,
+      spyNames,
+      isLeader: privatePlayer.id === leader?.id,
+      onTeam: (room.currentTeam || []).includes(privatePlayer.id),
+      hasTeamVoted: room.teamVotes?.[privatePlayer.id] !== undefined,
+      hasMissionVoted: room.missionVotes?.[privatePlayer.id] !== undefined,
       won: revealAll ? Boolean(privatePlayer.won) : undefined
     } : undefined
   };

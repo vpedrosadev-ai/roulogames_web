@@ -50,6 +50,7 @@
         </div>
         <button type="button" class="nav-link" data-view-target="gameView"><span class="nav-icon" aria-hidden="true">♪</span>MANGOless game</button>
         <button type="button" class="nav-link" data-view-target="impostorView"><span class="nav-icon" aria-hidden="true">?</span>Impostor</button>
+        <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
       </nav>
       <div id="languageSelector" class="language-selector">
@@ -93,6 +94,11 @@
               <span aria-hidden="true">?</span>
               <strong>Impostor</strong>
               <small id="homeImpostorHint">Secret word and voting game</small>
+            </button>
+            <button type="button" class="home-menu-card" data-view-target="resistanceView">
+              <span aria-hidden="true">R</span>
+              <strong>La resistencia</strong>
+              <small id="homeResistanceHint">Misiones, espias y votos secretos</small>
             </button>
           </div>
         </section>
@@ -257,6 +263,7 @@
                   <span id="impostorRoundLabel">Round</span>
                   <strong id="impostorRound">0</strong>
                 </div>
+                <div id="impostorStartingPlayerChip" class="impostor-starting-player-chip" hidden></div>
                 <section id="impostorRoleCard" class="impostor-role-card" hidden>
                   <span id="impostorRoleLabel">Your role</span>
                   <strong id="impostorSecretWord">Waiting...</strong>
@@ -299,6 +306,87 @@
             <input id="impostorGuessInput" maxlength="40" placeholder="Secret word">
             <button type="submit">Adivinar palabra</button>
           </form>
+        </section>
+
+        <section id="resistanceView" class="view resistance-view" aria-labelledby="resistanceTitle" hidden>
+          <section id="resistanceLobby" class="resistance-lobby" aria-label="Resistance lobby">
+            <header class="resistance-briefing">
+              <span>Operacion encubierta</span>
+              <h1 id="resistanceTitle">La resistencia</h1>
+              <p id="resistanceSubtitle">Forma equipos, supera misiones y descubre a los espias antes de que saboteen la operacion.</p>
+            </header>
+            <div id="resistanceChoice" class="resistance-choice">
+              <button type="button" id="resistanceChooseCreate" class="resistance-choice-button"><span aria-hidden="true">+</span><strong>Crear sala</strong></button>
+              <button type="button" id="resistanceChooseJoin" class="resistance-choice-button"><span aria-hidden="true">-></span><strong>Unirse a sala</strong></button>
+            </div>
+            <form id="resistanceCreateForm" class="resistance-form" hidden>
+              <h2>Crear sala</h2>
+              <input id="resistanceCreateRoomName" maxlength="16" required placeholder="Nombre de la sala">
+              <div class="player-identity-row">
+                <select id="resistanceCreateEmoji" aria-label="Emoji del jugador"></select>
+                <input id="resistanceCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
+              </div>
+              <label><span>Jugadores</span><input id="resistanceCreatePlayerLimit" type="number" min="5" max="10" step="1" inputmode="numeric" value="5"></label>
+              <div class="resistance-form-actions">
+                <button type="button" class="secondary" data-resistance-back>Atras</button>
+                <button type="submit">Crear sala</button>
+              </div>
+            </form>
+            <form id="resistanceJoinForm" class="resistance-form" hidden>
+              <h2>Unirse a sala</h2>
+              <input id="resistanceJoinRoomName" maxlength="16" required placeholder="Nombre de la sala">
+              <div class="player-identity-row">
+                <select id="resistanceJoinEmoji" aria-label="Emoji del jugador"></select>
+                <input id="resistanceJoinPlayerName" maxlength="16" required placeholder="Tu nombre">
+              </div>
+              <div class="resistance-form-actions">
+                <button type="button" class="secondary" data-resistance-back>Atras</button>
+                <button type="submit">Entrar</button>
+              </div>
+            </form>
+            <div id="resistanceLobbyMessage" class="message"></div>
+          </section>
+
+          <section id="resistanceGame" class="resistance-game" hidden>
+            <div class="resistance-command-strip">
+              <button type="button" id="resistanceShareButton" class="secondary">Copiar enlace</button>
+              <button type="button" id="resistanceRestartButton" class="secondary" hidden>Reiniciar</button>
+              <button type="button" id="resistanceLeaveButton" class="secondary">Atras</button>
+            </div>
+            <section class="resistance-status-board" aria-live="polite">
+              <div class="resistance-room-code"><span>Sala</span><strong id="resistanceRoomLabel"></strong></div>
+              <div class="resistance-mission-track" id="resistanceMissionTrack"></div>
+              <div class="resistance-stat-grid">
+                <article><span>Mision</span><strong id="resistanceMissionNumber">1</strong></article>
+                <article><span>Equipo</span><strong id="resistanceTeamSize">2</strong></article>
+                <article><span>Rechazos</span><strong id="resistanceRejectCount">0/5</strong></article>
+              </div>
+            </section>
+            <section class="resistance-table">
+              <div id="resistancePlayers" class="resistance-players" aria-label="Jugadores"></div>
+              <section class="resistance-action-panel">
+                <section id="resistanceRoleCard" class="resistance-role-card" hidden>
+                  <span id="resistanceRoleLabel">Tu rol</span>
+                  <strong id="resistanceRoleName">Esperando...</strong>
+                  <p id="resistanceRoleHint"></p>
+                </section>
+                <p id="resistanceGameMessage" class="message"></p>
+                <div id="resistanceTeamPicker" class="resistance-team-picker" hidden>
+                  <div id="resistanceTeamOptions"></div>
+                  <button type="button" id="resistanceProposeButton">Proponer equipo</button>
+                </div>
+                <div id="resistanceTeamVoteActions" class="resistance-action-row" hidden>
+                  <button type="button" id="resistanceApproveButton">Aprobar</button>
+                  <button type="button" id="resistanceRejectButton" class="secondary">Rechazar</button>
+                </div>
+                <div id="resistanceMissionActions" class="resistance-action-row" hidden>
+                  <button type="button" id="resistanceSuccessButton">Exito</button>
+                  <button type="button" id="resistanceSabotageButton" class="danger">Sabotear</button>
+                </div>
+                <button type="button" id="resistanceStartButton" class="resistance-main-button">Esperando jugadores</button>
+              </section>
+            </section>
+          </section>
         </section>
 
         <section id="converterView" class="view" aria-labelledby="converterTitle" hidden>

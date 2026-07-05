@@ -180,6 +180,7 @@ const impostorLobbyMessage = document.querySelector("#impostorLobbyMessage");
 const impostorGame = document.querySelector("#impostorGame");
 const impostorRound = document.querySelector("#impostorRound");
 const impostorRoundLabel = document.querySelector("#impostorRoundLabel");
+const impostorStartingPlayerChip = document.querySelector("#impostorStartingPlayerChip");
 const impostorRoomLabel = document.querySelector("#impostorRoomLabel");
 const impostorShareButton = document.querySelector("#impostorShareButton");
 const impostorRestartButton = document.querySelector("#impostorRestartButton");
@@ -207,6 +208,46 @@ const impostorEventMessage = document.querySelector("#impostorEventMessage");
 const impostorEventClose = document.querySelector("#impostorEventClose");
 const impostorGuessPopup = document.querySelector("#impostorGuessPopup");
 const impostorGuessPopupClose = document.querySelector("#impostorGuessPopupClose");
+const resistanceLobby = document.querySelector("#resistanceLobby");
+const resistanceChoice = document.querySelector("#resistanceChoice");
+const resistanceChooseCreate = document.querySelector("#resistanceChooseCreate");
+const resistanceChooseJoin = document.querySelector("#resistanceChooseJoin");
+const resistanceCreateForm = document.querySelector("#resistanceCreateForm");
+const resistanceCreateRoomName = document.querySelector("#resistanceCreateRoomName");
+const resistanceCreateEmoji = document.querySelector("#resistanceCreateEmoji");
+const resistanceCreatePlayerName = document.querySelector("#resistanceCreatePlayerName");
+const resistanceCreatePlayerLimit = document.querySelector("#resistanceCreatePlayerLimit");
+const resistanceJoinForm = document.querySelector("#resistanceJoinForm");
+const resistanceJoinRoomName = document.querySelector("#resistanceJoinRoomName");
+const resistanceJoinEmoji = document.querySelector("#resistanceJoinEmoji");
+const resistanceJoinPlayerName = document.querySelector("#resistanceJoinPlayerName");
+const resistanceLobbyMessage = document.querySelector("#resistanceLobbyMessage");
+const resistanceGame = document.querySelector("#resistanceGame");
+const resistanceShareButton = document.querySelector("#resistanceShareButton");
+const resistanceRestartButton = document.querySelector("#resistanceRestartButton");
+const resistanceLeaveButton = document.querySelector("#resistanceLeaveButton");
+const resistanceRoomLabel = document.querySelector("#resistanceRoomLabel");
+const resistanceMissionTrack = document.querySelector("#resistanceMissionTrack");
+const resistanceMissionNumber = document.querySelector("#resistanceMissionNumber");
+const resistanceTeamSize = document.querySelector("#resistanceTeamSize");
+const resistanceRejectCount = document.querySelector("#resistanceRejectCount");
+const resistancePlayers = document.querySelector("#resistancePlayers");
+const resistanceRoleCard = document.querySelector("#resistanceRoleCard");
+const resistanceRoleLabel = document.querySelector("#resistanceRoleLabel");
+const resistanceRoleName = document.querySelector("#resistanceRoleName");
+const resistanceRoleHint = document.querySelector("#resistanceRoleHint");
+const resistanceGameMessage = document.querySelector("#resistanceGameMessage");
+const resistanceTeamPicker = document.querySelector("#resistanceTeamPicker");
+const resistanceTeamOptions = document.querySelector("#resistanceTeamOptions");
+const resistanceProposeButton = document.querySelector("#resistanceProposeButton");
+const resistanceTeamVoteActions = document.querySelector("#resistanceTeamVoteActions");
+const resistanceApproveButton = document.querySelector("#resistanceApproveButton");
+const resistanceRejectButton = document.querySelector("#resistanceRejectButton");
+const resistanceMissionActions = document.querySelector("#resistanceMissionActions");
+const resistanceSuccessButton = document.querySelector("#resistanceSuccessButton");
+const resistanceSabotageButton = document.querySelector("#resistanceSabotageButton");
+const resistanceStartButton = document.querySelector("#resistanceStartButton");
+const resistanceBackButtons = document.querySelectorAll("[data-resistance-back]");
 const languageSelector = document.querySelector("#languageSelector");
 const languageButton = document.querySelector("#languageButton");
 const languageMenu = document.querySelector("#languageMenu");
@@ -221,6 +262,7 @@ const SCORE_STEPS = [100, 80, 60, 40, 20, 10];
 const RUN_LENGTH = 10;
 const MULTIPLAYER_EMOJIS = ["🎧", "🎸", "🥭", "🔥", "⭐", "🚀", "👾", "🪩", "🎤", "🏆", "💿", "🕺"];
 const impostor_EMOJIS = ["🕵️", "🎭", "🧩", "🔎", "🎩", "😎", "🤓", "👻", "🤖", "🦄", "🌈", "⚡", "🍕", "🎲", "⭐", "🔥"];
+const RESISTANCE_EMOJIS = ["🕶️", "📡", "🧨", "🗝️", "🧭", "📻", "🛡️", "⚙️", "🧬", "🚧", "🕯️", "🗡️"];
 const impostor_ALARM_MS = 2050;
 const impostor_ORBIT_MS = 4400;
 const impostor_ACTION_FLASH_MS = 760;
@@ -959,6 +1001,7 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.subtitle": "Tria a quina seccio vols anar.",
     "home.gameHint": "Repte musical",
     "home.impostorHint": "Paraula secreta i votacions",
+    "home.resistanceHint": "Missions, espies i vots secrets",
     "home.generatorHint": "Crea llistes CSV",
     "home.converterHint": "Converteix playlists",
     "home.audioHint": "Eines MP3 locals",
@@ -1059,6 +1102,7 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.subtitle": "Elige a que seccion quieres ir.",
     "home.gameHint": "Reto musical",
     "home.impostorHint": "Palabra secreta y votaciones",
+    "home.resistanceHint": "Misiones, espias y votos secretos",
     "home.generatorHint": "Crea listas CSV",
     "home.converterHint": "Convierte playlists",
     "home.audioHint": "Herramientas MP3 locales",
@@ -1159,6 +1203,7 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.subtitle": "Choose which section you want.",
     "home.gameHint": "Music challenge",
     "home.impostorHint": "Secret word and voting",
+    "home.resistanceHint": "Missions, spies, and secret votes",
     "home.generatorHint": "Build CSV lists",
     "home.converterHint": "Convert playlists",
     "home.audioHint": "Local MP3 tools",
@@ -1264,6 +1309,7 @@ const STATIC_TEXT_TARGETS = [
   ["#homeSubtitle", "home.subtitle"],
   ["#homeGameHint", "home.gameHint"],
   ["#homeImpostorHint", "home.impostorHint"],
+  ["#homeResistanceHint", "home.resistanceHint"],
   ["#homeGeneratorHint", "home.generatorHint"],
   ["#homeConverterHint", "home.converterHint"],
   ["#homeAudioHint", "home.audioHint"],
@@ -1520,6 +1566,11 @@ let impostorOrbitFrame = null;
 let impostorKnownPlayerIds = new Set();
 let impostorChipScaleFrame = null;
 let impostorChipResizeObserver = null;
+let resistanceSession = null;
+let resistanceRoom = null;
+let resistancePollTimer = null;
+let resistanceShownEventId = "";
+let resistanceKnownPlayerIds = new Set();
 let gameCompleteFlybyPending = false;
 let inviteRoomName = "";
 let youtubeApiPromise = null;
@@ -1563,6 +1614,7 @@ initLanguageSelector();
 applyLanguage();
 populateMultiplayerEmojis();
 populateimpostorEmojis();
+populateResistanceEmojis();
 syncimpostorWordSetCards();
 syncimpostorConfigLimits();
 renderClipWaveTrack();
@@ -1676,6 +1728,23 @@ impostorCreatePlayerLimit?.addEventListener("blur", syncimpostorConfigLimits);
 impostorCreateimpostorCount?.addEventListener("input", syncimpostorConfigLimits);
 impostorWordSetCards?.addEventListener("click", chooseimpostorWordSet);
 window.addEventListener("pagehide", () => releaseimpostorRoomIfHost({ useBeacon: true }));
+resistanceCreateForm?.addEventListener("submit", createResistanceRoom);
+resistanceJoinForm?.addEventListener("submit", joinResistanceRoom);
+resistanceChooseCreate?.addEventListener("click", () => showResistanceForm("create"));
+resistanceChooseJoin?.addEventListener("click", () => showResistanceForm("join"));
+resistanceBackButtons.forEach((button) => button.addEventListener("click", showResistanceChoice));
+resistanceShareButton?.addEventListener("click", shareResistanceRoom);
+resistanceRestartButton?.addEventListener("click", restartResistanceGame);
+resistanceLeaveButton?.addEventListener("click", leaveResistanceToMenu);
+resistanceStartButton?.addEventListener("click", startResistanceGame);
+resistancePlayers?.addEventListener("click", kickResistancePlayer);
+resistanceTeamOptions?.addEventListener("change", syncResistanceTeamSelection);
+resistanceProposeButton?.addEventListener("click", proposeResistanceTeam);
+resistanceApproveButton?.addEventListener("click", () => voteResistanceTeam(true));
+resistanceRejectButton?.addEventListener("click", () => voteResistanceTeam(false));
+resistanceSuccessButton?.addEventListener("click", () => voteResistanceMission(false));
+resistanceSabotageButton?.addEventListener("click", () => voteResistanceMission(true));
+window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
 impostorEventClose?.addEventListener("click", hideImpostorEventPopup);
@@ -2480,6 +2549,11 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   if (impostorRoundLabel) {
     impostorRoundLabel.textContent = status === "lobby" ? t("impostor.lobby") : status === "finished" ? t("impostor.result") : t("impostor.round");
   }
+  if (impostorStartingPlayerChip) {
+    const startingPlayerName = room.startingPlayerName || players.find((player) => player.starts)?.name || "";
+    impostorStartingPlayerChip.hidden = status === "lobby" || !startingPlayerName;
+    impostorStartingPlayerChip.textContent = currentPlayer?.starts ? t("impostor.youStart") : t("impostor.starts", { name: startingPlayerName });
+  }
   if (impostorRoomLabel) impostorRoomLabel.textContent = t("impostor.roomLabel", { name: room.roomName || "" });
   impostorShareButton.hidden = !isHost;
   if (impostorRestartButton) {
@@ -3016,6 +3090,448 @@ function releaseimpostorRoomIfHost({ useBeacon = false } = {}) {
   clearInterval(impostorPollTimer);
 }
 
+function populateResistanceEmojis() {
+  [resistanceCreateEmoji, resistanceJoinEmoji].filter(Boolean).forEach((select, selectIndex) => {
+    select.replaceChildren(...RESISTANCE_EMOJIS.map((emoji, index) => {
+      const option = document.createElement("option");
+      option.value = emoji;
+      option.textContent = emoji;
+      option.selected = index === selectIndex;
+      return option;
+    }));
+  });
+}
+
+function showResistanceLobby() {
+  if (!resistanceLobby || !resistanceGame) return;
+  if (resistanceSession) {
+    resistanceLobby.hidden = true;
+    resistanceGame.hidden = false;
+    renderResistanceRoom(resistanceRoom);
+    return;
+  }
+  resistanceLobby.hidden = false;
+  resistanceGame.hidden = true;
+  if (resistanceLobbyMessage) resistanceLobbyMessage.textContent = "";
+  const inviteRoom = new URLSearchParams(window.location.search).get("resistance");
+  if (inviteRoom && resistanceJoinRoomName) {
+    resistanceJoinRoomName.value = inviteRoom.trim();
+    showResistanceForm("join");
+    return;
+  }
+  showResistanceChoice();
+}
+
+function showResistanceChoice() {
+  if (!resistanceChoice || !resistanceCreateForm || !resistanceJoinForm) return;
+  resistanceChoice.hidden = false;
+  resistanceCreateForm.hidden = true;
+  resistanceJoinForm.hidden = true;
+  if (resistanceLobbyMessage) resistanceLobbyMessage.textContent = "";
+}
+
+function showResistanceForm(mode) {
+  if (!resistanceChoice || !resistanceCreateForm || !resistanceJoinForm) return;
+  resistanceChoice.hidden = true;
+  resistanceCreateForm.hidden = mode !== "create";
+  resistanceJoinForm.hidden = mode !== "join";
+  if (resistanceLobbyMessage) resistanceLobbyMessage.textContent = "";
+  if (mode === "create") resistanceCreateRoomName?.focus();
+  if (mode === "join") resistanceJoinRoomName?.focus();
+}
+
+async function createResistanceRoom(event) {
+  event.preventDefault();
+  resistanceLobbyMessage.textContent = "";
+  const roomName = resistanceCreateRoomName.value.trim();
+  const playerName = resistanceCreatePlayerName.value.trim();
+  const playerLimit = Math.max(5, Math.min(10, Math.floor(Number(resistanceCreatePlayerLimit.value) || 5)));
+  resistanceCreateRoomName.value = roomName;
+  resistanceCreatePlayerName.value = playerName;
+  resistanceCreatePlayerLimit.value = String(playerLimit);
+  try {
+    const response = await fetch("/api/resistance/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomName, playerName, emoji: resistanceCreateEmoji.value, config: { playerLimit } })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
+    enterResistanceRoom(payload);
+  } catch (error) {
+    resistanceLobbyMessage.textContent = error.message;
+  }
+}
+
+async function joinResistanceRoom(event) {
+  event.preventDefault();
+  resistanceLobbyMessage.textContent = "";
+  const roomName = resistanceJoinRoomName.value.trim();
+  const playerName = resistanceJoinPlayerName.value.trim();
+  resistanceJoinRoomName.value = roomName;
+  resistanceJoinPlayerName.value = playerName;
+  try {
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(roomName)}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerName, emoji: resistanceJoinEmoji.value })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo entrar en la sala");
+    enterResistanceRoom(payload);
+  } catch (error) {
+    resistanceLobbyMessage.textContent = error.message;
+  }
+}
+
+function enterResistanceRoom(payload) {
+  resistanceRoom = payload;
+  resistanceSession = { roomName: payload.roomName, playerId: payload.player?.id, token: payload.player?.token, isHost: Boolean(payload.player?.isHost) };
+  resistanceShownEventId = payload.eventId || "";
+  resistanceKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+  resistanceLobby.hidden = true;
+  resistanceGame.hidden = false;
+  renderResistanceRoom(payload);
+  startResistancePolling();
+}
+
+function startResistancePolling() {
+  clearInterval(resistancePollTimer);
+  resistancePollTimer = window.setInterval(pollResistanceRoom, 1500);
+}
+
+async function pollResistanceRoom() {
+  if (!resistanceSession) return;
+  try {
+    const params = new URLSearchParams({ playerId: resistanceSession.playerId, token: resistanceSession.token });
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}?${params}`);
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "Sala no disponible");
+    if (!payload.player) {
+      leaveResistanceRoom();
+      resistanceLobbyMessage.textContent = "Has salido de esta sala. Vuelve a entrar con tu nombre si hace falta.";
+      return;
+    }
+    resistanceRoom = payload;
+    resistanceSession.isHost = Boolean(payload.player?.isHost);
+    resistanceKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+    renderResistanceRoom(payload);
+    if (payload.eventId && payload.eventId !== resistanceShownEventId) {
+      resistanceShownEventId = payload.eventId;
+      playimpostorAlarmSound(payload.status === "finished" ? "finished" : "notice");
+    }
+  } catch {
+    // Polling can recover.
+  }
+}
+
+async function startResistanceGame() {
+  if (!resistanceSession) return;
+  try {
+    resistanceStartButton.disabled = true;
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo iniciar");
+    resistanceRoom = payload;
+    resistanceShownEventId = payload.eventId || "";
+    renderResistanceRoom(payload);
+  } catch (error) {
+    resistanceGameMessage.textContent = error.message;
+  } finally {
+    resistanceStartButton.disabled = false;
+  }
+}
+
+async function restartResistanceGame() {
+  if (!resistanceSession?.isHost) return;
+  try {
+    resistanceRestartButton.disabled = true;
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/restart`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo reiniciar");
+    resistanceRoom = payload;
+    resistanceShownEventId = payload.eventId || "";
+    renderResistanceRoom(payload);
+  } catch (error) {
+    resistanceGameMessage.textContent = error.message;
+  } finally {
+    resistanceRestartButton.disabled = false;
+  }
+}
+
+async function kickResistancePlayer(event) {
+  const button = event.target.closest("[data-resistance-kick-id]");
+  if (!button || !resistanceSession?.isHost) return;
+  event.preventDefault();
+  button.disabled = true;
+  try {
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/kick`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, targetPlayerId: button.dataset.resistanceKickId })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo expulsar");
+    resistanceRoom = payload;
+    renderResistanceRoom(payload);
+  } catch (error) {
+    resistanceGameMessage.textContent = error.message;
+    button.disabled = false;
+  }
+}
+
+async function proposeResistanceTeam() {
+  if (!resistanceSession || !resistanceRoom) return;
+  const teamIds = [...resistanceTeamOptions.querySelectorAll("input:checked")].map((input) => input.value);
+  try {
+    resistanceProposeButton.disabled = true;
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, teamIds })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo proponer equipo");
+    resistanceRoom = payload;
+    renderResistanceRoom(payload);
+  } catch (error) {
+    resistanceGameMessage.textContent = error.message;
+  } finally {
+    resistanceProposeButton.disabled = false;
+  }
+}
+
+async function voteResistanceTeam(approve) {
+  if (!resistanceSession) return;
+  resistanceApproveButton.disabled = true;
+  resistanceRejectButton.disabled = true;
+  try {
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team-vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, approve })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo votar");
+    resistanceRoom = payload;
+    renderResistanceRoom(payload);
+  } catch (error) {
+    resistanceGameMessage.textContent = error.message;
+  }
+}
+
+async function voteResistanceMission(sabotage) {
+  if (!resistanceSession) return;
+  resistanceSuccessButton.disabled = true;
+  resistanceSabotageButton.disabled = true;
+  try {
+    const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/mission-vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, sabotage })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo ejecutar la mision");
+    resistanceRoom = payload;
+    renderResistanceRoom(payload);
+  } catch (error) {
+    resistanceGameMessage.textContent = error.message;
+  }
+}
+
+function renderResistanceRoom(room = resistanceRoom) {
+  if (!room || !resistancePlayers) return;
+  const players = [...(room.players || [])].sort((a, b) => a.seatNumber - b.seatNumber);
+  const player = room.player || players.find((item) => item.id === resistanceSession?.playerId);
+  const isHost = Boolean(player?.isHost || resistanceSession?.isHost);
+  resistanceSession.isHost = isHost;
+  resistanceRoomLabel.textContent = room.roomName || "";
+  resistanceMissionNumber.textContent = room.status === "lobby" ? `${players.length}/${room.config?.playerLimit || "?"}` : String(room.missionNumber || 1);
+  resistanceTeamSize.textContent = String(room.teamSize || 0);
+  resistanceRejectCount.textContent = `${room.rejectCount || 0}/5`;
+  resistanceShareButton.hidden = !isHost;
+  resistanceRestartButton.hidden = !isHost || room.status === "lobby";
+  renderResistanceMissionTrack(room);
+  renderResistancePlayers(players, player, room);
+  renderResistanceRole(room, player);
+  renderResistanceActions(room, player, players, isHost);
+}
+
+function renderResistanceMissionTrack(room) {
+  resistanceMissionTrack.replaceChildren(...Array.from({ length: 5 }, (_, index) => {
+    const result = room.missionResults?.[index];
+    const item = document.createElement("span");
+    item.className = "resistance-mission-node";
+    if (result) item.classList.add(result.failed ? "is-failed" : "is-success");
+    if (!result && index === room.missionIndex && room.status !== "lobby") item.classList.add("is-current");
+    item.textContent = String(index + 1);
+    return item;
+  }));
+}
+
+function renderResistancePlayers(players, currentPlayer, room) {
+  const canKick = resistanceSession?.isHost && room.status === "lobby";
+  resistancePlayers.replaceChildren(...players.map((item) => {
+    const card = document.createElement("article");
+    card.className = "resistance-player-card";
+    if (item.id === currentPlayer?.id) card.classList.add("is-current");
+    if (item.isLeader) card.classList.add("is-leader");
+    if (item.onTeam) card.classList.add("is-on-team");
+    if (!item.connected) card.classList.add("is-disconnected");
+    const status = item.isLeader ? "Lider" : item.onTeam ? "Equipo" : room.status === "lobby" ? "En sala" : "Reserva";
+    card.innerHTML = `<span></span><strong></strong><small></small><b></b>`;
+    card.querySelector("span").textContent = item.emoji || "";
+    card.querySelector("strong").textContent = item.name || "";
+    card.querySelector("small").textContent = status;
+    card.querySelector("b").textContent = item.hasTeamVoted ? "Voto emitido" : item.hasMissionVoted ? "Accion enviada" : "";
+    if (canKick && item.id !== currentPlayer?.id) {
+      const kick = document.createElement("button");
+      kick.type = "button";
+      kick.className = "resistance-kick-button";
+      kick.dataset.resistanceKickId = item.id;
+      kick.setAttribute("aria-label", "Expulsar jugador");
+      kick.textContent = "x";
+      card.append(kick);
+    }
+    return card;
+  }));
+}
+
+function renderResistanceRole(room, player) {
+  const showRole = room.status !== "lobby" && player?.role;
+  resistanceRoleCard.hidden = !showRole;
+  if (!showRole) return;
+  const isSpy = player.role === "spy";
+  resistanceRoleCard.classList.toggle("is-spy", isSpy);
+  resistanceRoleLabel.textContent = "Tu rol";
+  resistanceRoleName.textContent = isSpy ? "Espia" : "Resistencia";
+  resistanceRoleHint.textContent = isSpy ? `Otros espias: ${(player.spyNames || []).join(", ") || "solo tu"}` : "Aprueba buenos equipos y evita sabotajes.";
+}
+
+function renderResistanceActions(room, player, players, isHost) {
+  const status = room.status || "lobby";
+  resistanceGameMessage.textContent = getResistanceStatusMessage(room, player);
+  resistanceTeamPicker.hidden = !(status === "team" && player?.isLeader);
+  resistanceTeamVoteActions.hidden = !(status === "voting" && !player?.hasTeamVoted);
+  resistanceMissionActions.hidden = !(status === "mission" && player?.onTeam && !player?.hasMissionVoted);
+  resistanceStartButton.hidden = status !== "lobby" || !isHost;
+  resistanceStartButton.disabled = !(isHost && players.length === Number(room.config?.playerLimit || 0));
+  resistanceStartButton.textContent = resistanceStartButton.disabled ? `Esperando ${players.length}/${room.config?.playerLimit || "?"}` : "Iniciar operacion";
+  if (!resistanceTeamPicker.hidden) renderResistanceTeamPicker(room, players);
+  resistanceSabotageButton.hidden = player?.role !== "spy";
+  resistanceApproveButton.disabled = false;
+  resistanceRejectButton.disabled = false;
+  resistanceSuccessButton.disabled = false;
+  resistanceSabotageButton.disabled = false;
+}
+
+function renderResistanceTeamPicker(room, players) {
+  const current = new Set(room.currentTeam || []);
+  resistanceTeamOptions.replaceChildren(...players.map((item) => {
+    const label = document.createElement("label");
+    label.className = "resistance-team-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = item.id;
+    input.checked = current.has(item.id);
+    const avatar = document.createElement("span");
+    avatar.textContent = item.emoji || "";
+    const name = document.createElement("strong");
+    name.textContent = item.name || "";
+    label.append(input, avatar, name);
+    return label;
+  }));
+  syncResistanceTeamSelection();
+}
+
+function syncResistanceTeamSelection() {
+  if (!resistanceRoom || !resistanceTeamOptions || !resistanceProposeButton) return;
+  const checked = [...resistanceTeamOptions.querySelectorAll("input:checked")];
+  const max = Number(resistanceRoom.teamSize || 0);
+  resistanceTeamOptions.querySelectorAll("input:not(:checked)").forEach((input) => { input.disabled = checked.length >= max; });
+  resistanceProposeButton.disabled = checked.length !== max;
+  resistanceProposeButton.textContent = `Proponer equipo (${checked.length}/${max})`;
+}
+
+function getResistanceStatusMessage(room, player) {
+  if (room.status === "lobby") return `Esperando agentes: ${room.players?.length || 0}/${room.config?.playerLimit || "?"}.`;
+  if (room.status === "finished") return `${room.winner === "spies" ? "Ganan los espias." : "Gana la resistencia."} ${player?.won ? "Has ganado." : "Has perdido."}`;
+  const eventText = formatResistanceEvent(room.lastEvent);
+  if (eventText) return eventText;
+  if (room.status === "team") return `${room.leaderName} debe proponer ${room.teamSize} agentes para la mision ${room.missionNumber}.`;
+  if (room.status === "voting") return `Votacion del equipo: ${room.teamVotesCast || 0}/${room.players?.length || 0}.`;
+  if (room.status === "mission") return `Equipo en mision: ${room.missionVotesCast || 0}/${room.currentTeam?.length || 0} acciones.`;
+  return "";
+}
+
+function formatResistanceEvent(event) {
+  if (!event?.type) return "";
+  if (event.type === "start") return `Roles asignados. Lider inicial: ${event.leaderName}.`;
+  if (event.type === "team-proposed") return `${event.leaderName} propone: ${(event.teamNames || []).join(", ")}.`;
+  if (event.type === "team-approved") return `Equipo aprobado (${event.approvals} si, ${event.rejected} no).`;
+  if (event.type === "team-rejected") return `Equipo rechazado (${event.approvals} si, ${event.rejected} no). Nuevo lider: ${event.leaderName}.`;
+  if (event.type === "five-rejections") return "Cinco equipos rechazados. Los espias toman el control.";
+  if (event.type === "mission-succeeded") return `Mision ${event.missionNumber} completada. Sabotajes: ${event.sabotages}.`;
+  if (event.type === "mission-failed") return `Mision ${event.missionNumber} saboteada. Sabotajes: ${event.sabotages}/${event.requiredFails}.`;
+  return "";
+}
+
+async function shareResistanceRoom() {
+  if (!resistanceSession) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("resistance", resistanceSession.roomName);
+  await navigator.clipboard.writeText(url.toString());
+  flashButton(resistanceShareButton, "Copiado", "Copiar enlace");
+}
+
+function leaveResistanceToMenu() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("resistance");
+  window.history.replaceState({}, "", url);
+  leaveResistanceRoom();
+  showResistanceLobby();
+}
+
+function leaveResistanceRoom() {
+  releaseResistanceRoomIfHost();
+  clearInterval(resistancePollTimer);
+  resistancePollTimer = null;
+  resistanceSession = null;
+  resistanceRoom = null;
+  resistanceShownEventId = "";
+  resistanceKnownPlayerIds = new Set();
+}
+
+function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {
+  const session = resistanceSession;
+  if (!session?.isHost) return;
+  session.isHost = false;
+  const url = `/api/resistance/rooms/${encodeURIComponent(session.roomName)}/leave`;
+  const body = JSON.stringify({ playerId: session.playerId, token: session.token });
+  if (useBeacon && navigator.sendBeacon) {
+    navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+  } else {
+    void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+  }
+  clearInterval(resistancePollTimer);
+}
+
+function applyResistanceRoomFromUrl() {
+  const roomName = new URLSearchParams(window.location.search).get("resistance");
+  if (!roomName) return;
+  showView("resistanceView");
+  resistanceJoinRoomName.value = roomName.trim();
+  resistanceJoinPlayerName.focus();
+}
+
 function applyInviteRoomFromUrl() {
   const roomName = new URLSearchParams(window.location.search).get("room");
   if (!roomName) return;
@@ -3211,8 +3727,10 @@ function showView(targetId) {
   updateViewportChromeVars();
   if (targetId !== "gameView" && document.querySelector("#gameView")?.classList.contains("active")) leaveMultiplayerRoom();
   if (targetId !== "impostorView" && document.querySelector("#impostorView")?.classList.contains("active")) leaveimpostorRoom();
+  if (targetId !== "resistanceView" && document.querySelector("#resistanceView")?.classList.contains("active")) leaveResistanceRoom();
   document.body.classList.toggle("arcade-game-active", targetId === "gameView");
   document.body.classList.toggle("impostor-active", targetId === "impostorView");
+  document.body.classList.toggle("resistance-active", targetId === "resistanceView");
 
   views.forEach((view) => {
     const active = view.id === targetId;
@@ -3227,6 +3745,7 @@ function showView(targetId) {
   if (targetId === "gameView" && !groups.length) loadSongGroups();
   if (targetId === "gameView" && gamePhase === "challenge") showChallengeSetup();
   if (targetId === "impostorView") showimpostorLobby();
+  if (targetId === "resistanceView") showResistanceLobby();
   updateViewportChromeVars();
 }
 
@@ -5882,5 +6401,6 @@ updateViewportChromeVars();
 showChallengeSetup();
 applyInviteRoomFromUrl();
 applyimpostorRoomFromUrl();
+applyResistanceRoomFromUrl();
 setGameBusy(true);
 loadSongGroups();

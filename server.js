@@ -549,6 +549,7 @@ const audioClients = new Map();
 const activeAudioProcesses = new Map();
 const multiplayerRooms = new Map();
 const impostorRooms = new Map();
+const resistanceRooms = new Map();
 let spotifyToken = null;
 const songGroupCache = new Map();
 
@@ -571,6 +572,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/leaderboard") return submitLeaderboardScore(req, res);
     if (req.method === "POST" && url.pathname === "/api/multiplayer/rooms") return createMultiplayerRoom(req, res);
     if (req.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(req, res);
+    if (req.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(req, res);
     if (req.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return sendJson(res, getSongGroups());
     if (req.method === "GET" && url.pathname === "/api/shadow-songs") return sendJson(res, await getSongGroupPayload("shadow"));
     if (req.method === "POST" && url.pathname === "/api/audio/jobs") return createAudioJob(req, res);
@@ -608,6 +610,25 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && impostorGuessMatch) return guessimpostorWord(req, res, impostorGuessMatch[1]);
     const impostorLeaveMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/leave$/);
     if (req.method === "POST" && impostorLeaveMatch) return leaveimpostorRoom(req, res, impostorLeaveMatch[1]);
+
+    const resistanceRoomMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && resistanceRoomMatch) return getResistanceRoom(res, resistanceRoomMatch[1], url.searchParams);
+    const resistanceJoinMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/join$/);
+    if (req.method === "POST" && resistanceJoinMatch) return joinResistanceRoom(req, res, resistanceJoinMatch[1]);
+    const resistanceStartMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/start$/);
+    if (req.method === "POST" && resistanceStartMatch) return startResistanceGame(req, res, resistanceStartMatch[1]);
+    const resistanceKickMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/kick$/);
+    if (req.method === "POST" && resistanceKickMatch) return kickResistancePlayer(req, res, resistanceKickMatch[1]);
+    const resistanceTeamMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/team$/);
+    if (req.method === "POST" && resistanceTeamMatch) return proposeResistanceTeam(req, res, resistanceTeamMatch[1]);
+    const resistanceTeamVoteMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/team-vote$/);
+    if (req.method === "POST" && resistanceTeamVoteMatch) return voteResistanceTeam(req, res, resistanceTeamVoteMatch[1]);
+    const resistanceMissionVoteMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/mission-vote$/);
+    if (req.method === "POST" && resistanceMissionVoteMatch) return voteResistanceMission(req, res, resistanceMissionVoteMatch[1]);
+    const resistanceRestartMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/restart$/);
+    if (req.method === "POST" && resistanceRestartMatch) return restartResistanceGame(req, res, resistanceRestartMatch[1]);
+    const resistanceLeaveMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/leave$/);
+    if (req.method === "POST" && resistanceLeaveMatch) return leaveResistanceRoom(req, res, resistanceLeaveMatch[1]);
 
     const audioJobMatch = url.pathname.match(/^\/api\/audio\/jobs\/([^/]+)$/);
     if (req.method === "GET" && audioJobMatch) return sendJson(res, getPublicAudioJob(audioJobMatch[1]));
@@ -1504,6 +1525,345 @@ function impostorRoomResponse(room, privatePlayer = null) {
       hasVoted: Boolean(room.votes?.[privatePlayer.id]),
       word: privatePlayer.role === "crew" || revealAll ? room.word : "",
       hint: privatePlayer.role === "impostor" && room.config?.impostorHint ? room.hint : "",
+      won: revealAll ? Boolean(privatePlayer.won) : undefined
+    } : undefined
+  };
+}
+
+const RESISTANCE_RULES = {
+  5: { spies: 2, teams: [2, 3, 2, 3, 3] },
+  6: { spies: 2, teams: [2, 3, 4, 3, 4] },
+  7: { spies: 3, teams: [2, 3, 3, 4, 4] },
+  8: { spies: 3, teams: [3, 4, 4, 5, 5] },
+  9: { spies: 3, teams: [3, 4, 4, 5, 5] },
+  10: { spies: 4, teams: [3, 4, 4, 5, 5] }
+};
+
+async function createResistanceRoom(req, res) {
+  const room = normalizeNewResistanceRoom(await readJson(req));
+  if (!room) return sendJson(res, { error: "Invalid room, player, or Resistance settings" }, 400);
+  const existing = resistanceRooms.get(room.key);
+  if (existing && isResistanceHostConnected(existing)) return sendJson(res, { error: "Room name is already in use" }, 409);
+  resistanceRooms.set(room.key, room);
+  sendJson(res, resistanceRoomResponse(room, room.players[0]), 201);
+}
+
+async function joinResistanceRoom(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const identity = normalizeResistanceIdentity(await readJson(req));
+  if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
+  const existingPlayer = room.players.find((player) => player.name === identity.name);
+  if (existingPlayer) {
+    existingPlayer.token = randomBytes(24).toString("hex");
+    existingPlayer.emoji = identity.emoji;
+    existingPlayer.lastSeen = Date.now();
+    room.updatedAt = Date.now();
+    return sendJson(res, resistanceRoomResponse(room, existingPlayer));
+  }
+  if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
+  if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
+  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) {
+    return sendJson(res, { error: "Player name is already in use" }, 409);
+  }
+  const player = createResistancePlayer(identity, nextResistanceSeatNumber(room));
+  room.players.push(player);
+  room.updatedAt = Date.now();
+  sendJson(res, resistanceRoomResponse(room, player), 201);
+}
+
+function getResistanceRoom(res, roomName, searchParams) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const player = touchResistanceRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function startResistanceGame(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await readJson(req));
+  if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only host can start" }, 403);
+  if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
+  if (room.players.length !== Number(room.config.playerLimit)) return sendJson(res, { error: "Wait for all players before starting" }, 409);
+  assignResistanceRoles(room);
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function restartResistanceGame(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await readJson(req));
+  if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only host can restart" }, 403);
+  assignResistanceRoles(room);
+  room.updatedAt = Date.now();
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function kickResistancePlayer(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  const hostId = room.hostId || room.players[0]?.id;
+  if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only host can kick players" }, 403);
+  if (room.status !== "lobby") return sendJson(res, { error: "Players can only be kicked before the game starts" }, 409);
+  const targetId = String(body.targetPlayerId || "");
+  if (!targetId || targetId === hostId) return sendJson(res, { error: "Invalid player to kick" }, 400);
+  const before = room.players.length;
+  room.players = room.players.filter((item) => item.id !== targetId);
+  if (room.players.length === before) return sendJson(res, { error: "Player not found" }, 404);
+  room.updatedAt = Date.now();
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function proposeResistanceTeam(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "team" || player.id !== getResistanceLeader(room)?.id) return sendJson(res, { error: "Only current leader can propose" }, 403);
+  const teamIds = Array.isArray(body.teamIds) ? [...new Set(body.teamIds.map(String))] : [];
+  const teamSize = getResistanceTeamSize(room);
+  const validIds = new Set(room.players.map((item) => item.id));
+  if (teamIds.length !== teamSize || teamIds.some((id) => !validIds.has(id))) return sendJson(res, { error: `Select exactly ${teamSize} players` }, 400);
+  room.currentTeam = teamIds;
+  room.teamVotes = {};
+  room.missionVotes = {};
+  room.status = "voting";
+  setResistanceEvent(room, { type: "team-proposed", leaderName: player.name, teamNames: teamIds.map((id) => room.players.find((item) => item.id === id)?.name).filter(Boolean) });
+  player.lastSeen = Date.now();
+  room.updatedAt = Date.now();
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function voteResistanceTeam(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "voting") return sendJson(res, { error: "Invalid team vote" }, 400);
+  room.teamVotes = { ...(room.teamVotes || {}), [player.id]: Boolean(body.approve) };
+  player.lastSeen = Date.now();
+  resolveResistanceTeamVotes(room);
+  room.updatedAt = Date.now();
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function voteResistanceMission(req, res, roomName) {
+  const room = resistanceRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "mission" || !room.currentTeam?.includes(player.id)) return sendJson(res, { error: "Only mission team can act" }, 400);
+  room.missionVotes = { ...(room.missionVotes || {}), [player.id]: player.role === "spy" && Boolean(body.sabotage) };
+  player.lastSeen = Date.now();
+  resolveResistanceMissionVotes(room);
+  room.updatedAt = Date.now();
+  sendJson(res, resistanceRoomResponse(room, player));
+}
+
+async function leaveResistanceRoom(req, res, roomName) {
+  const key = normalizeRoomKey(roomName);
+  const room = resistanceRooms.get(key);
+  if (!room) return sendJson(res, { ok: true });
+  const player = authenticateMultiplayerPlayer(room, await readJson(req));
+  if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only room creator can close room" }, 403);
+  resistanceRooms.delete(key);
+  sendJson(res, { ok: true });
+}
+
+function normalizeNewResistanceRoom(value) {
+  const key = normalizeRoomKey(value?.roomName);
+  const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
+  const identity = normalizeResistanceIdentity(value);
+  const playerLimit = Math.floor(Number(value?.config?.playerLimit || value?.playerLimit));
+  if (!key || !roomName || !identity || !RESISTANCE_RULES[playerLimit]) return null;
+  const host = createResistancePlayer(identity, 1);
+  return { key, roomName, config: { playerLimit }, status: "lobby", hostId: host.id, leaderIndex: 0, missionIndex: 0, rejectCount: 0, currentTeam: [], teamVotes: {}, missionVotes: {}, missionResults: [], winner: "", eventId: "", lastEvent: null, players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+}
+
+function normalizeResistanceIdentity(value) {
+  const name = String(value?.playerName || "").trim().replace(/\s+/g, " ").slice(0, 16);
+  const emoji = Array.from(String(value?.emoji || "").trim())[0] || "";
+  return name && emoji ? { name, emoji } : null;
+}
+
+function createResistancePlayer(identity, seatNumber) {
+  return { id: randomUUID(), token: randomBytes(24).toString("hex"), ...identity, seatNumber, role: "", lastSeen: Date.now() };
+}
+
+function nextResistanceSeatNumber(room) {
+  return Math.max(0, ...room.players.map((player) => Number(player.seatNumber) || 0)) + 1;
+}
+
+function touchResistanceRoom(room, playerId, token) {
+  const player = authenticateMultiplayerPlayer(room, { playerId, token });
+  if (player) player.lastSeen = Date.now();
+  room.updatedAt = Date.now();
+  return player || null;
+}
+
+function assignResistanceRoles(room) {
+  const shuffledIds = shuffleimpostorItems(room.players.map((player) => player.id));
+  const spyIds = new Set(shuffledIds.slice(0, getResistanceRules(room).spies));
+  const leader = shuffleimpostorItems(room.players)[0] || room.players[0];
+  room.players.forEach((player) => {
+    player.role = spyIds.has(player.id) ? "spy" : "resistance";
+    delete player.won;
+  });
+  room.leaderIndex = Math.max(0, room.players.findIndex((player) => player.id === leader?.id));
+  room.missionIndex = 0;
+  room.rejectCount = 0;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  room.missionResults = [];
+  room.winner = "";
+  room.status = "team";
+  setResistanceEvent(room, { type: "start", leaderName: getResistanceLeader(room)?.name || "" });
+}
+
+function resolveResistanceTeamVotes(room) {
+  if (room.players.some((player) => room.teamVotes?.[player.id] === undefined)) return;
+  const approvals = Object.values(room.teamVotes || {}).filter(Boolean).length;
+  const rejected = room.players.length - approvals;
+  if (approvals > room.players.length / 2) {
+    room.status = "mission";
+    room.missionVotes = {};
+    setResistanceEvent(room, { type: "team-approved", approvals, rejected, teamNames: getResistanceTeamNames(room) });
+    return;
+  }
+  room.rejectCount = Number(room.rejectCount || 0) + 1;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  if (room.rejectCount >= 5) {
+    finishResistanceGame(room, "spies", { type: "five-rejections", approvals, rejected });
+    return;
+  }
+  advanceResistanceLeader(room);
+  room.status = "team";
+  setResistanceEvent(room, { type: "team-rejected", approvals, rejected, leaderName: getResistanceLeader(room)?.name || "" });
+}
+
+function resolveResistanceMissionVotes(room) {
+  if ((room.currentTeam || []).some((playerId) => room.missionVotes?.[playerId] === undefined)) return;
+  const sabotages = Object.values(room.missionVotes || {}).filter(Boolean).length;
+  const requiredFails = getResistanceFailsRequired(room);
+  const failed = sabotages >= requiredFails;
+  room.missionResults.push({ failed, sabotages, requiredFails, teamIds: [...(room.currentTeam || [])] });
+  const failedMissions = room.missionResults.filter((mission) => mission.failed).length;
+  const successfulMissions = room.missionResults.length - failedMissions;
+  const event = { type: failed ? "mission-failed" : "mission-succeeded", sabotages, requiredFails, missionNumber: room.missionIndex + 1 };
+  if (successfulMissions >= 3) return finishResistanceGame(room, "resistance", event);
+  if (failedMissions >= 3) return finishResistanceGame(room, "spies", event);
+  room.missionIndex += 1;
+  room.rejectCount = 0;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  advanceResistanceLeader(room);
+  room.status = "team";
+  setResistanceEvent(room, { ...event, nextLeaderName: getResistanceLeader(room)?.name || "" });
+}
+
+function finishResistanceGame(room, winner, event) {
+  room.status = "finished";
+  room.winner = winner;
+  room.currentTeam = [];
+  room.teamVotes = {};
+  room.missionVotes = {};
+  room.players.forEach((player) => { player.won = winner === "spies" ? player.role === "spy" : player.role === "resistance"; });
+  setResistanceEvent(room, event || { type: "finished" });
+}
+
+function setResistanceEvent(room, event) {
+  room.eventId = randomUUID();
+  room.lastEvent = event || {};
+}
+
+function advanceResistanceLeader(room) {
+  room.leaderIndex = (Number(room.leaderIndex || 0) + 1) % Math.max(1, room.players.length);
+}
+
+function getResistanceRules(room) {
+  return RESISTANCE_RULES[Number(room.config?.playerLimit) || room.players.length] || RESISTANCE_RULES[5];
+}
+
+function getResistanceTeamSize(room) {
+  return getResistanceRules(room).teams[Math.max(0, Math.min(4, Number(room.missionIndex || 0)))] || 2;
+}
+
+function getResistanceFailsRequired(room) {
+  return Number(room.config?.playerLimit || room.players.length) >= 7 && Number(room.missionIndex || 0) === 3 ? 2 : 1;
+}
+
+function getResistanceLeader(room) {
+  return room.players[Number(room.leaderIndex || 0) % Math.max(1, room.players.length)] || room.players[0] || null;
+}
+
+function getResistanceTeamNames(room) {
+  return (room.currentTeam || []).map((id) => room.players.find((player) => player.id === id)?.name).filter(Boolean);
+}
+
+function isResistanceHost(room, player) {
+  return Boolean(player && player.id === (room.hostId || room.players[0]?.id));
+}
+
+function isResistanceHostConnected(room) {
+  const host = room.players.find((player) => player.id === (room.hostId || room.players[0]?.id));
+  return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
+}
+
+function resistanceRoomResponse(room, privatePlayer = null) {
+  const now = Date.now();
+  const revealAll = room.status === "finished";
+  const leader = getResistanceLeader(room);
+  const spyNames = privatePlayer?.role === "spy" || revealAll
+    ? room.players.filter((player) => player.role === "spy").map((player) => player.name)
+    : [];
+  return {
+    roomName: room.roomName,
+    config: room.config,
+    status: room.status,
+    eventId: room.eventId || "",
+    lastEvent: room.lastEvent || null,
+    missionIndex: Number(room.missionIndex || 0),
+    missionNumber: Number(room.missionIndex || 0) + 1,
+    missionResults: room.missionResults || [],
+    teamSize: getResistanceTeamSize(room),
+    failsRequired: getResistanceFailsRequired(room),
+    rejectCount: Number(room.rejectCount || 0),
+    leaderId: leader?.id || "",
+    leaderName: leader?.name || "",
+    currentTeam: room.currentTeam || [],
+    teamVotesCast: Object.keys(room.teamVotes || {}).length,
+    missionVotesCast: Object.keys(room.missionVotes || {}).length,
+    winner: room.winner || "",
+    players: room.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      emoji: player.emoji,
+      seatNumber: player.seatNumber,
+      connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
+      isLeader: player.id === leader?.id,
+      onTeam: (room.currentTeam || []).includes(player.id),
+      hasTeamVoted: room.teamVotes?.[player.id] !== undefined,
+      hasMissionVoted: room.missionVotes?.[player.id] !== undefined,
+      role: revealAll ? player.role : "",
+      won: revealAll ? Boolean(player.won) : undefined
+    })).sort((a, b) => a.seatNumber - b.seatNumber),
+    player: privatePlayer ? {
+      id: privatePlayer.id,
+      token: privatePlayer.token,
+      isHost: isResistanceHost(room, privatePlayer),
+      role: privatePlayer.role,
+      spyNames,
+      isLeader: privatePlayer.id === leader?.id,
+      onTeam: (room.currentTeam || []).includes(privatePlayer.id),
+      hasTeamVoted: room.teamVotes?.[privatePlayer.id] !== undefined,
+      hasMissionVoted: room.missionVotes?.[privatePlayer.id] !== undefined,
       won: revealAll ? Boolean(privatePlayer.won) : undefined
     } : undefined
   };
