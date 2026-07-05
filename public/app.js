@@ -4,6 +4,7 @@ const views = document.querySelectorAll(".view");
 const mobileNavMoreButton = document.querySelector("#mobileNavMoreButton");
 const navMenu = document.querySelector(".nav-menu");
 const titleBar = document.querySelector(".title-bar");
+const titleHomeLinks = document.querySelectorAll("[data-home-link]");
 
 const form = document.querySelector("#jobForm");
 const input = document.querySelector("#input");
@@ -1600,6 +1601,22 @@ navLinks.forEach((button) => {
 });
 homeMenuCards.forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.viewTarget));
+});
+titleHomeLinks.forEach((link) => {
+  const goHome = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("impostor");
+    url.searchParams.delete("resistance");
+    window.history.replaceState({}, "", url);
+    showView("homeView");
+    closeMobileNavMenu();
+  };
+  link.addEventListener("click", goHome);
+  link.addEventListener("keydown", (event) => {
+    if (!["Enter", " "].includes(event.key)) return;
+    event.preventDefault();
+    goHome();
+  });
 });
 mobileNavMoreButton.addEventListener("click", (event) => {
   event.stopPropagation();
