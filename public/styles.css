@@ -8462,3 +8462,52 @@ body.resistance-active .content {
     font-size: clamp(0.72rem, 3vw, 0.86rem);
   }
 }
+
+/* Restore Impostor compact mobile layout; lift player-card content */
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-board {
+    grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr) !important;
+    grid-template-areas: "players play" !important;
+    gap: 5px !important;
+    align-items: start !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-circle {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+    width: 100% !important;
+    align-items: start !important;
+    justify-items: stretch !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    min-height: 60px !important;
+    max-height: 82px !important;
+    padding: 4px 6px 8px !important;
+    align-content: start !important;
+    align-items: start !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip span {
+    align-self: start !important;
+    margin-top: -1px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip strong,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip small,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip b {
+    align-self: start !important;
+    transform: translateY(-4px) !important;
+  }
+}
