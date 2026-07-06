@@ -2486,7 +2486,11 @@ async function pollimpostorRoom() {
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Room unavailable");
     if (!payload.player) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("impostor");
+      window.history.replaceState({}, "", url);
       leaveimpostorRoom();
+      showimpostorLobby();
       impostorLobbyMessage.textContent = t("impostor.sessionLost");
       return;
     }
@@ -3244,6 +3248,7 @@ function leaveimpostorRoom() {
   hideImpostorVotePopup();
   hideImpostorEventPopup();
   hideImpostorGuessPopup();
+  hideImpostorKickPopup();
   if (impostorLobbyTitle) impostorLobbyTitle.hidden = false;
   if (impostorRoomHeader) impostorRoomHeader.hidden = true;
 }
