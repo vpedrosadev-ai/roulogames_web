@@ -2280,6 +2280,7 @@ function showimpostorLobby() {
     impostorLobbyTitle.hidden = true;
     if (impostorRoomHeader) impostorRoomHeader.hidden = false;
     renderimpostorRoom(impostorRoom);
+    resetImpostorGameScroll();
     return;
   }
   impostorLobby.hidden = false;
@@ -2388,8 +2389,19 @@ function enterimpostorRoom(payload) {
   if (impostorRoomHeader) impostorRoomHeader.hidden = false;
   impostorShareButton.hidden = !impostorSession.isHost;
   renderimpostorRoom(payload);
+  resetImpostorGameScroll();
   startimpostorPolling();
   if (payload.status !== "lobby") announceImpostorEvent(payload, { force: true });
+}
+
+function resetImpostorGameScroll() {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.scrollingElement?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+      document.querySelector("#impostorView")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+    });
+  });
 }
 
 function startimpostorPolling() {
