@@ -1631,6 +1631,7 @@ let impostorOrbitFrame = null;
 let impostorKnownPlayerIds = new Set();
 let impostorChipScaleFrame = null;
 let impostorChipResizeObserver = null;
+let pendingImpostorKickTargetId = "";
 let resistanceSession = null;
 let resistanceRoom = null;
 let resistancePollTimer = null;
@@ -2557,9 +2558,65 @@ async function restartimpostorGame() {
 
 async function kickimpostorPlayer(event) {
   const button = event.target.closest("[data-kick-player-id]");
-  if (!button || !impostorSession?.isHost) return;
+  if (!impostorSession?.isHost) return;
+  if (!button && window.matchMedia?.("(max-width: 760px)")?.matches) {
+    const chip = event.target.closest(".impostor-chip[data-player-id]");
+    if (!chip || chip.dataset.playerId === impostorSession.playerId || impostorRoom?.status !== "lobby") return;
+    event.preventDefault();
+    showImpostorKickPopup(chip.dataset.playerId);
+    return;
+  }
+  if (!button) return;
   event.preventDefault();
-  button.disabled = true;
+  await performImpostorKick(button.dataset.kickPlayerId, button);
+}
+
+function showImpostorKickPopup(targetPlayerId) {
+  const target = (impostorRoom?.players || []).find((player) => player.id === targetPlayerId);
+  if (!target) return;
+  pendingImpostorKickTargetId = targetPlayerId;
+  let popup = document.querySelector("#impostorKickPopup");
+  if (!popup) {
+    popup = document.createElement("section");
+    popup.id = "impostorKickPopup";
+    popup.className = "impostor-popup impostor-kick-popup";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-modal", "true");
+    popup.innerHTML = `
+      <div class="impostor-popup-card impostor-kick-popup-card">
+        <header>
+          <h2>Expulsar jugador</h2>
+          <button type="button" class="secondary compact-button" data-impostor-kick-close>Cerrar</button>
+        </header>
+        <p></p>
+        <div class="impostor-kick-popup-actions">
+          <button type="button" class="secondary" data-impostor-kick-close>Cancelar</button>
+          <button type="button" class="danger" data-impostor-kick-confirm>Expulsar</button>
+        </div>
+      </div>
+    `;
+    popup.addEventListener("click", (popupEvent) => {
+      if (popupEvent.target === popup || popupEvent.target.closest("[data-impostor-kick-close]")) hideImpostorKickPopup();
+      const confirmButton = popupEvent.target.closest("[data-impostor-kick-confirm]");
+      if (confirmButton) performImpostorKick(pendingImpostorKickTargetId, confirmButton);
+    });
+    document.body.append(popup);
+  }
+  popup.querySelector("p").textContent = `¿Quieres expulsar a ${target.name || "este jugador"} de la sala?`;
+  popup.hidden = false;
+  document.body.classList.add("songs-popup-open");
+}
+
+function hideImpostorKickPopup() {
+  const popup = document.querySelector("#impostorKickPopup");
+  if (popup) popup.hidden = true;
+  pendingImpostorKickTargetId = "";
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+}
+
+async function performImpostorKick(targetPlayerId, control = null) {
+  if (!targetPlayerId || !impostorSession?.isHost) return;
+  if (control) control.disabled = true;
   try {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/kick`, {
       method: "POST",
@@ -2567,17 +2624,18 @@ async function kickimpostorPlayer(event) {
       body: JSON.stringify({
         playerId: impostorSession.playerId,
         token: impostorSession.token,
-        targetPlayerId: button.dataset.kickPlayerId
+        targetPlayerId
       })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Could not kick player");
+    hideImpostorKickPopup();
     impostorRoom = payload;
     impostorKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
     renderimpostorRoom(payload);
   } catch (error) {
     if (impostorGameMessage) impostorGameMessage.textContent = error.message;
-    button.disabled = false;
+    if (control) control.disabled = false;
   }
 }
 
