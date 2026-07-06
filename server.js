@@ -1654,7 +1654,17 @@ async function guessMasterWord(req, res, roomName) {
   const guess = String(body.guess || "").trim().replace(/\s+/g, " ").slice(0, 40);
   if (!guess) return sendJson(res, { error: "Escribe una respuesta" }, 400);
   const correct = normalizeMasterWordText(guess) === normalizeMasterWordText(room.word);
-  finishMasterWordRound(room, correct ? "correct" : "wrong", guess);
+  if (correct) {
+    finishMasterWordRound(room, "correct", guess);
+  } else {
+    room.currentGuessAttempts = Number(room.currentGuessAttempts || 0) + 1;
+    room.roundGuesses = [...(room.roundGuesses || []), { guess, result: "wrong" }];
+    if (room.currentGuessAttempts >= getMasterWordGuessLimit(room)) {
+      finishMasterWordRound(room, "wrong", guess);
+    } else {
+      setMasterWordEvent(room, { type: "guess-wrong", guess });
+    }
+  }
   room.updatedAt = Date.now();
   sendJson(res, masterWordRoomResponse(room, player));
 }
@@ -1683,19 +1693,21 @@ function normalizeNewMasterWordRoom(value) {
   const key = normalizeRoomKey(value?.roomName);
   const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
   const identity = normalizeMasterWordIdentity(value);
-  const playerLimit = Math.floor(Number(value?.config?.playerLimit || value?.playerLimit || 5));
-  if (!key || !roomName || !identity || playerLimit < 3 || playerLimit > 7) return null;
+  const config = normalizeMasterWordConfig(value?.config || value);
+  if (!key || !roomName || !identity || !config) return null;
   const host = createMasterWordPlayer(identity, 1);
   return {
     key,
     roomName,
-    config: { playerLimit },
+    config,
     status: "lobby",
     hostId: host.id,
     activePlayerId: "",
     activeSeatIndex: -1,
     roundIndex: 0,
     opportunitiesUsed: 0,
+    currentGuessAttempts: 0,
+    roundGuesses: [],
     score: 0,
     word: "",
     usedWords: [],
@@ -1708,6 +1720,20 @@ function normalizeNewMasterWordRoom(value) {
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
+}
+
+function normalizeMasterWordConfig(value = {}) {
+  const playerLimit = Math.floor(Number(value.playerLimit || 5));
+  if (playerLimit < 3 || playerLimit > 7) return null;
+  const roundMode = value.roundMode === "custom" ? "custom" : "standard";
+  const maxRounds = roundMode === "custom"
+    ? Math.max(1, Math.min(MASTER_WORDS.length, Math.floor(Number(value.maxRounds) || MASTER_WORD_MAX_ROUNDS)))
+    : MASTER_WORD_MAX_ROUNDS;
+  const attemptMode = value.attemptMode === "custom" ? "custom" : "standard";
+  const guessLimit = attemptMode === "custom"
+    ? Math.max(1, Math.min(5, Math.floor(Number(value.guessLimit) || 2)))
+    : 2;
+  return { playerLimit, roundMode, maxRounds, attemptMode, guessLimit };
 }
 
 function normalizeMasterWordIdentity(value) {
@@ -1737,6 +1763,8 @@ function resetMasterWordGame(room) {
   room.activeSeatIndex = -1;
   room.roundIndex = 0;
   room.opportunitiesUsed = 0;
+  room.currentGuessAttempts = 0;
+  room.roundGuesses = [];
   room.score = 0;
   room.word = "";
   room.usedWords = [];
@@ -1750,7 +1778,7 @@ function resetMasterWordGame(room) {
 function startMasterWordRound(room) {
   if (room.players.length < 3) return;
   const nextWord = getNextMasterWord(room);
-  if (!nextWord || Number(room.opportunitiesUsed || 0) >= MASTER_WORD_MAX_ROUNDS) {
+  if (!nextWord || Number(room.opportunitiesUsed || 0) >= getMasterWordMaxRounds(room)) {
     finishMasterWordGame(room, { type: "finished" });
     return;
   }
@@ -1762,6 +1790,8 @@ function startMasterWordRound(room) {
   room.usedWords = [...(room.usedWords || []), nextWord];
   room.clues = {};
   room.clueReview = null;
+  room.currentGuessAttempts = 0;
+  room.roundGuesses = [];
   setMasterWordEvent(room, { type: "round-start", activePlayerName: getMasterWordActivePlayer(room)?.name || "" });
 }
 
@@ -1825,8 +1855,8 @@ function getMasterWordInvalidReason(clue, word) {
 
 function finishMasterWordRound(room, result, guess) {
   const correct = result === "correct";
-  const penalty = result === "wrong" ? 2 : 1;
-  room.opportunitiesUsed = Math.min(MASTER_WORD_MAX_ROUNDS, Number(room.opportunitiesUsed || 0) + penalty);
+  const maxRounds = getMasterWordMaxRounds(room);
+  room.opportunitiesUsed = Math.min(maxRounds, Number(room.opportunitiesUsed || 0) + 1);
   if (correct) room.score = Number(room.score || 0) + 1;
   room.history = [...(room.history || []), {
     roundNumber: room.roundIndex,
@@ -1835,11 +1865,12 @@ function finishMasterWordRound(room, result, guess) {
     word: room.word,
     guess,
     result,
+    attempts: room.roundGuesses || [],
     score: room.score,
     validClues: room.clueReview?.valid || [],
     removedClues: room.clueReview?.removed || []
   }];
-  if (room.opportunitiesUsed >= MASTER_WORD_MAX_ROUNDS || room.usedWords.length >= MASTER_WORDS.length) {
+  if (room.opportunitiesUsed >= maxRounds || room.usedWords.length >= MASTER_WORDS.length) {
     finishMasterWordGame(room, { type: result, guess });
     return;
   }
@@ -1857,6 +1888,14 @@ function finishMasterWordGame(room, event) {
 function setMasterWordEvent(room, event) {
   room.eventId = randomUUID();
   room.lastEvent = event || {};
+}
+
+function getMasterWordMaxRounds(room) {
+  return Math.max(1, Math.min(MASTER_WORDS.length, Math.floor(Number(room.config?.maxRounds) || MASTER_WORD_MAX_ROUNDS)));
+}
+
+function getMasterWordGuessLimit(room) {
+  return Math.max(1, Math.min(5, Math.floor(Number(room.config?.guessLimit) || 2)));
 }
 
 function normalizeMasterWordClue(value) {
@@ -1902,6 +1941,9 @@ function masterWordRoomResponse(room, privatePlayer = null) {
   const clueSlots = getMasterWordClueSlots(room);
   const clueReview = room.clueReview || { valid: [], removed: [] };
   const showClues = ["guessing", "finished"].includes(room.status);
+  const maxRounds = getMasterWordMaxRounds(room);
+  const guessLimit = getMasterWordGuessLimit(room);
+  const guessAttempts = Number(room.currentGuessAttempts || 0);
   return {
     roomName: room.roomName,
     config: room.config,
@@ -1909,9 +1951,12 @@ function masterWordRoomResponse(room, privatePlayer = null) {
     eventId: room.eventId || "",
     lastEvent: room.lastEvent || null,
     roundIndex: Number(room.roundIndex || 0),
-    roundNumber: Math.min(Number(room.roundIndex || 0), MASTER_WORD_MAX_ROUNDS),
-    maxRounds: MASTER_WORD_MAX_ROUNDS,
+    roundNumber: Math.min(Number(room.roundIndex || 0), maxRounds),
+    maxRounds,
     opportunitiesUsed: Number(room.opportunitiesUsed || 0),
+    guessLimit,
+    guessAttempts,
+    guessesRemaining: Math.max(0, guessLimit - guessAttempts),
     score: Number(room.score || 0),
     activePlayerId: room.activePlayerId || "",
     activePlayerName: activePlayer?.name || "",
