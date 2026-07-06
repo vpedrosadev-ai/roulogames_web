@@ -537,6 +537,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/multiplayer/rooms") return createMultiplayerRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(request, env);
+      if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
       if (request.method === "GET" && url.pathname === "/api/shadow-songs") return json(await getSongGroupPayload("shadow", env));
       if (url.pathname.startsWith("/api/audio/jobs")) return unsupportedAudioDownload();
@@ -598,6 +599,23 @@ export default {
       if (request.method === "POST" && resistanceRestartMatch) return restartResistanceGame(request, resistanceRestartMatch[1], env);
       const resistanceLeaveMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/leave$/);
       if (request.method === "POST" && resistanceLeaveMatch) return leaveResistanceRoom(request, resistanceLeaveMatch[1], env);
+
+      const masterWordRoomMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && masterWordRoomMatch) return getMasterWordRoom(masterWordRoomMatch[1], request, env);
+      const masterWordJoinMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/join$/);
+      if (request.method === "POST" && masterWordJoinMatch) return joinMasterWordRoom(request, masterWordJoinMatch[1], env);
+      const masterWordStartMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/start$/);
+      if (request.method === "POST" && masterWordStartMatch) return startMasterWordGame(request, masterWordStartMatch[1], env);
+      const masterWordRestartMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/restart$/);
+      if (request.method === "POST" && masterWordRestartMatch) return restartMasterWordGame(request, masterWordRestartMatch[1], env);
+      const masterWordClueMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/clue$/);
+      if (request.method === "POST" && masterWordClueMatch) return submitMasterWordClue(request, masterWordClueMatch[1], env);
+      const masterWordGuessMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/guess$/);
+      if (request.method === "POST" && masterWordGuessMatch) return guessMasterWord(request, masterWordGuessMatch[1], env);
+      const masterWordSkipMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/skip$/);
+      if (request.method === "POST" && masterWordSkipMatch) return skipMasterWord(request, masterWordSkipMatch[1], env);
+      const masterWordLeaveMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/leave$/);
+      if (request.method === "POST" && masterWordLeaveMatch) return leaveMasterWordRoom(request, masterWordLeaveMatch[1], env);
 
       const eventsMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)\/events$/);
       if (request.method === "GET" && eventsMatch) return jobEvent(eventsMatch[1]);
@@ -1605,6 +1623,496 @@ function impostorRoomResponse(room, privatePlayer = null) {
       word: privatePlayer.role === "crew" || revealAll ? room.word : "",
       hint: privatePlayer.role === "impostor" && room.config?.impostorHint ? room.hint : "",
       won: revealAll ? Boolean(privatePlayer.won) : undefined
+    } : undefined
+  };
+}
+
+const MASTER_WORD_MAX_ROUNDS = 13;
+const MASTER_WORDS = [
+  "abeja", "abogado", "acuario", "albahaca", "almendra", "ancla", "antena", "archivo", "armadura", "asteroide",
+  "bambu", "barco", "bateria", "biblioteca", "bigote", "brujula", "burbuja", "caballo", "cactus", "calabaza",
+  "camaleon", "campana", "canela", "caracol", "carpeta", "castillo", "cereza", "cicatriz", "cohete", "colmena",
+  "cometa", "corona", "diamante", "dragon", "embudo", "escoba", "espejo", "farol", "flauta", "galaxia",
+  "girasol", "globo", "helicoptero", "herradura", "iguana", "isla", "jirafa", "laberinto", "linterna", "maleta",
+  "martillo", "medusa", "microfono", "murcielago", "naranja", "nube", "orquesta", "palmera", "paraguas", "pirata",
+  "pizarra", "planeta", "puente", "reloj", "robot", "sandia", "semilla", "sirena", "tambor", "telescopio",
+  "tesoro", "tiburon", "tornado", "tortuga", "volcan", "zanahoria"
+];
+
+async function createMasterWordRoom(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "Room storage is not configured" }, 503);
+  const room = normalizeNewMasterWordRoom(await request.json().catch(() => ({})));
+  if (!room) return json({ error: "Sala, jugador o configuracion no valida" }, 400);
+  const existing = await loadMasterWordRoom(room.key, env);
+  if (existing && isMasterWordHostConnected(existing)) return json({ error: "Room name is already in use" }, 409);
+  if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(masterWordStorageKey(room.key)).run();
+  await saveMasterWordRoom(room, env, true);
+  return json(masterWordRoomResponse(room, room.players[0]), 201);
+}
+
+async function joinMasterWordRoom(request, roomName, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const identity = normalizeMasterWordIdentity(await request.json().catch(() => ({})));
+  if (!identity) return json({ error: "Invalid player details" }, 400);
+  const existingPlayer = room.players.find((player) => player.name === identity.name);
+  if (existingPlayer) {
+    existingPlayer.token = crypto.randomUUID() + crypto.randomUUID();
+    existingPlayer.emoji = identity.emoji;
+    existingPlayer.lastSeen = Date.now();
+    room.updatedAt = Date.now();
+    await saveMasterWordRoom(room, env);
+    return json(masterWordRoomResponse(room, existingPlayer));
+  }
+  if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
+  if (room.players.length >= Number(room.config.playerLimit)) return json({ error: "Room is full" }, 409);
+  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) return json({ error: "Player name is already in use" }, 409);
+  const player = createMasterWordPlayer(identity, nextMasterWordSeatNumber(room));
+  room.players.push(player);
+  if (room.players.length === Number(room.config.playerLimit)) startMasterWordRound(room);
+  room.updatedAt = Date.now();
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player), 201);
+}
+
+async function getMasterWordRoom(roomName, request, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const url = new URL(request.url);
+  const player = touchMasterWordRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player));
+}
+
+async function startMasterWordGame(request, roomName, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!isMasterWordHost(room, player)) return json({ error: "Only host can start" }, 403);
+  if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
+  if (room.players.length < 3) return json({ error: "Need at least 3 players" }, 409);
+  startMasterWordRound(room);
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player));
+}
+
+async function restartMasterWordGame(request, roomName, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!isMasterWordHost(room, player)) return json({ error: "Only host can restart" }, 403);
+  resetMasterWordGame(room);
+  if (room.players.length >= 3) startMasterWordRound(room);
+  room.updatedAt = Date.now();
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player));
+}
+
+async function submitMasterWordClue(request, roomName, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "clue" || player.id === room.activePlayerId) return json({ error: "No puedes enviar pista ahora" }, 400);
+  const expected = getMasterWordClueSlots(room);
+  const values = Array.isArray(body.clues) ? body.clues : [body.clue];
+  const clues = values.map((value) => normalizeMasterWordClue(value)).filter(Boolean).slice(0, expected);
+  if (clues.length !== expected) return json({ error: expected > 1 ? `Envia ${expected} pistas` : "Envia una pista" }, 400);
+  room._actionRoundKey = masterWordRoundKey(room);
+  room.clues = { ...(room.clues || {}), [player.id]: clues };
+  player.lastSeen = Date.now();
+  if (areMasterWordCluesReady(room)) {
+    room.clueReview = reviewMasterWordClues(room);
+    room.status = "guessing";
+    setMasterWordEvent(room, { type: "clues-ready" });
+  }
+  room.updatedAt = Date.now();
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player));
+}
+
+async function guessMasterWord(request, roomName, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!player || room.status !== "guessing" || player.id !== room.activePlayerId) return json({ error: "Solo adivina el jugador activo" }, 400);
+  const guess = String(body.guess || "").trim().replace(/\s+/g, " ").slice(0, 40);
+  if (!guess) return json({ error: "Escribe una respuesta" }, 400);
+  const correct = normalizeMasterWordText(guess) === normalizeMasterWordText(room.word);
+  finishMasterWordRound(room, correct ? "correct" : "wrong", guess);
+  room.updatedAt = Date.now();
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player));
+}
+
+async function skipMasterWord(request, roomName, env) {
+  const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!player || room.status !== "guessing" || player.id !== room.activePlayerId) return json({ error: "Solo pasa el jugador activo" }, 400);
+  finishMasterWordRound(room, "passed", "");
+  room.updatedAt = Date.now();
+  await saveMasterWordRoom(room, env);
+  return json(masterWordRoomResponse(room, player));
+}
+
+async function leaveMasterWordRoom(request, roomName, env) {
+  const key = normalizeRoomKey(roomName);
+  const room = await loadMasterWordRoom(key, env);
+  if (!room) return json({ ok: true });
+  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  if (!isMasterWordHost(room, player)) return json({ error: "Only room creator can close room" }, 403);
+  await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(masterWordStorageKey(key)).run();
+  return json({ ok: true });
+}
+
+async function loadMasterWordRoom(key, env) {
+  if (!key || !env.LEADERBOARD_DB) return null;
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(masterWordStorageKey(key)).first();
+  return row?.stateJson ? { ...JSON.parse(row.stateJson), _version: row.updatedAt } : null;
+}
+
+async function saveMasterWordRoom(room, env, create = false) {
+  const storageKey = masterWordStorageKey(room.key);
+  if (create) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(storageKey, masterWordRoomJson(room), version).run();
+    room._version = version;
+    return;
+  }
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    const previousVersion = room._version || "";
+    const result = previousVersion
+      ? await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+        .bind(masterWordRoomJson(room), version, storageKey, previousVersion).run()
+      : await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ?")
+        .bind(masterWordRoomJson(room), version, storageKey).run();
+    if (result.meta?.changes) {
+      room._version = version;
+      delete room._touchOnly;
+      delete room._actionRoundKey;
+      return;
+    }
+    const latest = await loadMasterWordRoom(room.key, env);
+    if (!latest) throw new Error("Room not found");
+    Object.assign(room, mergeMasterWordRooms(latest, room));
+  }
+  throw new Error("Room update conflict");
+}
+
+function masterWordStorageKey(key) {
+  return `masterword:${key}`;
+}
+
+function masterWordRoomJson(room) {
+  const stored = { ...room };
+  delete stored._version;
+  delete stored._touchOnly;
+  delete stored._actionRoundKey;
+  return JSON.stringify(stored);
+}
+
+function mergeMasterWordRooms(latest, incoming) {
+  if (incoming._touchOnly) {
+    const merged = { ...latest };
+    merged.players = mergeMasterWordPlayers(latest.players, incoming.players);
+    merged._version = latest._version;
+    return merged;
+  }
+  const staleAction = incoming._actionRoundKey && incoming._actionRoundKey !== masterWordRoundKey(latest);
+  if (staleAction) return { ...latest, players: mergeMasterWordPlayers(latest.players, incoming.players), _version: latest._version };
+  const merged = { ...incoming, players: mergeMasterWordPlayers(latest.players, incoming.players), _version: latest._version };
+  if (incoming._actionRoundKey && latest.status === "clue" && incoming.status === "clue") {
+    merged.clues = { ...(latest.clues || {}), ...(incoming.clues || {}) };
+    if (areMasterWordCluesReady(merged)) {
+      merged.clueReview = reviewMasterWordClues(merged);
+      merged.status = "guessing";
+      setMasterWordEvent(merged, { type: "clues-ready" });
+    }
+  }
+  merged._actionRoundKey = incoming._actionRoundKey;
+  return merged;
+}
+
+function mergeMasterWordPlayers(latestPlayers = [], incomingPlayers = []) {
+  const players = new Map(latestPlayers.map((player) => [player.id, { ...player }]));
+  incomingPlayers.forEach((player) => {
+    const current = players.get(player.id);
+    players.set(player.id, { ...(current || {}), ...player, lastSeen: Math.max(Number(current?.lastSeen || 0), Number(player.lastSeen || 0)) });
+  });
+  return [...players.values()].sort((a, b) => Number(a.seatNumber || 0) - Number(b.seatNumber || 0));
+}
+
+function masterWordRoundKey(room) {
+  return `${room.status}:${room.roundIndex}:${room.activePlayerId}:${room.word}`;
+}
+
+function normalizeNewMasterWordRoom(value) {
+  const key = normalizeRoomKey(value?.roomName);
+  const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
+  const identity = normalizeMasterWordIdentity(value);
+  const playerLimit = Math.floor(Number(value?.config?.playerLimit || value?.playerLimit || 5));
+  if (!key || !roomName || !identity || playerLimit < 3 || playerLimit > 7) return null;
+  const host = createMasterWordPlayer(identity, 1);
+  return {
+    key,
+    roomName,
+    config: { playerLimit },
+    status: "lobby",
+    hostId: host.id,
+    activePlayerId: "",
+    activeSeatIndex: -1,
+    roundIndex: 0,
+    opportunitiesUsed: 0,
+    score: 0,
+    word: "",
+    usedWords: [],
+    clues: {},
+    clueReview: null,
+    history: [],
+    eventId: "",
+    lastEvent: null,
+    players: [host],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+function normalizeMasterWordIdentity(value) {
+  const name = String(value?.playerName || "").trim().replace(/\s+/g, " ").slice(0, 16);
+  const emoji = Array.from(String(value?.emoji || "").trim())[0] || "";
+  return name && emoji ? { name, emoji } : null;
+}
+
+function createMasterWordPlayer(identity, seatNumber) {
+  return { id: crypto.randomUUID(), token: crypto.randomUUID() + crypto.randomUUID(), ...identity, seatNumber, lastSeen: Date.now() };
+}
+
+function nextMasterWordSeatNumber(room) {
+  return Math.max(0, ...room.players.map((player) => Number(player.seatNumber) || 0)) + 1;
+}
+
+function touchMasterWordRoom(room, playerId, token) {
+  const player = authenticateMultiplayerPlayer(room, { playerId, token });
+  if (player) player.lastSeen = Date.now();
+  room._touchOnly = true;
+  room.updatedAt = Date.now();
+  return player || null;
+}
+
+function resetMasterWordGame(room) {
+  room.status = "lobby";
+  room.activePlayerId = "";
+  room.activeSeatIndex = -1;
+  room.roundIndex = 0;
+  room.opportunitiesUsed = 0;
+  room.score = 0;
+  room.word = "";
+  room.usedWords = [];
+  room.clues = {};
+  room.clueReview = null;
+  room.history = [];
+  room.eventId = "";
+  room.lastEvent = null;
+}
+
+function startMasterWordRound(room) {
+  if (room.players.length < 3) return;
+  const nextWord = getNextMasterWord(room);
+  if (!nextWord || Number(room.opportunitiesUsed || 0) >= MASTER_WORD_MAX_ROUNDS) {
+    finishMasterWordGame(room, { type: "finished" });
+    return;
+  }
+  room.status = "clue";
+  room.roundIndex = Number(room.roundIndex || 0) + 1;
+  room.activeSeatIndex = (Number(room.activeSeatIndex ?? -1) + 1) % room.players.length;
+  room.activePlayerId = room.players[room.activeSeatIndex]?.id || room.players[0]?.id || "";
+  room.word = nextWord;
+  room.usedWords = [...(room.usedWords || []), nextWord];
+  room.clues = {};
+  room.clueReview = null;
+  setMasterWordEvent(room, { type: "round-start", activePlayerName: getMasterWordActivePlayer(room)?.name || "" });
+}
+
+function getNextMasterWord(room) {
+  const used = new Set(room.usedWords || []);
+  const available = MASTER_WORDS.filter((word) => !used.has(word));
+  if (!available.length) return "";
+  return available[Math.floor(Math.random() * available.length)];
+}
+
+function getMasterWordActivePlayer(room) {
+  return room.players.find((player) => player.id === room.activePlayerId) || null;
+}
+
+function getMasterWordClueSlots(room) {
+  return room.players.length === 3 ? 2 : 1;
+}
+
+function areMasterWordCluesReady(room) {
+  const clueSlots = getMasterWordClueSlots(room);
+  return room.players
+    .filter((player) => player.id !== room.activePlayerId)
+    .every((player) => (room.clues?.[player.id] || []).length === clueSlots);
+}
+
+function reviewMasterWordClues(room) {
+  const entries = [];
+  for (const [playerId, clues] of Object.entries(room.clues || {})) {
+    const player = room.players.find((item) => item.id === playerId);
+    (clues || []).forEach((text, index) => {
+      entries.push({ id: `${playerId}:${index}`, playerId, playerName: player?.name || "", emoji: player?.emoji || "", text, normalized: normalizeMasterWordText(text) });
+    });
+  }
+  const counts = new Map();
+  entries.forEach((entry) => counts.set(entry.normalized, (counts.get(entry.normalized) || 0) + 1));
+  const reviewed = entries.map((entry) => {
+    const invalidReason = getMasterWordInvalidReason(entry.text, room.word);
+    const duplicate = counts.get(entry.normalized) > 1;
+    return { ...entry, valid: !invalidReason && !duplicate, reason: invalidReason || (duplicate ? "duplicada" : "") };
+  });
+  return {
+    valid: reviewed.filter((entry) => entry.valid).map(({ id, text }) => ({ id, text })),
+    removed: reviewed.filter((entry) => !entry.valid).map(({ id, text, reason }) => ({ id, text, reason })),
+    all: reviewed
+  };
+}
+
+function getMasterWordInvalidReason(clue, word) {
+  const text = String(clue || "").trim();
+  if (!text) return "vacia";
+  if (/\s/.test(text)) return "varias palabras";
+  const normalized = normalizeMasterWordText(text);
+  const wordNormalized = normalizeMasterWordText(word);
+  if (!normalized) return "vacia";
+  if (normalized === wordNormalized) return "palabra secreta";
+  if (normalized.length >= 4 && wordNormalized.includes(normalized)) return "variante";
+  if (wordNormalized.length >= 4 && normalized.includes(wordNormalized)) return "variante";
+  if (levenshteinDistance(normalized, wordNormalized) <= 1) return "demasiado parecida";
+  return "";
+}
+
+function finishMasterWordRound(room, result, guess) {
+  const correct = result === "correct";
+  const penalty = result === "wrong" ? 2 : 1;
+  room.opportunitiesUsed = Math.min(MASTER_WORD_MAX_ROUNDS, Number(room.opportunitiesUsed || 0) + penalty);
+  if (correct) room.score = Number(room.score || 0) + 1;
+  room.history = [...(room.history || []), {
+    roundNumber: room.roundIndex,
+    activePlayerId: room.activePlayerId,
+    activePlayerName: getMasterWordActivePlayer(room)?.name || "",
+    word: room.word,
+    guess,
+    result,
+    score: room.score,
+    validClues: room.clueReview?.valid || [],
+    removedClues: room.clueReview?.removed || []
+  }];
+  if (room.opportunitiesUsed >= MASTER_WORD_MAX_ROUNDS || room.usedWords.length >= MASTER_WORDS.length) {
+    finishMasterWordGame(room, { type: result, guess });
+    return;
+  }
+  startMasterWordRound(room);
+}
+
+function finishMasterWordGame(room, event) {
+  room.status = "finished";
+  room.activePlayerId = "";
+  room.clues = {};
+  room.clueReview = null;
+  setMasterWordEvent(room, event || { type: "finished" });
+}
+
+function setMasterWordEvent(room, event) {
+  room.eventId = crypto.randomUUID();
+  room.lastEvent = event || {};
+}
+
+function normalizeMasterWordClue(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 28);
+}
+
+function normalizeMasterWordText(value) {
+  return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[b.length];
+}
+
+function isMasterWordHost(room, player) {
+  return Boolean(player && player.id === (room.hostId || room.players[0]?.id));
+}
+
+function isMasterWordHostConnected(room) {
+  const host = room.players.find((player) => player.id === (room.hostId || room.players[0]?.id));
+  return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
+}
+
+function masterWordRoomResponse(room, privatePlayer = null) {
+  const now = Date.now();
+  const activePlayer = getMasterWordActivePlayer(room);
+  const isActive = privatePlayer?.id === room.activePlayerId;
+  const clueSlots = getMasterWordClueSlots(room);
+  const clueReview = room.clueReview || { valid: [], removed: [] };
+  const showClues = ["guessing", "finished"].includes(room.status);
+  return {
+    roomName: room.roomName,
+    config: room.config,
+    status: room.status,
+    eventId: room.eventId || "",
+    lastEvent: room.lastEvent || null,
+    roundIndex: Number(room.roundIndex || 0),
+    roundNumber: Math.min(Number(room.roundIndex || 0), MASTER_WORD_MAX_ROUNDS),
+    maxRounds: MASTER_WORD_MAX_ROUNDS,
+    opportunitiesUsed: Number(room.opportunitiesUsed || 0),
+    score: Number(room.score || 0),
+    activePlayerId: room.activePlayerId || "",
+    activePlayerName: activePlayer?.name || "",
+    clueSlots,
+    cluesCast: Object.keys(room.clues || {}).length,
+    clueGivers: Math.max(0, room.players.length - 1),
+    validClues: showClues ? clueReview.valid.map(({ id, text }) => ({ id, text })) : [],
+    removedClues: showClues && !isActive ? clueReview.removed.map(({ id, text, reason }) => ({ id, text, reason })) : [],
+    history: room.status === "finished" ? room.history || [] : (room.history || []).map(({ word, ...item }) => item),
+    players: room.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      emoji: player.emoji,
+      seatNumber: player.seatNumber,
+      connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
+      isActive: player.id === room.activePlayerId,
+      hasSubmitted: (room.clues?.[player.id] || []).length === clueSlots
+    })).sort((a, b) => a.seatNumber - b.seatNumber),
+    player: privatePlayer ? {
+      id: privatePlayer.id,
+      token: privatePlayer.token,
+      isHost: isMasterWordHost(room, privatePlayer),
+      isActive,
+      clueSlots,
+      hasSubmitted: (room.clues?.[privatePlayer.id] || []).length === clueSlots,
+      word: !isActive && ["clue", "guessing", "finished"].includes(room.status) ? room.word : "",
+      canClue: room.status === "clue" && !isActive && (room.clues?.[privatePlayer.id] || []).length !== clueSlots,
+      canGuess: room.status === "guessing" && isActive
     } : undefined
   };
 }

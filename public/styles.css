@@ -9235,3 +9235,562 @@ body.resistance-active .content {
     overflow: visible !important;
   }
 }
+
+/* Palabra maestra - cooperative clue identity */
+body.masterword-active {
+  background: #10101f;
+}
+
+body.masterword-active .app-shell,
+body.masterword-active .content {
+  background: radial-gradient(circle at 12% 8%, rgba(255, 213, 92, 0.16), transparent 32%), linear-gradient(135deg, #111327 0%, #18213a 50%, #261229 100%);
+}
+
+.nav-link[data-view-target="masterWordView"]:hover,
+.nav-link[data-view-target="masterWordView"].active {
+  border-color: rgba(255, 213, 92, 0.74);
+  color: #fff8dd;
+  background: rgba(157, 104, 255, 0.28);
+}
+
+.home-menu-card[data-view-target="masterWordView"] {
+  border-color: rgba(255, 213, 92, 0.52);
+  background: linear-gradient(145deg, rgba(30, 25, 66, 0.94), rgba(95, 36, 82, 0.9));
+}
+
+.home-menu-card[data-view-target="masterWordView"] strong {
+  color: #ffdf6b;
+}
+
+.home-menu-card[data-view-target="masterWordView"]::before {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 223, 107, 0.22), transparent 26%),
+    linear-gradient(145deg, rgba(31, 25, 78, 0.96), rgba(100, 41, 91, 0.94));
+}
+
+.home-menu-card[data-view-target="masterWordView"]::after {
+  border: 2px solid rgba(255, 223, 107, 0.42);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 223, 107, 0.2), rgba(122, 91, 255, 0.16));
+  transform: rotate(-7deg);
+}
+
+.masterword-view {
+  min-height: 100%;
+  color: #fff9e7;
+}
+
+.masterword-lobby,
+.masterword-game {
+  display: grid;
+  gap: 18px;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+.masterword-briefing {
+  display: grid;
+  gap: 8px;
+  padding: clamp(14px, 4vw, 34px) 0 0;
+}
+
+.masterword-briefing > span {
+  color: #ffdf6b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.masterword-briefing h1 {
+  margin: 0;
+  color: #fff7d6;
+  font-size: clamp(2.7rem, 8vw, 6.4rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.masterword-briefing p {
+  max-width: 780px;
+  margin: 0;
+  color: rgba(255, 249, 231, 0.76);
+  font-size: clamp(0.95rem, 2vw, 1.18rem);
+}
+
+.masterword-choice,
+.masterword-form,
+.masterword-players-panel,
+.masterword-play-panel {
+  border: 1px solid rgba(255, 223, 107, 0.24);
+  border-radius: 8px;
+  background: rgba(10, 15, 32, 0.84);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+
+.masterword-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.masterword-choice-button,
+.masterword-form button,
+.masterword-play-panel button {
+  border: 1px solid rgba(255, 223, 107, 0.38);
+  border-radius: 8px;
+  color: #1b1630;
+  background: linear-gradient(135deg, #ffdf6b, #f8a64f);
+  font-weight: 900;
+}
+
+.masterword-choice-button {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  gap: 8px;
+}
+
+.masterword-choice-button span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff8dd;
+  background: rgba(122, 91, 255, 0.34);
+  font-size: 1.5rem;
+}
+
+.masterword-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.masterword-form h2 {
+  margin: 0;
+  color: #ffdf6b;
+  text-transform: uppercase;
+}
+
+.masterword-form input,
+.masterword-form select,
+.masterword-clue-form input,
+.masterword-guess-form input {
+  width: 100%;
+  border: 1px solid rgba(255, 223, 107, 0.28);
+  border-radius: 8px;
+  color: #fff9e7;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.masterword-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.masterword-form-actions,
+.masterword-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.masterword-game {
+  grid-template-columns: minmax(220px, 0.72fr) minmax(320px, 1.28fr);
+  grid-template-areas:
+    "controls controls"
+    "players play";
+  align-items: stretch;
+}
+
+.masterword-command-strip {
+  grid-area: controls;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: end;
+  gap: 6px;
+}
+
+.masterword-command-strip button {
+  min-height: clamp(28px, 4.8vh, 38px);
+  padding-inline: clamp(7px, 1vw, 12px);
+  border-width: 1px;
+  border-radius: 8px;
+  color: #fff8e8;
+  font-size: clamp(0.62rem, 1.45vh, 0.84rem);
+  font-weight: 900;
+  line-height: 1.08;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 24px rgba(0,0,0,0.24);
+}
+
+#masterWordShareButton:not([hidden]) {
+  border-color: rgba(63, 211, 224, 0.82);
+  background: linear-gradient(180deg, rgba(36, 151, 169, 0.96), rgba(19, 92, 116, 0.98));
+}
+
+#masterWordRestartButton:not([hidden]) {
+  color: #ecfff8;
+  border-color: rgba(60, 220, 160, 0.82);
+  background: linear-gradient(180deg, rgba(33, 174, 122, 0.98), rgba(21, 105, 82, 0.98));
+}
+
+#masterWordLeaveButton {
+  color: #fff1f3;
+  border-color: rgba(255, 97, 120, 0.82);
+  background: linear-gradient(180deg, rgba(174, 60, 84, 0.96), rgba(108, 35, 60, 0.98));
+}
+
+.masterword-board {
+  display: contents;
+}
+
+.masterword-players-panel {
+  grid-area: players;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.masterword-play-panel {
+  grid-area: play;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+}
+
+.masterword-room-strip {
+  display: grid;
+  min-height: 42px;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 223, 107, 0.2);
+}
+
+.masterword-room-strip strong {
+  overflow: hidden;
+  color: #ffdf6b;
+  font-size: clamp(1rem, 2.5vw, 1.7rem);
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.masterword-players {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.masterword-player-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas:
+    "avatar name"
+    "avatar status"
+    "avatar note";
+  align-items: center;
+  gap: 1px 10px;
+  min-height: 68px;
+  padding: 8px;
+  border: 1px solid rgba(255, 223, 107, 0.18);
+  border-left: 5px solid rgba(255, 223, 107, 0.38);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.masterword-player-card.is-current {
+  border-left-color: #7ddfff;
+}
+
+.masterword-player-card.is-active-player {
+  border-color: rgba(255, 223, 107, 0.68);
+  background: rgba(255, 223, 107, 0.12);
+}
+
+.masterword-player-card.has-submitted {
+  border-left-color: #6af094;
+}
+
+.masterword-player-card.is-disconnected {
+  opacity: 0.48;
+}
+
+.masterword-player-card > span {
+  grid-area: avatar;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 223, 107, 0.12);
+  font-size: 1.45rem;
+}
+
+.masterword-player-card strong { grid-area: name; }
+.masterword-player-card small { grid-area: status; color: #ffdf6b; }
+.masterword-player-card b { grid-area: note; color: rgba(255, 249, 231, 0.58); font-size: 0.75rem; }
+
+.masterword-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.masterword-score-grid article,
+.masterword-role-card,
+.masterword-clue-board {
+  border: 1px solid rgba(255, 223, 107, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.masterword-score-grid article {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.masterword-score-grid span,
+.masterword-role-card span,
+.masterword-clue-board h3 {
+  color: rgba(255, 249, 231, 0.62);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.masterword-score-grid strong {
+  color: #ffdf6b;
+  font-size: clamp(1.5rem, 4vw, 2.6rem);
+}
+
+.masterword-role-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-left: 6px solid #ffdf6b;
+}
+
+.masterword-role-card.is-active {
+  border-left-color: #7ddfff;
+  background: rgba(125, 223, 255, 0.1);
+}
+
+.masterword-role-card strong {
+  color: #fff8dd;
+  font-size: clamp(1.6rem, 5vw, 3.4rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.masterword-role-card p,
+.masterword-play-panel .message {
+  margin: 0;
+  color: rgba(255, 249, 231, 0.78);
+}
+
+.masterword-clue-form,
+.masterword-guess-form {
+  display: grid;
+  gap: 10px;
+}
+
+#masterWordClueInputs {
+  display: grid;
+  gap: 8px;
+}
+
+.masterword-clue-board {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.masterword-clue-board h3 {
+  margin: 0;
+}
+
+#masterWordValidClues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#masterWordValidClues span {
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 223, 107, 0.24);
+  border-radius: 999px;
+  color: #1b1630;
+  background: #ffdf6b;
+  font-weight: 950;
+}
+
+.masterword-choice[hidden],
+.masterword-form[hidden],
+.masterword-lobby[hidden],
+.masterword-game[hidden],
+.masterword-role-card[hidden],
+.masterword-clue-form[hidden],
+.masterword-guess-form[hidden],
+.masterword-clue-board[hidden],
+#masterWordStartButton[hidden],
+#masterWordShareButton[hidden],
+#masterWordRestartButton[hidden] {
+  display: none !important;
+}
+
+@media (min-width: 821px) {
+  .nav-menu {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-width: min(56vw, 760px);
+  }
+}
+
+@media (max-width: 820px) {
+  .home-menu-card[data-view-target="masterWordView"] {
+    min-height: 132px;
+  }
+}
+
+@media (max-width: 760px) {
+  .masterword-game {
+    width: 100%;
+    grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr);
+    grid-template-areas:
+      "controls controls"
+      "players play";
+    gap: 6px;
+  }
+
+  .masterword-command-strip {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  .masterword-command-strip button {
+    min-height: 40px;
+    padding: 6px;
+    font-size: clamp(0.64rem, 2.8vw, 0.84rem);
+    line-height: 1.05;
+  }
+
+  .masterword-players-panel,
+  .masterword-play-panel {
+    padding: 8px;
+  }
+
+  .masterword-score-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .masterword-player-card {
+    min-height: 58px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 1px 7px;
+    padding: 6px;
+  }
+
+  .masterword-player-card > span {
+    width: 32px;
+    height: 32px;
+    font-size: 1.08rem;
+  }
+
+  .masterword-form .player-identity-row {
+    grid-template-columns: minmax(96px, 112px) minmax(0, 1fr);
+  }
+}
+
+/* Impostor mobile compact game height balance */
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .content {
+    min-height: auto !important;
+    padding-top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-view,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game {
+    grid-template-rows: auto auto !important;
+    align-content: start !important;
+    gap: 5px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game > .impostor-board {
+    align-items: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 5px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel {
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: start !important;
+    overflow: visible !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel {
+    grid-template-rows: auto auto !important;
+    gap: 7px !important;
+    padding: 7px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-circle {
+    height: auto !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: auto !important;
+    align-items: start !important;
+    gap: 5px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel {
+    grid-template-rows: auto auto auto auto auto !important;
+    align-content: start !important;
+    gap: 7px !important;
+    padding: 7px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-round-counter,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card {
+    min-height: clamp(82px, 17svh, 112px) !important;
+    padding: 8px !important;
+    align-content: center !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-round-counter {
+    gap: 1px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-round-counter strong {
+    font-size: clamp(2rem, 10vw, 3.15rem) !important;
+    line-height: 0.95 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card strong {
+    font-size: clamp(1.35rem, 5.5vw, 2.3rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card p,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel .message {
+    min-height: 0 !important;
+    font-size: clamp(0.72rem, 2.6vw, 0.86rem) !important;
+    line-height: 1.15 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-main-button {
+    min-height: 42px !important;
+    padding: 8px !important;
+  }
+}

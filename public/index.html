@@ -51,6 +51,7 @@
         <button type="button" class="nav-link" data-view-target="gameView"><span class="nav-icon" aria-hidden="true">♪</span>MANGOless game</button>
         <button type="button" class="nav-link" data-view-target="impostorView"><span class="nav-icon" aria-hidden="true">?</span>Impostor</button>
         <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
+        <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
       </nav>
       <div id="languageSelector" class="language-selector">
@@ -102,6 +103,12 @@
               <strong>La resistencia</strong>
               <small id="homeResistanceHint">Misiones, espias y votos secretos</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeResistancePlayers">Min. 5 players</small></em>
+            </button>
+            <button type="button" class="home-menu-card" data-view-target="masterWordView">
+              <span aria-hidden="true">M</span>
+              <strong>Palabra maestra</strong>
+              <small id="homeMasterWordHint">Pistas secretas y palabras cooperativas</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMasterWordPlayers">Min. 3 players</small></em>
             </button>
           </div>
         </section>
@@ -400,6 +407,91 @@
             </header>
             <div id="resistanceRoundPopupBody" class="resistance-round-popup-body"></div>
           </div>
+        </section>
+
+        <section id="masterWordView" class="view masterword-view" aria-labelledby="masterWordTitle" hidden>
+          <section id="masterWordLobby" class="masterword-lobby" aria-label="Palabra maestra lobby">
+            <header class="masterword-briefing">
+              <span>Cooperativo de pistas</span>
+              <h1 id="masterWordTitle">Palabra maestra</h1>
+              <p id="masterWordSubtitle">Da pistas secretas, elimina duplicados y ayuda al jugador activo a adivinar 13 palabras.</p>
+            </header>
+            <div id="masterWordChoice" class="masterword-choice">
+              <button type="button" id="masterWordChooseCreate" class="masterword-choice-button"><span aria-hidden="true">+</span><strong>Crear sala</strong></button>
+              <button type="button" id="masterWordChooseJoin" class="masterword-choice-button"><span aria-hidden="true">-&gt;</span><strong>Unirse a sala</strong></button>
+            </div>
+            <form id="masterWordCreateForm" class="masterword-form" hidden>
+              <h2>Crear sala</h2>
+              <input id="masterWordCreateRoomName" maxlength="16" required placeholder="Nombre de la sala">
+              <div class="player-identity-row">
+                <select id="masterWordCreateEmoji" aria-label="Emoji del jugador"></select>
+                <input id="masterWordCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
+              </div>
+              <label><span>Jugadores</span><input id="masterWordCreatePlayerLimit" type="number" min="3" max="7" step="1" inputmode="numeric" value="5"></label>
+              <div class="masterword-form-actions">
+                <button type="button" class="secondary" data-masterword-back>Atras</button>
+                <button type="submit">Crear sala</button>
+              </div>
+            </form>
+            <form id="masterWordJoinForm" class="masterword-form" hidden>
+              <h2>Unirse a sala</h2>
+              <input id="masterWordJoinRoomName" maxlength="16" required placeholder="Nombre de la sala">
+              <div class="player-identity-row">
+                <select id="masterWordJoinEmoji" aria-label="Emoji del jugador"></select>
+                <input id="masterWordJoinPlayerName" maxlength="16" required placeholder="Tu nombre">
+              </div>
+              <div class="masterword-form-actions">
+                <button type="button" class="secondary" data-masterword-back>Atras</button>
+                <button type="submit">Entrar</button>
+              </div>
+            </form>
+            <div id="masterWordLobbyMessage" class="message"></div>
+          </section>
+
+          <section id="masterWordGame" class="masterword-game" hidden>
+            <div class="masterword-command-strip">
+              <button type="button" id="masterWordShareButton" class="secondary"><span class="button-icon" aria-hidden="true">&#128279;</span> Copiar enlace</button>
+              <button type="button" id="masterWordRestartButton" class="secondary" hidden>Reiniciar</button>
+              <button type="button" id="masterWordLeaveButton" class="secondary">Atr&aacute;s</button>
+            </div>
+            <div class="masterword-board" aria-live="polite">
+              <section class="masterword-players-panel">
+                <div class="masterword-room-strip">
+                  <strong id="masterWordRoomLabel"></strong>
+                </div>
+                <div id="masterWordPlayers" class="masterword-players" aria-label="Jugadores"></div>
+              </section>
+              <section class="masterword-play-panel">
+                <div class="masterword-score-grid">
+                  <article><span>Ronda</span><strong id="masterWordRound">0/13</strong></article>
+                  <article><span>Puntos</span><strong id="masterWordScore">0</strong></article>
+                  <article><span>Usadas</span><strong id="masterWordUsed">0/13</strong></article>
+                </div>
+                <section id="masterWordRoleCard" class="masterword-role-card" hidden>
+                  <span id="masterWordRoleLabel">Tu turno</span>
+                  <strong id="masterWordSecretWord">Esperando...</strong>
+                  <p id="masterWordRoleHint"></p>
+                </section>
+                <p id="masterWordGameMessage" class="message"></p>
+                <form id="masterWordClueForm" class="masterword-clue-form" hidden>
+                  <div id="masterWordClueInputs"></div>
+                  <button type="submit" id="masterWordSubmitClueButton">Enviar pista</button>
+                </form>
+                <section id="masterWordClueBoard" class="masterword-clue-board" hidden>
+                  <h3>Pistas validas</h3>
+                  <div id="masterWordValidClues"></div>
+                </section>
+                <form id="masterWordGuessForm" class="masterword-guess-form" hidden>
+                  <input id="masterWordGuessInput" maxlength="40" placeholder="Respuesta">
+                  <div class="masterword-action-row">
+                    <button type="submit" id="masterWordGuessButton">Adivinar</button>
+                    <button type="button" id="masterWordSkipButton" class="secondary">Pasar</button>
+                  </div>
+                </form>
+                <button type="button" id="masterWordStartButton" class="masterword-main-button">Esperando jugadores</button>
+              </section>
+            </div>
+          </section>
         </section>
 
         <section id="converterView" class="view" aria-labelledby="converterTitle" hidden>

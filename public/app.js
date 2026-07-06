@@ -253,6 +253,45 @@ const resistanceRoundPopup = document.querySelector("#resistanceRoundPopup");
 const resistanceRoundPopupTitle = document.querySelector("#resistanceRoundPopupTitle");
 const resistanceRoundPopupClose = document.querySelector("#resistanceRoundPopupClose");
 const resistanceRoundPopupBody = document.querySelector("#resistanceRoundPopupBody");
+const masterWordLobby = document.querySelector("#masterWordLobby");
+const masterWordChoice = document.querySelector("#masterWordChoice");
+const masterWordChooseCreate = document.querySelector("#masterWordChooseCreate");
+const masterWordChooseJoin = document.querySelector("#masterWordChooseJoin");
+const masterWordCreateForm = document.querySelector("#masterWordCreateForm");
+const masterWordCreateRoomName = document.querySelector("#masterWordCreateRoomName");
+const masterWordCreateEmoji = document.querySelector("#masterWordCreateEmoji");
+const masterWordCreatePlayerName = document.querySelector("#masterWordCreatePlayerName");
+const masterWordCreatePlayerLimit = document.querySelector("#masterWordCreatePlayerLimit");
+const masterWordJoinForm = document.querySelector("#masterWordJoinForm");
+const masterWordJoinRoomName = document.querySelector("#masterWordJoinRoomName");
+const masterWordJoinEmoji = document.querySelector("#masterWordJoinEmoji");
+const masterWordJoinPlayerName = document.querySelector("#masterWordJoinPlayerName");
+const masterWordLobbyMessage = document.querySelector("#masterWordLobbyMessage");
+const masterWordGame = document.querySelector("#masterWordGame");
+const masterWordShareButton = document.querySelector("#masterWordShareButton");
+const masterWordRestartButton = document.querySelector("#masterWordRestartButton");
+const masterWordLeaveButton = document.querySelector("#masterWordLeaveButton");
+const masterWordRoomLabel = document.querySelector("#masterWordRoomLabel");
+const masterWordPlayers = document.querySelector("#masterWordPlayers");
+const masterWordRound = document.querySelector("#masterWordRound");
+const masterWordScore = document.querySelector("#masterWordScore");
+const masterWordUsed = document.querySelector("#masterWordUsed");
+const masterWordRoleCard = document.querySelector("#masterWordRoleCard");
+const masterWordRoleLabel = document.querySelector("#masterWordRoleLabel");
+const masterWordSecretWord = document.querySelector("#masterWordSecretWord");
+const masterWordRoleHint = document.querySelector("#masterWordRoleHint");
+const masterWordGameMessage = document.querySelector("#masterWordGameMessage");
+const masterWordClueForm = document.querySelector("#masterWordClueForm");
+const masterWordClueInputs = document.querySelector("#masterWordClueInputs");
+const masterWordSubmitClueButton = document.querySelector("#masterWordSubmitClueButton");
+const masterWordClueBoard = document.querySelector("#masterWordClueBoard");
+const masterWordValidClues = document.querySelector("#masterWordValidClues");
+const masterWordGuessForm = document.querySelector("#masterWordGuessForm");
+const masterWordGuessInput = document.querySelector("#masterWordGuessInput");
+const masterWordGuessButton = document.querySelector("#masterWordGuessButton");
+const masterWordSkipButton = document.querySelector("#masterWordSkipButton");
+const masterWordStartButton = document.querySelector("#masterWordStartButton");
+const masterWordBackButtons = document.querySelectorAll("[data-masterword-back]");
 const languageSelector = document.querySelector("#languageSelector");
 const languageButton = document.querySelector("#languageButton");
 const languageMenu = document.querySelector("#languageMenu");
@@ -268,6 +307,7 @@ const RUN_LENGTH = 10;
 const MULTIPLAYER_EMOJIS = ["🎧", "🎸", "🥭", "🔥", "⭐", "🚀", "👾", "🪩", "🎤", "🏆", "💿", "🕺"];
 const impostor_EMOJIS = ["🕵️", "🎭", "🧩", "🔎", "🎩", "😎", "🤓", "👻", "🤖", "🦄", "🌈", "⚡", "🍕", "🎲", "⭐", "🔥"];
 const RESISTANCE_EMOJIS = ["🕶️", "📡", "🧨", "🗝️", "🧭", "📻", "🛡️", "⚙️", "🧬", "🚧", "🕯️", "🗡️"];
+const MASTER_WORD_EMOJIS = ["\uD83E\uDDE0", "\uD83D\uDCA1", "\uD83D\uDCDD", "\uD83D\uDD0E", "\uD83E\uDDE9", "\uD83D\uDCDA", "\u2728", "\uD83C\uDFAF", "\uD83C\uDF1F", "\uD83D\uDD14", "\uD83C\uDFA8", "\uD83D\uDE80"];
 const impostor_ALARM_MS = 2050;
 const impostor_ORBIT_MS = 4400;
 const impostor_ACTION_FLASH_MS = 760;
@@ -1010,6 +1050,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.gamePlayers": "Min. 1 jugador",
     "home.impostorPlayers": "Min. 3 jugadors",
     "home.resistancePlayers": "Min. 5 jugadors",
+    "home.masterWordHint": "Pistes secretes i paraules cooperatives",
+    "home.masterWordPlayers": "Min. 3 jugadors",
     "home.generatorHint": "Crea llistes CSV",
     "home.converterHint": "Converteix playlists",
     "home.audioHint": "Eines MP3 locals",
@@ -1114,6 +1156,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.gamePlayers": "Min. 1 jugador",
     "home.impostorPlayers": "Min. 3 jugadores",
     "home.resistancePlayers": "Min. 5 jugadores",
+    "home.masterWordHint": "Pistas secretas y palabras cooperativas",
+    "home.masterWordPlayers": "Min. 3 jugadores",
     "home.generatorHint": "Crea listas CSV",
     "home.converterHint": "Convierte playlists",
     "home.audioHint": "Herramientas MP3 locales",
@@ -1218,6 +1262,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.gamePlayers": "Min. 1 player",
     "home.impostorPlayers": "Min. 3 players",
     "home.resistancePlayers": "Min. 5 players",
+    "home.masterWordHint": "Secret clues and cooperative words",
+    "home.masterWordPlayers": "Min. 3 players",
     "home.generatorHint": "Build CSV lists",
     "home.converterHint": "Convert playlists",
     "home.audioHint": "Local MP3 tools",
@@ -1327,6 +1373,8 @@ const STATIC_TEXT_TARGETS = [
   ["#homeGamePlayers", "home.gamePlayers"],
   ["#homeImpostorPlayers", "home.impostorPlayers"],
   ["#homeResistancePlayers", "home.resistancePlayers"],
+  ["#homeMasterWordHint", "home.masterWordHint"],
+  ["#homeMasterWordPlayers", "home.masterWordPlayers"],
   ["#homeGeneratorHint", "home.generatorHint"],
   ["#homeConverterHint", "home.converterHint"],
   ["#homeAudioHint", "home.audioHint"],
@@ -1588,6 +1636,11 @@ let resistanceRoom = null;
 let resistancePollTimer = null;
 let resistanceShownEventId = "";
 let resistanceKnownPlayerIds = new Set();
+let masterWordSession = null;
+let masterWordRoom = null;
+let masterWordPollTimer = null;
+let masterWordShownEventId = "";
+let masterWordKnownPlayerIds = new Set();
 let gameCompleteFlybyPending = false;
 let inviteRoomName = "";
 let youtubeApiPromise = null;
@@ -1623,6 +1676,7 @@ titleHomeLinks.forEach((link) => {
     const url = new URL(window.location.href);
     url.searchParams.delete("impostor");
     url.searchParams.delete("resistance");
+    url.searchParams.delete("masterword");
     window.history.replaceState({}, "", url);
     showView("homeView");
     closeMobileNavMenu();
@@ -1648,6 +1702,7 @@ applyLanguage();
 populateMultiplayerEmojis();
 populateimpostorEmojis();
 populateResistanceEmojis();
+populateMasterWordEmojis();
 syncimpostorWordSetCards();
 syncimpostorConfigLimits();
 renderClipWaveTrack();
@@ -1784,6 +1839,19 @@ resistanceRoundPopup?.addEventListener("click", (event) => {
   if (event.target === resistanceRoundPopup) hideResistanceRoundPopup();
 });
 window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
+masterWordCreateForm?.addEventListener("submit", createMasterWordRoom);
+masterWordJoinForm?.addEventListener("submit", joinMasterWordRoom);
+masterWordChooseCreate?.addEventListener("click", () => showMasterWordForm("create"));
+masterWordChooseJoin?.addEventListener("click", () => showMasterWordForm("join"));
+masterWordBackButtons.forEach((button) => button.addEventListener("click", showMasterWordChoice));
+masterWordShareButton?.addEventListener("click", shareMasterWordRoom);
+masterWordRestartButton?.addEventListener("click", restartMasterWordGame);
+masterWordLeaveButton?.addEventListener("click", leaveMasterWordToMenu);
+masterWordStartButton?.addEventListener("click", startMasterWordGame);
+masterWordClueForm?.addEventListener("submit", submitMasterWordClues);
+masterWordGuessForm?.addEventListener("submit", guessMasterWord);
+masterWordSkipButton?.addEventListener("click", skipMasterWord);
+window.addEventListener("pagehide", () => releaseMasterWordRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
 impostorEventClose?.addEventListener("click", hideImpostorEventPopup);
@@ -3141,6 +3209,398 @@ function releaseimpostorRoomIfHost({ useBeacon = false } = {}) {
   clearInterval(impostorPollTimer);
 }
 
+function populateMasterWordEmojis() {
+  [masterWordCreateEmoji, masterWordJoinEmoji].filter(Boolean).forEach((select, selectIndex) => {
+    select.replaceChildren(...MASTER_WORD_EMOJIS.map((emoji, index) => {
+      const option = document.createElement("option");
+      option.value = emoji;
+      option.textContent = emoji;
+      option.selected = index === selectIndex;
+      return option;
+    }));
+  });
+}
+
+function showMasterWordLobby() {
+  if (!masterWordLobby || !masterWordGame) return;
+  if (masterWordSession) {
+    masterWordLobby.hidden = true;
+    masterWordGame.hidden = false;
+    renderMasterWordRoom(masterWordRoom);
+    return;
+  }
+  masterWordLobby.hidden = false;
+  masterWordGame.hidden = true;
+  if (masterWordLobbyMessage) masterWordLobbyMessage.textContent = "";
+  const inviteRoom = new URLSearchParams(window.location.search).get("masterword");
+  if (inviteRoom && masterWordJoinRoomName) {
+    masterWordJoinRoomName.value = inviteRoom.trim();
+    showMasterWordForm("join");
+    return;
+  }
+  showMasterWordChoice();
+}
+
+function showMasterWordChoice() {
+  if (!masterWordChoice || !masterWordCreateForm || !masterWordJoinForm) return;
+  masterWordChoice.hidden = false;
+  masterWordCreateForm.hidden = true;
+  masterWordJoinForm.hidden = true;
+  if (masterWordLobbyMessage) masterWordLobbyMessage.textContent = "";
+}
+
+function showMasterWordForm(mode) {
+  if (!masterWordChoice || !masterWordCreateForm || !masterWordJoinForm) return;
+  masterWordChoice.hidden = true;
+  masterWordCreateForm.hidden = mode !== "create";
+  masterWordJoinForm.hidden = mode !== "join";
+  if (masterWordLobbyMessage) masterWordLobbyMessage.textContent = "";
+  if (mode === "create") masterWordCreateRoomName?.focus();
+  if (mode === "join") masterWordJoinRoomName?.focus();
+}
+
+async function createMasterWordRoom(event) {
+  event.preventDefault();
+  masterWordLobbyMessage.textContent = "";
+  const roomName = masterWordCreateRoomName.value.trim();
+  const playerName = masterWordCreatePlayerName.value.trim();
+  const playerLimit = Math.max(3, Math.min(7, Math.floor(Number(masterWordCreatePlayerLimit.value) || 5)));
+  masterWordCreateRoomName.value = roomName;
+  masterWordCreatePlayerName.value = playerName;
+  masterWordCreatePlayerLimit.value = String(playerLimit);
+  try {
+    const response = await fetch("/api/masterword/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomName, playerName, emoji: masterWordCreateEmoji.value, config: { playerLimit } })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
+    enterMasterWordRoom(payload);
+  } catch (error) {
+    masterWordLobbyMessage.textContent = error.message;
+  }
+}
+
+async function joinMasterWordRoom(event) {
+  event.preventDefault();
+  masterWordLobbyMessage.textContent = "";
+  const roomName = masterWordJoinRoomName.value.trim();
+  const playerName = masterWordJoinPlayerName.value.trim();
+  masterWordJoinRoomName.value = roomName;
+  masterWordJoinPlayerName.value = playerName;
+  try {
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(roomName)}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerName, emoji: masterWordJoinEmoji.value })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo entrar en la sala");
+    enterMasterWordRoom(payload);
+  } catch (error) {
+    masterWordLobbyMessage.textContent = error.message;
+  }
+}
+
+function enterMasterWordRoom(payload) {
+  masterWordRoom = payload;
+  masterWordSession = { roomName: payload.roomName, playerId: payload.player?.id, token: payload.player?.token, isHost: Boolean(payload.player?.isHost) };
+  masterWordShownEventId = payload.eventId || "";
+  masterWordKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+  masterWordLobby.hidden = true;
+  masterWordGame.hidden = false;
+  renderMasterWordRoom(payload);
+  startMasterWordPolling();
+}
+
+function startMasterWordPolling() {
+  clearInterval(masterWordPollTimer);
+  masterWordPollTimer = window.setInterval(pollMasterWordRoom, 1500);
+}
+
+async function pollMasterWordRoom() {
+  if (!masterWordSession) return;
+  try {
+    const params = new URLSearchParams({ playerId: masterWordSession.playerId, token: masterWordSession.token });
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}?${params}`);
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "Sala no disponible");
+    if (!payload.player) {
+      leaveMasterWordRoom();
+      masterWordLobbyMessage.textContent = "Has salido de esta sala. Vuelve a entrar con tu nombre si hace falta.";
+      return;
+    }
+    masterWordRoom = payload;
+    masterWordSession.isHost = Boolean(payload.player?.isHost);
+    masterWordKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+    renderMasterWordRoom(payload);
+    if (payload.eventId && payload.eventId !== masterWordShownEventId) {
+      masterWordShownEventId = payload.eventId;
+      playimpostorAlarmSound(payload.status === "finished" ? "finished" : "notice");
+    }
+  } catch {
+    // Polling can recover.
+  }
+}
+
+async function startMasterWordGame() {
+  if (!masterWordSession) return;
+  try {
+    masterWordStartButton.disabled = true;
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo iniciar");
+    masterWordRoom = payload;
+    masterWordShownEventId = payload.eventId || "";
+    renderMasterWordRoom(payload);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+  } finally {
+    masterWordStartButton.disabled = false;
+  }
+}
+
+async function restartMasterWordGame() {
+  if (!masterWordSession?.isHost) return;
+  try {
+    masterWordRestartButton.disabled = true;
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/restart`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo reiniciar");
+    masterWordRoom = payload;
+    masterWordShownEventId = payload.eventId || "";
+    renderMasterWordRoom(payload);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+  } finally {
+    masterWordRestartButton.disabled = false;
+  }
+}
+
+async function submitMasterWordClues(event) {
+  event.preventDefault();
+  if (!masterWordSession || !masterWordRoom) return;
+  const clues = [...masterWordClueInputs.querySelectorAll("input")].map((input) => input.value.trim());
+  try {
+    masterWordSubmitClueButton.disabled = true;
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/clue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token, clues })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo enviar pista");
+    masterWordRoom = payload;
+    renderMasterWordRoom(payload);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+  } finally {
+    masterWordSubmitClueButton.disabled = false;
+  }
+}
+
+async function guessMasterWord(event) {
+  event.preventDefault();
+  if (!masterWordSession) return;
+  const guess = masterWordGuessInput.value.trim();
+  if (!guess) return;
+  try {
+    masterWordGuessButton.disabled = true;
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/guess`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token, guess })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo adivinar");
+    masterWordGuessInput.value = "";
+    masterWordRoom = payload;
+    renderMasterWordRoom(payload);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+  } finally {
+    masterWordGuessButton.disabled = false;
+  }
+}
+
+async function skipMasterWord() {
+  if (!masterWordSession) return;
+  try {
+    masterWordSkipButton.disabled = true;
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/skip`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo pasar");
+    masterWordGuessInput.value = "";
+    masterWordRoom = payload;
+    renderMasterWordRoom(payload);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+  } finally {
+    masterWordSkipButton.disabled = false;
+  }
+}
+
+function renderMasterWordRoom(room = masterWordRoom) {
+  if (!room || !masterWordPlayers) return;
+  const players = [...(room.players || [])].sort((a, b) => a.seatNumber - b.seatNumber);
+  const player = room.player || players.find((item) => item.id === masterWordSession?.playerId);
+  const isHost = Boolean(player?.isHost || masterWordSession?.isHost);
+  if (masterWordSession) masterWordSession.isHost = isHost;
+  masterWordRoomLabel.textContent = `Sala: ${room.roomName || ""}`;
+  masterWordRound.textContent = room.status === "lobby" ? `${players.length}/${room.config?.playerLimit || "?"}` : `${room.roundNumber || 0}/${room.maxRounds || 13}`;
+  masterWordScore.textContent = String(room.score || 0);
+  masterWordUsed.textContent = `${room.opportunitiesUsed || 0}/${room.maxRounds || 13}`;
+  masterWordShareButton.hidden = !isHost;
+  masterWordRestartButton.hidden = !isHost || room.status === "lobby";
+  renderMasterWordPlayers(players, player, room);
+  renderMasterWordRole(room, player);
+  renderMasterWordActions(room, player, players, isHost);
+}
+
+function renderMasterWordPlayers(players, currentPlayer, room) {
+  const clueSlots = Number(room.clueSlots || 1);
+  masterWordPlayers.replaceChildren(...players.map((item) => {
+    const card = document.createElement("article");
+    card.className = "masterword-player-card";
+    if (item.id === currentPlayer?.id) card.classList.add("is-current");
+    if (item.isActive) card.classList.add("is-active-player");
+    if (item.hasSubmitted) card.classList.add("has-submitted");
+    if (!item.connected) card.classList.add("is-disconnected");
+    const status = item.isActive ? "Adivina" : room.status === "clue" ? (item.hasSubmitted ? "Pistas listas" : `${clueSlots} pista${clueSlots > 1 ? "s" : ""}`) : room.status === "guessing" ? "Ayudante" : room.status === "lobby" ? "En sala" : "Equipo";
+    card.innerHTML = `<span></span><strong></strong><small></small><b></b>`;
+    card.querySelector("span").textContent = item.emoji || "";
+    card.querySelector("strong").textContent = item.name || "";
+    card.querySelector("small").textContent = status;
+    card.querySelector("b").textContent = item.isActive ? "Jugador activo" : item.hasSubmitted ? "Enviado" : "";
+    return card;
+  }));
+}
+
+function renderMasterWordRole(room, player) {
+  const status = room.status || "lobby";
+  masterWordRoleCard.hidden = status === "lobby";
+  if (status === "lobby") return;
+  masterWordRoleCard.classList.toggle("is-active", Boolean(player?.isActive));
+  if (status === "finished") {
+    masterWordRoleLabel.textContent = "Resultado";
+    masterWordSecretWord.textContent = `${room.score || 0}/${room.maxRounds || 13}`;
+    masterWordRoleHint.textContent = "Partida terminada.";
+    return;
+  }
+  if (player?.isActive) {
+    masterWordRoleLabel.textContent = "Te toca adivinar";
+    masterWordSecretWord.textContent = status === "guessing" ? "Mira las pistas" : "Palabra oculta";
+    masterWordRoleHint.textContent = status === "clue" ? "Espera a que todos envien sus pistas secretas." : "Adivina una vez o pasa.";
+    return;
+  }
+  masterWordRoleLabel.textContent = "Palabra misteriosa";
+  masterWordSecretWord.textContent = player?.word || "Esperando...";
+  masterWordRoleHint.textContent = status === "clue"
+    ? `Escribe ${room.clueSlots || 1} pista${Number(room.clueSlots || 1) > 1 ? "s" : ""} de una sola palabra.`
+    : "Las pistas ya fueron filtradas.";
+}
+
+function renderMasterWordActions(room, player, players, isHost) {
+  const status = room.status || "lobby";
+  masterWordGameMessage.textContent = getMasterWordStatusMessage(room, player);
+  masterWordStartButton.hidden = status !== "lobby" || !isHost;
+  masterWordStartButton.disabled = !(isHost && players.length >= 3);
+  masterWordStartButton.textContent = players.length < 3 ? `Esperando ${players.length}/3` : "Iniciar partida";
+  masterWordClueForm.hidden = !player?.canClue;
+  masterWordGuessForm.hidden = !player?.canGuess;
+  masterWordClueBoard.hidden = !["guessing", "finished"].includes(status) || !room.validClues?.length;
+  if (!masterWordClueForm.hidden) renderMasterWordClueInputs(room, player);
+  renderMasterWordValidClues(room);
+  masterWordGuessButton.disabled = !player?.canGuess;
+  masterWordSkipButton.disabled = !player?.canGuess;
+}
+
+function renderMasterWordClueInputs(room, player) {
+  const slots = Number(player?.clueSlots || room.clueSlots || 1);
+  const existing = [...masterWordClueInputs.querySelectorAll("input")].map((input) => input.value);
+  masterWordClueInputs.replaceChildren(...Array.from({ length: slots }, (_, index) => {
+    const input = document.createElement("input");
+    input.maxLength = 28;
+    input.required = true;
+    input.placeholder = slots > 1 ? `Pista ${index + 1}` : "Pista de una palabra";
+    input.value = existing[index] || "";
+    return input;
+  }));
+}
+
+function renderMasterWordValidClues(room) {
+  masterWordValidClues.replaceChildren(...(room.validClues || []).map((clue) => {
+    const item = document.createElement("span");
+    item.textContent = clue.text || "";
+    return item;
+  }));
+}
+
+function getMasterWordStatusMessage(room, player) {
+  if (room.status === "lobby") return `Esperando jugadores: ${room.players?.length || 0}/${room.config?.playerLimit || "?"}.`;
+  if (room.status === "clue") {
+    if (player?.isActive) return `Eres el jugador activo. Pistas recibidas: ${room.cluesCast || 0}/${room.clueGivers || 0}.`;
+    if (player?.hasSubmitted) return "Pista enviada. Espera a los demas.";
+    return "Escribe una pista secreta. No se mostrara hasta filtrar duplicados.";
+  }
+  if (room.status === "guessing") return player?.isActive ? "Adivina con las pistas validas o pasa." : `${room.activePlayerName} esta adivinando.`;
+  if (room.status === "finished") return `Puntuacion final: ${room.score || 0}/${room.maxRounds || 13}.`;
+  return "";
+}
+
+async function shareMasterWordRoom() {
+  if (!masterWordSession) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("masterword", masterWordSession.roomName);
+  await navigator.clipboard.writeText(url.toString());
+  flashButton(masterWordShareButton, "Copiado", "Copiar enlace");
+}
+
+function leaveMasterWordToMenu() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("masterword");
+  window.history.replaceState({}, "", url);
+  leaveMasterWordRoom();
+  showMasterWordLobby();
+}
+
+function leaveMasterWordRoom() {
+  releaseMasterWordRoomIfHost();
+  clearInterval(masterWordPollTimer);
+  masterWordPollTimer = null;
+  masterWordSession = null;
+  masterWordRoom = null;
+  masterWordShownEventId = "";
+  masterWordKnownPlayerIds = new Set();
+}
+
+function releaseMasterWordRoomIfHost({ useBeacon = false } = {}) {
+  const session = masterWordSession;
+  if (!session?.isHost) return;
+  session.isHost = false;
+  const url = `/api/masterword/rooms/${encodeURIComponent(session.roomName)}/leave`;
+  const body = JSON.stringify({ playerId: session.playerId, token: session.token });
+  if (useBeacon && navigator.sendBeacon) {
+    navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+  } else {
+    void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+  }
+  clearInterval(masterWordPollTimer);
+}
+
 function populateResistanceEmojis() {
   [resistanceCreateEmoji, resistanceJoinEmoji].filter(Boolean).forEach((select, selectIndex) => {
     select.replaceChildren(...RESISTANCE_EMOJIS.map((emoji, index) => {
@@ -3654,6 +4114,14 @@ function applyResistanceRoomFromUrl() {
   resistanceJoinPlayerName.focus();
 }
 
+function applyMasterWordRoomFromUrl() {
+  const roomName = new URLSearchParams(window.location.search).get("masterword");
+  if (!roomName) return;
+  showView("masterWordView");
+  masterWordJoinRoomName.value = roomName.trim();
+  masterWordJoinPlayerName.focus();
+}
+
 function applyInviteRoomFromUrl() {
   const roomName = new URLSearchParams(window.location.search).get("room");
   if (!roomName) return;
@@ -3850,9 +4318,11 @@ function showView(targetId) {
   if (targetId !== "gameView" && document.querySelector("#gameView")?.classList.contains("active")) leaveMultiplayerRoom();
   if (targetId !== "impostorView" && document.querySelector("#impostorView")?.classList.contains("active")) leaveimpostorRoom();
   if (targetId !== "resistanceView" && document.querySelector("#resistanceView")?.classList.contains("active")) leaveResistanceRoom();
+  if (targetId !== "masterWordView" && document.querySelector("#masterWordView")?.classList.contains("active")) leaveMasterWordRoom();
   document.body.classList.toggle("arcade-game-active", targetId === "gameView");
   document.body.classList.toggle("impostor-active", targetId === "impostorView");
   document.body.classList.toggle("resistance-active", targetId === "resistanceView");
+  document.body.classList.toggle("masterword-active", targetId === "masterWordView");
 
   views.forEach((view) => {
     const active = view.id === targetId;
@@ -3868,6 +4338,7 @@ function showView(targetId) {
   if (targetId === "gameView" && gamePhase === "challenge") showChallengeSetup();
   if (targetId === "impostorView") showimpostorLobby();
   if (targetId === "resistanceView") showResistanceLobby();
+  if (targetId === "masterWordView") showMasterWordLobby();
   updateViewportChromeVars();
 }
 
@@ -6524,5 +6995,6 @@ showChallengeSetup();
 applyInviteRoomFromUrl();
 applyimpostorRoomFromUrl();
 applyResistanceRoomFromUrl();
+applyMasterWordRoomFromUrl();
 setGameBusy(true);
 loadSongGroups();
