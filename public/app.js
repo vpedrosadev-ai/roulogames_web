@@ -249,6 +249,10 @@ const resistanceSuccessButton = document.querySelector("#resistanceSuccessButton
 const resistanceSabotageButton = document.querySelector("#resistanceSabotageButton");
 const resistanceStartButton = document.querySelector("#resistanceStartButton");
 const resistanceBackButtons = document.querySelectorAll("[data-resistance-back]");
+const resistanceRoundPopup = document.querySelector("#resistanceRoundPopup");
+const resistanceRoundPopupTitle = document.querySelector("#resistanceRoundPopupTitle");
+const resistanceRoundPopupClose = document.querySelector("#resistanceRoundPopupClose");
+const resistanceRoundPopupBody = document.querySelector("#resistanceRoundPopupBody");
 const languageSelector = document.querySelector("#languageSelector");
 const languageButton = document.querySelector("#languageButton");
 const languageMenu = document.querySelector("#languageMenu");
@@ -1003,6 +1007,9 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.gameHint": "Repte musical",
     "home.impostorHint": "Paraula secreta i votacions",
     "home.resistanceHint": "Missions, espies i vots secrets",
+    "home.gamePlayers": "Min. 1 jugador",
+    "home.impostorPlayers": "Min. 3 jugadors",
+    "home.resistancePlayers": "Min. 5 jugadors",
     "home.generatorHint": "Crea llistes CSV",
     "home.converterHint": "Converteix playlists",
     "home.audioHint": "Eines MP3 locals",
@@ -1104,6 +1111,9 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.gameHint": "Reto musical",
     "home.impostorHint": "Palabra secreta y votaciones",
     "home.resistanceHint": "Misiones, espias y votos secretos",
+    "home.gamePlayers": "Min. 1 jugador",
+    "home.impostorPlayers": "Min. 3 jugadores",
+    "home.resistancePlayers": "Min. 5 jugadores",
     "home.generatorHint": "Crea listas CSV",
     "home.converterHint": "Convierte playlists",
     "home.audioHint": "Herramientas MP3 locales",
@@ -1205,6 +1215,9 @@ const IMPOSTOR_TRANSLATIONS = {
     "home.gameHint": "Music challenge",
     "home.impostorHint": "Secret word and voting",
     "home.resistanceHint": "Missions, spies, and secret votes",
+    "home.gamePlayers": "Min. 1 player",
+    "home.impostorPlayers": "Min. 3 players",
+    "home.resistancePlayers": "Min. 5 players",
     "home.generatorHint": "Build CSV lists",
     "home.converterHint": "Convert playlists",
     "home.audioHint": "Local MP3 tools",
@@ -1311,6 +1324,9 @@ const STATIC_TEXT_TARGETS = [
   ["#homeGameHint", "home.gameHint"],
   ["#homeImpostorHint", "home.impostorHint"],
   ["#homeResistanceHint", "home.resistanceHint"],
+  ["#homeGamePlayers", "home.gamePlayers"],
+  ["#homeImpostorPlayers", "home.impostorPlayers"],
+  ["#homeResistancePlayers", "home.resistancePlayers"],
   ["#homeGeneratorHint", "home.generatorHint"],
   ["#homeConverterHint", "home.converterHint"],
   ["#homeAudioHint", "home.audioHint"],
@@ -1705,6 +1721,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && hostConfigPopup && !hostConfigPopup.hidden) hideHostConfigPopup();
   if (event.key === "Escape" && !customPlaylistPopup.hidden) hideCustomPlaylistPopup();
   if (event.key === "Escape" && !multiplayerPodiumPopup.hidden) hideMultiplayerPodium();
+  if (event.key === "Escape" && resistanceRoundPopup && !resistanceRoundPopup.hidden) hideResistanceRoundPopup();
 });
 
 function closeMobileNavMenu() {
@@ -1761,6 +1778,11 @@ resistanceApproveButton?.addEventListener("click", () => voteResistanceTeam(true
 resistanceRejectButton?.addEventListener("click", () => voteResistanceTeam(false));
 resistanceSuccessButton?.addEventListener("click", () => voteResistanceMission(false));
 resistanceSabotageButton?.addEventListener("click", () => voteResistanceMission(true));
+resistanceMissionTrack?.addEventListener("click", showResistanceRoundPopup);
+resistanceRoundPopupClose?.addEventListener("click", hideResistanceRoundPopup);
+resistanceRoundPopup?.addEventListener("click", (event) => {
+  if (event.target === resistanceRoundPopup) hideResistanceRoundPopup();
+});
 window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
@@ -3385,8 +3407,13 @@ function renderResistanceRoom(room = resistanceRoom) {
 function renderResistanceMissionTrack(room) {
   resistanceMissionTrack.replaceChildren(...Array.from({ length: 5 }, (_, index) => {
     const result = room.missionResults?.[index];
-    const item = document.createElement("span");
+    const item = document.createElement(result ? "button" : "span");
     item.className = "resistance-mission-node";
+    if (result) {
+      item.type = "button";
+      item.dataset.resistanceRoundIndex = String(index);
+      item.setAttribute("aria-label", `Ver detalle de mision ${index + 1}`);
+    }
     if (result) item.classList.add(result.failed ? "is-failed" : "is-success");
     if (!result && index === room.missionIndex && room.status !== "lobby") item.classList.add("is-current");
     item.textContent = String(index + 1);
@@ -3501,6 +3528,71 @@ function formatResistanceEvent(event) {
   return "";
 }
 
+function showResistanceRoundPopup(event) {
+  const button = event.target.closest("[data-resistance-round-index]");
+  if (!button || !resistanceRoundPopup || !resistanceRoundPopupBody || !resistanceRoom) return;
+  const index = Number(button.dataset.resistanceRoundIndex);
+  const result = resistanceRoom.missionResults?.[index];
+  if (!result) return;
+  const missionNumber = Number(result.missionNumber || index + 1);
+  const playersById = new Map((resistanceRoom.players || []).map((player) => [player.id, player]));
+  const supportIds = Object.entries(result.teamVotes || {}).filter(([, approved]) => approved).map(([id]) => id);
+  const rejectIds = Object.entries(result.teamVotes || {}).filter(([, approved]) => !approved).map(([id]) => id);
+  const missionIds = result.teamIds || [];
+  const sabotages = Number(result.sabotages || 0);
+  const successes = Number.isFinite(Number(result.successes)) ? Number(result.successes) : Math.max(0, missionIds.length - sabotages);
+  resistanceRoundPopupTitle.textContent = `Mision ${missionNumber}: ${result.failed ? "Fracaso" : "Exito"}`;
+  resistanceRoundPopupBody.replaceChildren(
+    renderResistanceRoundStatGrid([
+      { label: "Aciertos", value: String(successes) },
+      { label: "Fracasos", value: String(sabotages) },
+      { label: "Necesarios", value: `${sabotages}/${result.requiredFails || 1}` }
+    ]),
+    renderResistanceRoundList("Apoyaron el equipo", supportIds, playersById),
+    renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById),
+    renderResistanceRoundList("Participaron en la mision", missionIds, playersById)
+  );
+  resistanceRoundPopup.hidden = false;
+  document.body.classList.add("songs-popup-open");
+}
+
+function hideResistanceRoundPopup() {
+  if (!resistanceRoundPopup) return;
+  resistanceRoundPopup.hidden = true;
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+}
+
+function renderResistanceRoundStatGrid(items) {
+  const grid = document.createElement("div");
+  grid.className = "resistance-round-stat-grid";
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    const label = document.createElement("span");
+    const value = document.createElement("strong");
+    label.textContent = item.label;
+    value.textContent = item.value;
+    card.append(label, value);
+    grid.append(card);
+  });
+  return grid;
+}
+
+function renderResistanceRoundList(title, ids, playersById) {
+  const section = document.createElement("section");
+  section.className = "resistance-round-list";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  const list = document.createElement("div");
+  list.replaceChildren(...(ids.length ? ids : [""]).map((id) => {
+    const player = playersById.get(id);
+    const item = document.createElement("span");
+    item.textContent = player ? `${player.emoji || ""} ${player.name || ""}`.trim() : (id ? "Jugador desconocido" : "Sin datos");
+    return item;
+  }));
+  section.append(heading, list);
+  return section;
+}
+
 async function shareResistanceRoom() {
   if (!resistanceSession) return;
   const url = new URL(window.location.href);
@@ -3525,6 +3617,7 @@ function leaveResistanceRoom() {
   resistanceRoom = null;
   resistanceShownEventId = "";
   resistanceKnownPlayerIds = new Set();
+  hideResistanceRoundPopup();
 }
 
 function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {

@@ -1749,10 +1749,20 @@ function resolveResistanceTeamVotes(room) {
 
 function resolveResistanceMissionVotes(room) {
   if ((room.currentTeam || []).some((playerId) => room.missionVotes?.[playerId] === undefined)) return;
-  const sabotages = Object.values(room.missionVotes || {}).filter(Boolean).length;
+  const missionVotes = { ...(room.missionVotes || {}) };
+  const sabotages = Object.values(missionVotes).filter(Boolean).length;
+  const successes = Object.values(missionVotes).filter((value) => !value).length;
   const requiredFails = getResistanceFailsRequired(room);
   const failed = sabotages >= requiredFails;
-  room.missionResults.push({ failed, sabotages, requiredFails, teamIds: [...(room.currentTeam || [])] });
+  room.missionResults.push({
+    missionNumber: Number(room.missionIndex || 0) + 1,
+    failed,
+    successes,
+    sabotages,
+    requiredFails,
+    teamIds: [...(room.currentTeam || [])],
+    teamVotes: { ...(room.teamVotes || {}) }
+  });
   const failedMissions = room.missionResults.filter((mission) => mission.failed).length;
   const successfulMissions = room.missionResults.length - failedMissions;
   const event = { type: failed ? "mission-failed" : "mission-succeeded", sabotages, requiredFails, missionNumber: room.missionIndex + 1 };

@@ -89,16 +89,19 @@
               <span aria-hidden="true">♪</span>
               <strong>MANGOless game</strong>
               <small id="homeGameHint">Music guessing challenge</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeGamePlayers">Min. 1 player</small></em>
             </button>
             <button type="button" class="home-menu-card" data-view-target="impostorView">
               <span aria-hidden="true">?</span>
               <strong>Impostor</strong>
               <small id="homeImpostorHint">Secret word and voting game</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeImpostorPlayers">Min. 3 players</small></em>
             </button>
             <button type="button" class="home-menu-card" data-view-target="resistanceView">
               <span aria-hidden="true">R</span>
               <strong>La resistencia</strong>
               <small id="homeResistanceHint">Misiones, espias y votos secretos</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeResistancePlayers">Min. 5 players</small></em>
             </button>
           </div>
         </section>
@@ -349,9 +352,9 @@
 
           <section id="resistanceGame" class="resistance-game" hidden>
             <div class="resistance-command-strip">
-              <button type="button" id="resistanceShareButton" class="secondary">Copiar enlace</button>
+              <button type="button" id="resistanceShareButton" class="secondary"><span class="button-icon" aria-hidden="true">&#128279;</span> Copiar enlace</button>
               <button type="button" id="resistanceRestartButton" class="secondary" hidden>Reiniciar</button>
-              <button type="button" id="resistanceLeaveButton" class="secondary">Atras</button>
+              <button type="button" id="resistanceLeaveButton" class="secondary">Atr&aacute;s</button>
             </div>
             <section class="resistance-status-board" aria-live="polite">
               <div class="resistance-room-code"><span>Sala</span><strong id="resistanceRoomLabel"></strong></div>
@@ -387,6 +390,16 @@
               </section>
             </section>
           </section>
+        </section>
+
+        <section id="resistanceRoundPopup" class="impostor-popup resistance-round-popup" hidden aria-modal="true" role="dialog" aria-labelledby="resistanceRoundPopupTitle">
+          <div class="impostor-popup-card resistance-round-popup-card">
+            <header>
+              <h2 id="resistanceRoundPopupTitle">Mision</h2>
+              <button type="button" id="resistanceRoundPopupClose" class="secondary compact-button">Close</button>
+            </header>
+            <div id="resistanceRoundPopupBody" class="resistance-round-popup-body"></div>
+          </div>
         </section>
 
         <section id="converterView" class="view" aria-labelledby="converterTitle" hidden>
