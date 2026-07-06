@@ -9087,3 +9087,75 @@ body.resistance-active .content {
     align-content: stretch !important;
   }
 }
+
+/* Resistance controls match Impostor + mobile identity selector fit */
+.resistance-command-strip {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, auto)) !important;
+  justify-content: end !important;
+  gap: 6px !important;
+  min-height: 0 !important;
+  width: auto !important;
+  justify-self: end !important;
+}
+
+.resistance-command-strip button {
+  min-height: clamp(28px, 4.8vh, 38px) !important;
+  padding-inline: clamp(7px, 1vw, 12px) !important;
+  border-width: 1px !important;
+  border-radius: 8px !important;
+  color: #fff8e8 !important;
+  font-size: clamp(0.62rem, 1.45vh, 0.84rem) !important;
+  font-weight: 900 !important;
+  line-height: 1.08 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 24px rgba(0,0,0,0.24) !important;
+}
+
+#resistanceShareButton:not([hidden]) {
+  border-color: rgba(63, 211, 224, 0.82) !important;
+  background: linear-gradient(180deg, rgba(36, 151, 169, 0.96), rgba(19, 92, 116, 0.98)) !important;
+}
+
+#resistanceRestartButton:not([hidden]) {
+  color: #ecfff8 !important;
+  border-color: rgba(60, 220, 160, 0.82) !important;
+  background: linear-gradient(180deg, rgba(33, 174, 122, 0.98), rgba(21, 105, 82, 0.98)) !important;
+}
+
+#resistanceLeaveButton {
+  color: #fff1f3 !important;
+  border-color: rgba(255, 97, 120, 0.82) !important;
+  background: linear-gradient(180deg, rgba(174, 60, 84, 0.96), rgba(108, 35, 60, 0.98)) !important;
+}
+
+.resistance-command-strip .button-icon {
+  font-size: 1.08em;
+  line-height: 1;
+}
+
+.resistance-form .player-identity-row {
+  grid-template-columns: minmax(88px, 108px) minmax(0, 1fr);
+}
+
+.resistance-form .player-identity-row select {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .resistance-command-strip {
+    width: 100% !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    justify-content: stretch !important;
+  }
+
+  .resistance-command-strip button {
+    min-height: 40px !important;
+    padding: 6px 6px !important;
+    font-size: clamp(0.64rem, 2.8vw, 0.84rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  .resistance-form .player-identity-row {
+    grid-template-columns: minmax(96px, 112px) minmax(0, 1fr);
+  }
+}

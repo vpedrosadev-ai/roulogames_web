@@ -1648,6 +1648,7 @@ async function joinResistanceRoom(request, roomName, env) {
   if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) return json({ error: "Player name is already in use" }, 409);
   const player = createResistancePlayer(identity, nextResistanceSeatNumber(room));
   room.players.push(player);
+  if (room.players.length === Number(room.config.playerLimit)) assignResistanceRoles(room);
   room.updatedAt = Date.now();
   await saveResistanceRoom(room, env);
   return json(resistanceRoomResponse(room, player), 201);

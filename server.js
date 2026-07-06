@@ -1568,6 +1568,7 @@ async function joinResistanceRoom(req, res, roomName) {
   }
   const player = createResistancePlayer(identity, nextResistanceSeatNumber(room));
   room.players.push(player);
+  if (room.players.length === Number(room.config.playerLimit)) assignResistanceRoles(room);
   room.updatedAt = Date.now();
   sendJson(res, resistanceRoomResponse(room, player), 201);
 }
