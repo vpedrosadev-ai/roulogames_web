@@ -9853,3 +9853,19 @@ body.masterword-active .content {
     min-height: 2.3em !important;
   }
 }
+
+/* Impostor mobile final spacing nudge */
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel {
+    height: calc(100svh - var(--title-bar-height, 72px) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)) - 92px) !important;
+    min-height: 400px !important;
+    max-height: calc(100svh - var(--title-bar-height, 72px) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)) - 92px) !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card {
+    padding-top: 14px !important;
+    padding-bottom: 10px !important;
+    align-content: start !important;
+    gap: 6px !important;
+  }
+}
