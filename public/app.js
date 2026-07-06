@@ -262,6 +262,10 @@ const masterWordCreateRoomName = document.querySelector("#masterWordCreateRoomNa
 const masterWordCreateEmoji = document.querySelector("#masterWordCreateEmoji");
 const masterWordCreatePlayerName = document.querySelector("#masterWordCreatePlayerName");
 const masterWordCreatePlayerLimit = document.querySelector("#masterWordCreatePlayerLimit");
+const masterWordRoundMode = document.querySelector("#masterWordRoundMode");
+const masterWordRoundLimit = document.querySelector("#masterWordRoundLimit");
+const masterWordAttemptMode = document.querySelector("#masterWordAttemptMode");
+const masterWordAttemptLimit = document.querySelector("#masterWordAttemptLimit");
 const masterWordJoinForm = document.querySelector("#masterWordJoinForm");
 const masterWordJoinRoomName = document.querySelector("#masterWordJoinRoomName");
 const masterWordJoinEmoji = document.querySelector("#masterWordJoinEmoji");
@@ -1704,6 +1708,7 @@ populateMultiplayerEmojis();
 populateimpostorEmojis();
 populateResistanceEmojis();
 populateMasterWordEmojis();
+syncMasterWordCreateOptions();
 syncimpostorWordSetCards();
 syncimpostorConfigLimits();
 renderClipWaveTrack();
@@ -1845,6 +1850,8 @@ masterWordJoinForm?.addEventListener("submit", joinMasterWordRoom);
 masterWordChooseCreate?.addEventListener("click", () => showMasterWordForm("create"));
 masterWordChooseJoin?.addEventListener("click", () => showMasterWordForm("join"));
 masterWordBackButtons.forEach((button) => button.addEventListener("click", showMasterWordChoice));
+masterWordRoundMode?.addEventListener("change", syncMasterWordCreateOptions);
+masterWordAttemptMode?.addEventListener("change", syncMasterWordCreateOptions);
 masterWordShareButton?.addEventListener("click", shareMasterWordRoom);
 masterWordRestartButton?.addEventListener("click", restartMasterWordGame);
 masterWordLeaveButton?.addEventListener("click", leaveMasterWordToMenu);
@@ -3318,8 +3325,38 @@ function showMasterWordForm(mode) {
   masterWordCreateForm.hidden = mode !== "create";
   masterWordJoinForm.hidden = mode !== "join";
   if (masterWordLobbyMessage) masterWordLobbyMessage.textContent = "";
+  if (mode === "create") syncMasterWordCreateOptions();
   if (mode === "create") masterWordCreateRoomName?.focus();
   if (mode === "join") masterWordJoinRoomName?.focus();
+}
+
+function syncMasterWordCreateOptions() {
+  if (masterWordRoundLimit) {
+    const customRounds = masterWordRoundMode?.value === "custom";
+    masterWordRoundLimit.disabled = !customRounds;
+    if (!customRounds) masterWordRoundLimit.value = "13";
+  }
+  if (masterWordAttemptLimit) {
+    const customAttempts = masterWordAttemptMode?.value === "custom";
+    masterWordAttemptLimit.disabled = !customAttempts;
+    if (!customAttempts) masterWordAttemptLimit.value = "2";
+  }
+}
+
+function getMasterWordCreateConfig() {
+  const playerLimit = Math.max(3, Math.min(7, Math.floor(Number(masterWordCreatePlayerLimit.value) || 5)));
+  const roundMode = masterWordRoundMode?.value === "custom" ? "custom" : "standard";
+  const attemptMode = masterWordAttemptMode?.value === "custom" ? "custom" : "standard";
+  const maxRounds = roundMode === "custom"
+    ? Math.max(1, Math.min(80, Math.floor(Number(masterWordRoundLimit?.value) || 13)))
+    : 13;
+  const guessLimit = attemptMode === "custom"
+    ? Math.max(1, Math.min(5, Math.floor(Number(masterWordAttemptLimit?.value) || 2)))
+    : 2;
+  masterWordCreatePlayerLimit.value = String(playerLimit);
+  if (masterWordRoundLimit) masterWordRoundLimit.value = String(maxRounds);
+  if (masterWordAttemptLimit) masterWordAttemptLimit.value = String(guessLimit);
+  return { playerLimit, roundMode, maxRounds, attemptMode, guessLimit };
 }
 
 async function createMasterWordRoom(event) {
@@ -3327,15 +3364,14 @@ async function createMasterWordRoom(event) {
   masterWordLobbyMessage.textContent = "";
   const roomName = masterWordCreateRoomName.value.trim();
   const playerName = masterWordCreatePlayerName.value.trim();
-  const playerLimit = Math.max(3, Math.min(7, Math.floor(Number(masterWordCreatePlayerLimit.value) || 5)));
+  const config = getMasterWordCreateConfig();
   masterWordCreateRoomName.value = roomName;
   masterWordCreatePlayerName.value = playerName;
-  masterWordCreatePlayerLimit.value = String(playerLimit);
   try {
     const response = await fetch("/api/masterword/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName, playerName, emoji: masterWordCreateEmoji.value, config: { playerLimit } })
+      body: JSON.stringify({ roomName, playerName, emoji: masterWordCreateEmoji.value, config })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
@@ -3566,7 +3602,9 @@ function renderMasterWordRole(room, player) {
   if (player?.isActive) {
     masterWordRoleLabel.textContent = "Te toca adivinar";
     masterWordSecretWord.textContent = status === "guessing" ? "Mira las pistas" : "Palabra oculta";
-    masterWordRoleHint.textContent = status === "clue" ? "Espera a que todos envien sus pistas secretas." : "Adivina una vez o pasa.";
+    masterWordRoleHint.textContent = status === "clue"
+      ? "Espera a que todos envien sus pistas secretas."
+      : `Intentos restantes: ${room.guessesRemaining || 1}/${room.guessLimit || 2}.`;
     return;
   }
   masterWordRoleLabel.textContent = "Palabra misteriosa";
@@ -3619,7 +3657,11 @@ function getMasterWordStatusMessage(room, player) {
     if (player?.hasSubmitted) return "Pista enviada. Espera a los demas.";
     return "Escribe una pista secreta. No se mostrara hasta filtrar duplicados.";
   }
-  if (room.status === "guessing") return player?.isActive ? "Adivina con las pistas validas o pasa." : `${room.activePlayerName} esta adivinando.`;
+  if (room.status === "guessing") {
+    return player?.isActive
+      ? `Adivina con las pistas validas o pasa. Intentos restantes: ${room.guessesRemaining || 1}/${room.guessLimit || 2}.`
+      : `${room.activePlayerName} esta adivinando.`;
+  }
   if (room.status === "finished") return `Puntuacion final: ${room.score || 0}/${room.maxRounds || 13}.`;
   return "";
 }

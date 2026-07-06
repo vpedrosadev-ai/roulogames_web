@@ -428,6 +428,10 @@
                 <input id="masterWordCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
               </div>
               <label><span>Jugadores</span><input id="masterWordCreatePlayerLimit" type="number" min="3" max="7" step="1" inputmode="numeric" value="5"></label>
+              <label><span>Rondas</span><select id="masterWordRoundMode"><option value="standard">Estandar: 13 rondas</option><option value="custom">Personalizar rondas</option></select></label>
+              <label><span>Numero de rondas</span><input id="masterWordRoundLimit" type="number" min="1" max="80" step="1" inputmode="numeric" value="13" disabled></label>
+              <label><span>Intentos</span><select id="masterWordAttemptMode"><option value="standard">Estandar: 2 intentos</option><option value="custom">Personalizar intentos</option></select></label>
+              <label><span>Intentos por palabra</span><input id="masterWordAttemptLimit" type="number" min="1" max="5" step="1" inputmode="numeric" value="2" disabled></label>
               <div class="masterword-form-actions">
                 <button type="button" class="secondary" data-masterword-back>Atras</button>
                 <button type="submit">Crear sala</button>
