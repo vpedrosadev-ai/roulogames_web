@@ -10057,3 +10057,35 @@ body.masterword-active .content {
     line-height: 1 !important;
   }
 }
+
+/* Impostor mobile player cards corrected fixed size */
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-circle {
+    grid-auto-rows: 52px !important;
+    gap: 6px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+    padding: 5px 6px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip span {
+    width: 31px !important;
+    height: 31px !important;
+    font-size: 1.08rem !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip strong {
+    font-size: 0.92rem !important;
+    line-height: 1.02 !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip small,
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip b {
+    font-size: 0.68rem !important;
+    line-height: 1.02 !important;
+  }
+}
