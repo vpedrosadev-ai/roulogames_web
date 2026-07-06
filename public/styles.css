@@ -9794,3 +9794,62 @@ body.masterword-active .content {
     padding: 8px !important;
   }
 }
+
+/* Impostor mobile players column height restore */
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .content {
+    min-height: calc(100svh - var(--title-bar-height, 72px)) !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game {
+    min-height: calc(100svh - var(--title-bar-height, 72px) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)) - 8px) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    align-content: stretch !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-game > .impostor-board {
+    min-height: calc(100svh - var(--title-bar-height, 72px) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)) - 58px) !important;
+    align-items: start !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel {
+    height: calc(100svh - var(--title-bar-height, 72px) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)) - 70px) !important;
+    min-height: 430px !important;
+    max-height: calc(100svh - var(--title-bar-height, 72px) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)) - 70px) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    align-self: start !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-self: start !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-circle {
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-rows: repeat(var(--player-rows, 1), minmax(48px, 1fr)) !important;
+    grid-auto-rows: minmax(48px, 1fr) !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-players-panel .impostor-chip {
+    min-height: 48px !important;
+    max-height: none !important;
+    height: 100% !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card {
+    min-height: clamp(108px, 21svh, 142px) !important;
+    padding-block: 10px !important;
+  }
+
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card p {
+    display: block !important;
+    min-height: 2.3em !important;
+  }
+}
