@@ -292,6 +292,7 @@ const masterWordClueInputs = document.querySelector("#masterWordClueInputs");
 const masterWordSubmitClueButton = document.querySelector("#masterWordSubmitClueButton");
 const masterWordClueBoard = document.querySelector("#masterWordClueBoard");
 const masterWordValidClues = document.querySelector("#masterWordValidClues");
+const masterWordRemovedClues = document.querySelector("#masterWordRemovedClues");
 const masterWordGuessForm = document.querySelector("#masterWordGuessForm");
 const masterWordGuessInput = document.querySelector("#masterWordGuessInput");
 const masterWordGuessButton = document.querySelector("#masterWordGuessButton");
@@ -3637,7 +3638,8 @@ function renderMasterWordActions(room, player, players, isHost) {
   masterWordStartButton.textContent = players.length < 3 ? `Esperando ${players.length}/3` : "Iniciar partida";
   masterWordClueForm.hidden = !player?.canClue;
   masterWordGuessForm.hidden = !player?.canGuess;
-  masterWordClueBoard.hidden = !["guessing", "finished"].includes(status) || !room.validClues?.length;
+  const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0);
+  masterWordClueBoard.hidden = !["guessing", "finished"].includes(status) || !visibleClues;
   if (!masterWordClueForm.hidden) renderMasterWordClueInputs(room, player);
   renderMasterWordValidClues(room);
   masterWordGuessButton.disabled = !player?.canGuess;
@@ -3663,7 +3665,22 @@ function renderMasterWordClueInputs(room, player) {
 function renderMasterWordValidClues(room) {
   masterWordValidClues.replaceChildren(...(room.validClues || []).map((clue) => {
     const item = document.createElement("span");
-    item.textContent = clue.text || "";
+    item.className = "masterword-clue-chip";
+    const word = document.createElement("strong");
+    const author = document.createElement("small");
+    word.textContent = clue.text || "";
+    author.textContent = `${clue.emoji || ""} ${clue.playerName || ""}`.trim();
+    item.append(word, author);
+    return item;
+  }));
+  masterWordRemovedClues?.replaceChildren(...(room.removedClues || []).map((clue) => {
+    const item = document.createElement("article");
+    item.className = "masterword-removed-clue";
+    const word = document.createElement("strong");
+    const meta = document.createElement("small");
+    word.textContent = clue.text || "";
+    meta.textContent = `${clue.emoji || ""} ${clue.playerName || ""} - ${clue.reason || "retirada"}`.trim();
+    item.append(word, meta);
     return item;
   }));
 }
@@ -3671,16 +3688,30 @@ function renderMasterWordValidClues(room) {
 function getMasterWordStatusMessage(room, player) {
   if (room.status === "lobby") return `Esperando jugadores: ${room.players?.length || 0}/${room.config?.playerLimit || "?"}.`;
   if (room.status === "clue") {
-    if (player?.isActive) return `Eres el jugador activo. Pistas recibidas: ${room.cluesCast || 0}/${room.clueGivers || 0}.`;
-    if (player?.hasSubmitted) return "Pista enviada. Espera a los demas.";
-    return "Escribe una pista secreta. No se mostrara hasta filtrar duplicados.";
+    if (player?.isActive) return withMasterWordResult(room, `Eres el jugador activo. Pistas recibidas: ${room.cluesCast || 0}/${room.clueGivers || 0}.`);
+    if (player?.hasSubmitted) return withMasterWordResult(room, "Pista enviada. Espera a los demas.");
+    return withMasterWordResult(room, "Escribe una pista secreta. No se mostrara hasta filtrar duplicados.");
   }
   if (room.status === "guessing") {
+    if (room.lastEvent?.type === "guess-wrong") return withMasterWordResult(room, `Fallaste "${room.lastEvent.guess || ""}". Intentos restantes: ${room.guessesRemaining || 0}/${room.guessLimit || 2}.`);
     return player?.isActive
-      ? `Adivina con las pistas validas o pasa. Intentos restantes: ${room.guessesRemaining || 1}/${room.guessLimit || 2}.`
-      : `${room.activePlayerName} esta adivinando.`;
+      ? withMasterWordResult(room, `Adivina con las pistas validas o pasa. Intentos restantes: ${room.guessesRemaining || 1}/${room.guessLimit || 2}.`)
+      : withMasterWordResult(room, `${room.activePlayerName} esta adivinando.`);
   }
-  if (room.status === "finished") return `Puntuacion final: ${room.score || 0}/${room.maxRounds || 13}.`;
+  if (room.status === "finished") return getMasterWordResultMessage(room.lastRoundResult) || `Puntuacion final: ${room.score || 0}/${room.maxRounds || 13}.`;
+  return "";
+}
+
+function withMasterWordResult(room, message) {
+  const result = getMasterWordResultMessage(room.lastRoundResult);
+  return result ? `${result} ${message}` : message;
+}
+
+function getMasterWordResultMessage(result) {
+  if (!result) return "";
+  if (result.result === "correct") return `${result.activePlayerName || "Jugador"} acerto "${result.guess || result.word || ""}". +1 punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
+  if (result.result === "wrong") return `${result.activePlayerName || "Jugador"} fallo "${result.guess || ""}". Sin punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
+  if (result.result === "passed") return `${result.activePlayerName || "Jugador"} paso palabra. Sin punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
   return "";
 }
 

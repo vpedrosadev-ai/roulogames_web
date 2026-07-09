@@ -10296,3 +10296,50 @@ body.masterword-active .content {
     font-size: clamp(1.1rem, 6vw, 1.8rem) !important;
   }
 }
+/* MasterWord clue authors and removed clue feedback */
+#masterWordValidClues .masterword-clue-chip {
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  border-radius: 8px;
+  text-align: left;
+}
+
+#masterWordValidClues .masterword-clue-chip strong {
+  color: #1b1630;
+  font-size: 1rem;
+  line-height: 1.05;
+}
+
+#masterWordValidClues .masterword-clue-chip small {
+  color: rgba(27, 22, 48, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.masterword-removed-clues {
+  display: grid;
+  gap: 6px;
+}
+
+.masterword-removed-clue {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 97, 120, 0.42);
+  border-radius: 8px;
+  background: rgba(255, 97, 120, 0.12);
+}
+
+.masterword-removed-clue strong {
+  color: #ffd6dc;
+  font-size: 0.95rem;
+  line-height: 1.05;
+}
+
+.masterword-removed-clue small {
+  color: rgba(255, 249, 231, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+}

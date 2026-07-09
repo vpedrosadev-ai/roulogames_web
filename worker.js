@@ -1944,6 +1944,7 @@ function resetMasterWordGame(room) {
   room.clues = {};
   room.clueReview = null;
   room.history = [];
+  room.lastRoundResult = null;
   room.eventId = "";
   room.lastEvent = null;
 }
@@ -2029,12 +2030,22 @@ function getMasterWordInvalidReason(clue, word) {
 function finishMasterWordRound(room, result, guess) {
   const correct = result === "correct";
   const maxRounds = getMasterWordMaxRounds(room);
+  const activePlayerName = getMasterWordActivePlayer(room)?.name || "";
   room.opportunitiesUsed = Math.min(maxRounds, Number(room.opportunitiesUsed || 0) + 1);
   if (correct) room.score = Number(room.score || 0) + 1;
+  room.lastRoundResult = {
+    roundNumber: room.roundIndex,
+    activePlayerName,
+    word: room.word,
+    guess,
+    result,
+    score: room.score,
+    maxRounds
+  };
   room.history = [...(room.history || []), {
     roundNumber: room.roundIndex,
     activePlayerId: room.activePlayerId,
-    activePlayerName: getMasterWordActivePlayer(room)?.name || "",
+    activePlayerName,
     word: room.word,
     guess,
     result,
@@ -2123,6 +2134,7 @@ function masterWordRoomResponse(room, privatePlayer = null) {
     status: room.status,
     eventId: room.eventId || "",
     lastEvent: room.lastEvent || null,
+    lastRoundResult: room.lastRoundResult || null,
     roundIndex: Number(room.roundIndex || 0),
     roundNumber: Math.min(Number(room.roundIndex || 0), maxRounds),
     maxRounds,
@@ -2136,8 +2148,8 @@ function masterWordRoomResponse(room, privatePlayer = null) {
     clueSlots,
     cluesCast: Object.keys(room.clues || {}).length,
     clueGivers: Math.max(0, room.players.length - 1),
-    validClues: showClues ? clueReview.valid.map(({ id, text }) => ({ id, text })) : [],
-    removedClues: showClues && !isActive ? clueReview.removed.map(({ id, text, reason }) => ({ id, text, reason })) : [],
+    validClues: showClues ? clueReview.valid.map(({ id, text, playerName, emoji }) => ({ id, text, playerName, emoji })) : [],
+    removedClues: showClues && !isActive ? clueReview.removed.map(({ id, text, reason, playerName, emoji }) => ({ id, text, reason, playerName, emoji })) : [],
     history: room.status === "finished" ? room.history || [] : (room.history || []).map(({ word, ...item }) => item),
     players: room.players.map((player) => ({
       id: player.id,
