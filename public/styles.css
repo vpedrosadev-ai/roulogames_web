@@ -10343,3 +10343,207 @@ body.masterword-active .content {
   font-size: 0.72rem;
   font-weight: 900;
 }
+/* MasterWord result popup and right-aligned actions */
+.masterword-play-panel .message:empty {
+  display: none;
+}
+
+.masterword-command-strip,
+.masterword-game > .masterword-command-strip {
+  width: auto !important;
+  justify-content: end !important;
+  justify-self: end !important;
+  grid-template-columns: repeat(3, max-content) !important;
+}
+
+.masterword-action-row {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+.masterword-action-row button {
+  min-width: 112px;
+}
+
+#masterWordValidClues {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+#masterWordValidClues .masterword-clue-chip {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: 8px;
+}
+
+#masterWordValidClues .masterword-clue-chip small {
+  color: rgba(27, 22, 48, 0.76);
+  font-size: 0.78rem;
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#masterWordValidClues .masterword-clue-chip strong {
+  color: #1b1630;
+  font-size: 1.05rem;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.masterword-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 4vw, 28px);
+  background: rgba(4, 7, 18, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.masterword-popup[hidden] {
+  display: none !important;
+}
+
+.masterword-popup-card {
+  display: grid;
+  gap: 14px;
+  width: min(520px, 100%);
+  max-height: min(86dvh, 680px);
+  overflow: auto;
+  padding: 16px;
+  border: 3px solid rgba(255, 223, 107, 0.72);
+  border-radius: 8px;
+  color: #fff9e7;
+  background: rgba(10, 15, 32, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+}
+
+.masterword-popup-card.is-correct {
+  border-color: #6af094;
+}
+
+.masterword-popup-card.is-wrong {
+  border-color: #ff6178;
+}
+
+.masterword-popup-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.masterword-popup-card h2,
+.masterword-popup-card h3,
+.masterword-popup-card p {
+  margin: 0;
+}
+
+.masterword-popup-card h2 {
+  color: #ffdf6b;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  text-transform: uppercase;
+}
+
+.masterword-popup-content {
+  display: grid;
+  gap: 12px;
+}
+
+.masterword-popup-headline {
+  color: #fff8dd;
+  font-size: clamp(1.05rem, 3vw, 1.35rem);
+  line-height: 1.18;
+}
+
+.masterword-final-summary {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 223, 107, 0.22);
+}
+
+.masterword-final-summary h3 {
+  color: #ffdf6b;
+  font-size: 1rem;
+}
+
+.masterword-final-summary div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.masterword-final-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.masterword-final-summary strong {
+  color: #6af094;
+}
+
+@media (max-width: 760px) {
+  .masterword-command-strip,
+  .masterword-game > .masterword-command-strip {
+    width: 100% !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    justify-self: stretch !important;
+  }
+
+  .masterword-action-row {
+    justify-content: flex-end !important;
+    flex-wrap: wrap;
+  }
+
+  .masterword-action-row button {
+    min-width: min(112px, 46%);
+  }
+
+  #masterWordValidClues .masterword-clue-chip {
+    grid-template-columns: minmax(70px, 0.46fr) minmax(0, 1fr);
+    gap: 7px;
+    padding: 8px;
+  }
+}
+/* MasterWord removed clue author-left rows */
+.masterword-removed-clue {
+  grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr) max-content;
+  align-items: center;
+}
+
+.masterword-removed-clue small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.masterword-removed-clue em {
+  color: rgba(255, 214, 220, 0.84);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .masterword-removed-clue {
+    grid-template-columns: minmax(70px, 0.46fr) minmax(0, 1fr);
+  }
+
+  .masterword-removed-clue em {
+    grid-column: 2;
+  }
+}

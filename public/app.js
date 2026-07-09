@@ -299,6 +299,11 @@ const masterWordGuessButton = document.querySelector("#masterWordGuessButton");
 const masterWordSkipButton = document.querySelector("#masterWordSkipButton");
 const masterWordStartButton = document.querySelector("#masterWordStartButton");
 const masterWordBackButtons = document.querySelectorAll("[data-masterword-back]");
+const masterWordResultPopup = document.querySelector("#masterWordResultPopup");
+const masterWordResultCard = document.querySelector("#masterWordResultCard");
+const masterWordResultTitle = document.querySelector("#masterWordResultTitle");
+const masterWordResultClose = document.querySelector("#masterWordResultClose");
+const masterWordResultBody = document.querySelector("#masterWordResultBody");
 const languageSelector = document.querySelector("#languageSelector");
 const languageButton = document.querySelector("#languageButton");
 const languageMenu = document.querySelector("#languageMenu");
@@ -1648,6 +1653,7 @@ let masterWordSession = null;
 let masterWordRoom = null;
 let masterWordPollTimer = null;
 let masterWordShownEventId = "";
+let masterWordShownResultKey = "";
 let masterWordKnownPlayerIds = new Set();
 let gameCompleteFlybyPending = false;
 let inviteRoomName = "";
@@ -1860,8 +1866,14 @@ masterWordRestartButton?.addEventListener("click", restartMasterWordGame);
 masterWordLeaveButton?.addEventListener("click", leaveMasterWordToMenu);
 masterWordStartButton?.addEventListener("click", startMasterWordGame);
 masterWordClueForm?.addEventListener("submit", submitMasterWordClues);
+masterWordClueInputs?.addEventListener("beforeinput", restrictMasterWordClueInput);
+masterWordClueInputs?.addEventListener("input", sanitizeMasterWordClueInput);
 masterWordGuessForm?.addEventListener("submit", guessMasterWord);
 masterWordSkipButton?.addEventListener("click", skipMasterWord);
+masterWordResultClose?.addEventListener("click", hideMasterWordResultPopup);
+masterWordResultPopup?.addEventListener("click", (event) => {
+  if (event.target === masterWordResultPopup) hideMasterWordResultPopup();
+});
 window.addEventListener("pagehide", () => releaseMasterWordRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
@@ -3422,11 +3434,21 @@ function enterMasterWordRoom(payload) {
   masterWordRoom = payload;
   masterWordSession = { roomName: payload.roomName, playerId: payload.player?.id, token: payload.player?.token, isHost: Boolean(payload.player?.isHost) };
   masterWordShownEventId = payload.eventId || "";
+  masterWordShownResultKey = getMasterWordResultKey(payload.lastRoundResult);
   masterWordKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
   masterWordLobby.hidden = true;
   masterWordGame.hidden = false;
+  scrollMasterWordGameTop();
   renderMasterWordRoom(payload);
   startMasterWordPolling();
+}
+
+function scrollMasterWordGameTop() {
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.querySelector(".content")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+    masterWordGame?.scrollIntoView({ block: "start", inline: "nearest" });
+  });
 }
 
 function startMasterWordPolling() {
@@ -3450,6 +3472,7 @@ async function pollMasterWordRoom() {
     masterWordSession.isHost = Boolean(payload.player?.isHost);
     masterWordKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
     renderMasterWordRoom(payload);
+    maybeShowMasterWordResultPopup(payload);
     if (payload.eventId && payload.eventId !== masterWordShownEventId) {
       masterWordShownEventId = payload.eventId;
       playimpostorAlarmSound(payload.status === "finished" ? "finished" : "notice");
@@ -3472,7 +3495,9 @@ async function startMasterWordGame() {
     if (!response.ok) throw new Error(payload.error || "No se pudo iniciar");
     masterWordRoom = payload;
     masterWordShownEventId = payload.eventId || "";
+    masterWordShownResultKey = getMasterWordResultKey(payload.lastRoundResult);
     renderMasterWordRoom(payload);
+    maybeShowMasterWordResultPopup(payload);
   } catch (error) {
     masterWordGameMessage.textContent = error.message;
   } finally {
@@ -3493,7 +3518,10 @@ async function restartMasterWordGame() {
     if (!response.ok) throw new Error(payload.error || "No se pudo reiniciar");
     masterWordRoom = payload;
     masterWordShownEventId = payload.eventId || "";
+    masterWordShownResultKey = getMasterWordResultKey(payload.lastRoundResult);
+    hideMasterWordResultPopup();
     renderMasterWordRoom(payload);
+    maybeShowMasterWordResultPopup(payload);
   } catch (error) {
     masterWordGameMessage.textContent = error.message;
   } finally {
@@ -3504,7 +3532,7 @@ async function restartMasterWordGame() {
 async function submitMasterWordClues(event) {
   event.preventDefault();
   if (!masterWordSession || !masterWordRoom) return;
-  const clues = [...masterWordClueInputs.querySelectorAll("input")].map((input) => input.value.trim());
+  const clues = [...masterWordClueInputs.querySelectorAll("input")].map((input) => sanitizeMasterWordClueValue(input.value));
   try {
     masterWordSubmitClueButton.disabled = true;
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/clue`, {
@@ -3516,6 +3544,7 @@ async function submitMasterWordClues(event) {
     if (!response.ok) throw new Error(payload.error || "No se pudo enviar pista");
     masterWordRoom = payload;
     renderMasterWordRoom(payload);
+    maybeShowMasterWordResultPopup(payload);
   } catch (error) {
     masterWordGameMessage.textContent = error.message;
   } finally {
@@ -3540,6 +3569,7 @@ async function guessMasterWord(event) {
     masterWordGuessInput.value = "";
     masterWordRoom = payload;
     renderMasterWordRoom(payload);
+    maybeShowMasterWordResultPopup(payload);
   } catch (error) {
     masterWordGameMessage.textContent = error.message;
   } finally {
@@ -3561,6 +3591,7 @@ async function skipMasterWord() {
     masterWordGuessInput.value = "";
     masterWordRoom = payload;
     renderMasterWordRoom(payload);
+    maybeShowMasterWordResultPopup(payload);
   } catch (error) {
     masterWordGameMessage.textContent = error.message;
   } finally {
@@ -3612,27 +3643,23 @@ function renderMasterWordRole(room, player) {
   if (status === "finished") {
     masterWordRoleLabel.textContent = "Resultado";
     masterWordSecretWord.textContent = `${room.score || 0}/${room.maxRounds || 13}`;
-    masterWordRoleHint.textContent = "Partida terminada.";
+    masterWordRoleHint.textContent = "";
     return;
   }
   if (player?.isActive) {
     masterWordRoleLabel.textContent = "Te toca adivinar";
     masterWordSecretWord.textContent = status === "guessing" ? "Mira las pistas" : "Palabra oculta";
-    masterWordRoleHint.textContent = status === "clue"
-      ? "Espera a que todos envien sus pistas secretas."
-      : `Intentos restantes: ${room.guessesRemaining || 1}/${room.guessLimit || 2}.`;
+    masterWordRoleHint.textContent = "";
     return;
   }
   masterWordRoleLabel.textContent = "Palabra misteriosa";
   masterWordSecretWord.textContent = player?.word || "Esperando...";
-  masterWordRoleHint.textContent = status === "clue"
-    ? `Escribe ${room.clueSlots || 1} pista${Number(room.clueSlots || 1) > 1 ? "s" : ""} de una sola palabra.`
-    : "Las pistas ya fueron filtradas.";
+  masterWordRoleHint.textContent = "";
 }
 
 function renderMasterWordActions(room, player, players, isHost) {
   const status = room.status || "lobby";
-  masterWordGameMessage.textContent = getMasterWordStatusMessage(room, player);
+  masterWordGameMessage.textContent = "";
   masterWordStartButton.hidden = status !== "lobby" || !isHost;
   masterWordStartButton.disabled = !(isHost && players.length >= 3);
   masterWordStartButton.textContent = players.length < 3 ? `Esperando ${players.length}/3` : "Iniciar partida";
@@ -3656,10 +3683,30 @@ function renderMasterWordClueInputs(room, player) {
     input.maxLength = 28;
     input.required = true;
     input.autocomplete = "off";
+    input.pattern = "[\\p{L}\\p{N}]+";
     input.placeholder = slots > 1 ? `Pista ${index + 1}` : "Pista de una palabra";
-    input.value = existing[index] || "";
+    input.value = sanitizeMasterWordClueValue(existing[index] || "");
     return input;
   }));
+}
+
+function restrictMasterWordClueInput(event) {
+  if (!event.target?.matches?.("input")) return;
+  if (event.data && sanitizeMasterWordClueValue(event.data) !== event.data) event.preventDefault();
+}
+
+function sanitizeMasterWordClueInput(event) {
+  const input = event.target?.matches?.("input") ? event.target : null;
+  if (!input) return;
+  const clean = sanitizeMasterWordClueValue(input.value);
+  if (input.value === clean) return;
+  const cursor = Math.min(clean.length, input.selectionStart || clean.length);
+  input.value = clean;
+  input.setSelectionRange?.(cursor, cursor);
+}
+
+function sanitizeMasterWordClueValue(value) {
+  return String(value || "").replace(/[^\p{L}\p{N}]/gu, "").slice(0, 28);
 }
 
 function renderMasterWordValidClues(room) {
@@ -3670,17 +3717,19 @@ function renderMasterWordValidClues(room) {
     const author = document.createElement("small");
     word.textContent = clue.text || "";
     author.textContent = `${clue.emoji || ""} ${clue.playerName || ""}`.trim();
-    item.append(word, author);
+    item.append(author, word);
     return item;
   }));
   masterWordRemovedClues?.replaceChildren(...(room.removedClues || []).map((clue) => {
     const item = document.createElement("article");
     item.className = "masterword-removed-clue";
+    const author = document.createElement("small");
     const word = document.createElement("strong");
-    const meta = document.createElement("small");
+    const reason = document.createElement("em");
+    author.textContent = `${clue.emoji || ""} ${clue.playerName || ""}`.trim();
     word.textContent = clue.text || "";
-    meta.textContent = `${clue.emoji || ""} ${clue.playerName || ""} - ${clue.reason || "retirada"}`.trim();
-    item.append(word, meta);
+    reason.textContent = clue.reason || "retirada";
+    item.append(author, word, reason);
     return item;
   }));
 }
@@ -3715,6 +3764,90 @@ function getMasterWordResultMessage(result) {
   return "";
 }
 
+function getMasterWordResultKey(result) {
+  if (!result) return "";
+  return [result.roundNumber || 0, result.result || "", result.guess || "", result.score || 0].join(":");
+}
+
+function maybeShowMasterWordResultPopup(room) {
+  const result = room?.lastRoundResult;
+  if (!result && room?.lastEvent?.type === "guess-wrong") {
+    const key = `event:${room.eventId || ""}`;
+    if (!room.eventId || key === masterWordShownResultKey) return;
+    masterWordShownResultKey = key;
+    showMasterWordResultPopup(room, {
+      roundNumber: room.roundNumber || room.roundIndex || 0,
+      activePlayerName: room.activePlayerName || "Jugador",
+      guess: room.lastEvent.guess || "",
+      result: "wrong",
+      score: room.score || 0,
+      maxRounds: room.maxRounds || 13
+    });
+    return;
+  }
+  const key = getMasterWordResultKey(result);
+  if (!result || !key || key === masterWordShownResultKey) return;
+  masterWordShownResultKey = key;
+  showMasterWordResultPopup(room, result);
+}
+
+function showMasterWordResultPopup(room, result) {
+  if (!masterWordResultPopup || !masterWordResultCard || !masterWordResultTitle || !masterWordResultBody) return;
+  const isCorrect = result.result === "correct";
+  const isFinished = room.status === "finished";
+  masterWordResultPopup.hidden = false;
+  masterWordResultCard.classList.toggle("is-correct", isCorrect);
+  masterWordResultCard.classList.toggle("is-wrong", !isCorrect);
+  masterWordResultTitle.textContent = isFinished ? "Resumen final" : (isCorrect ? "Acierto" : "Fallo");
+  masterWordResultBody.replaceChildren(...buildMasterWordResultNodes(room, result, isFinished));
+  document.body.classList.add("songs-popup-open");
+}
+
+function buildMasterWordResultNodes(room, result, isFinished) {
+  const nodes = [];
+  const headline = document.createElement("strong");
+  headline.className = "masterword-popup-headline";
+  headline.textContent = getMasterWordResultMessage(result);
+  nodes.push(headline);
+  const points = document.createElement("p");
+  points.textContent = result.result === "correct" ? "Puntos sumados: 1" : "Puntos sumados: 0";
+  nodes.push(points);
+  if (isFinished) {
+    const summary = document.createElement("section");
+    summary.className = "masterword-final-summary";
+    const title = document.createElement("h3");
+    title.textContent = `Puntos finales: ${room.score || 0}/${room.maxRounds || 13}`;
+    summary.append(title, ...buildMasterWordContributionRows(room));
+    nodes.push(summary);
+  }
+  return nodes;
+}
+
+function buildMasterWordContributionRows(room) {
+  const scores = new Map((room.players || []).map((player) => [player.id, { name: player.name, emoji: player.emoji, points: 0 }]));
+  (room.history || []).forEach((round) => {
+    if (round.result !== "correct") return;
+    const entry = scores.get(round.activePlayerId) || { name: round.activePlayerName || "Jugador", emoji: "", points: 0 };
+    entry.points += 1;
+    scores.set(round.activePlayerId, entry);
+  });
+  return [...scores.values()].map((entry) => {
+    const row = document.createElement("div");
+    const player = document.createElement("span");
+    const points = document.createElement("strong");
+    player.textContent = `${entry.emoji || ""} ${entry.name || "Jugador"}`.trim();
+    points.textContent = `${entry.points} pts`;
+    row.append(player, points);
+    return row;
+  });
+}
+
+function hideMasterWordResultPopup() {
+  if (!masterWordResultPopup) return;
+  masterWordResultPopup.hidden = true;
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+}
+
 async function shareMasterWordRoom() {
   if (!masterWordSession) return;
   const url = new URL(window.location.href);
@@ -3738,7 +3871,9 @@ function leaveMasterWordRoom() {
   masterWordSession = null;
   masterWordRoom = null;
   masterWordShownEventId = "";
+  masterWordShownResultKey = "";
   masterWordKnownPlayerIds = new Set();
+  hideMasterWordResultPopup();
 }
 
 function releaseMasterWordRoomIfHost({ useBeacon = false } = {}) {

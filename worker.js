@@ -1718,6 +1718,7 @@ async function submitMasterWordClue(request, roomName, env) {
   const values = Array.isArray(body.clues) ? body.clues : [body.clue];
   const clues = values.map((value) => normalizeMasterWordClue(value)).filter(Boolean).slice(0, expected);
   if (clues.length !== expected) return json({ error: expected > 1 ? `Envia ${expected} pistas` : "Envia una pista" }, 400);
+  if (clues.some((clue) => !isMasterWordSingleToken(clue))) return json({ error: "La pista solo puede tener letras o numeros, sin espacios ni simbolos" }, 400);
   room._actionRoundKey = masterWordRoundKey(room);
   room.clues = { ...(room.clues || {}), [player.id]: clues };
   player.lastSeen = Date.now();
@@ -2020,6 +2021,7 @@ function getMasterWordInvalidReason(clue, word) {
   const normalized = normalizeMasterWordText(text);
   const wordNormalized = normalizeMasterWordText(word);
   if (!normalized) return "vacia";
+  if (!isMasterWordSingleToken(text)) return "solo letras o numeros";
   if (normalized === wordNormalized) return "palabra secreta";
   if (normalized.length >= 4 && wordNormalized.includes(normalized)) return "variante";
   if (wordNormalized.length >= 4 && normalized.includes(wordNormalized)) return "variante";
@@ -2083,7 +2085,11 @@ function getMasterWordGuessLimit(room) {
 }
 
 function normalizeMasterWordClue(value) {
-  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 28);
+  return String(value || "").trim().slice(0, 28);
+}
+
+function isMasterWordSingleToken(value) {
+  return /^[\p{L}\p{N}]+$/u.test(String(value || ""));
 }
 
 function normalizeMasterWordText(value) {
