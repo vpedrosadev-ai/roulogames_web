@@ -281,7 +281,6 @@ const masterWordRoomLabel = document.querySelector("#masterWordRoomLabel");
 const masterWordPlayers = document.querySelector("#masterWordPlayers");
 const masterWordRound = document.querySelector("#masterWordRound");
 const masterWordScore = document.querySelector("#masterWordScore");
-const masterWordUsed = document.querySelector("#masterWordUsed");
 const masterWordRoleCard = document.querySelector("#masterWordRoleCard");
 const masterWordRoleLabel = document.querySelector("#masterWordRoleLabel");
 const masterWordSecretWord = document.querySelector("#masterWordSecretWord");
@@ -3608,7 +3607,6 @@ function renderMasterWordRoom(room = masterWordRoom) {
   masterWordRoomLabel.textContent = `Sala: ${room.roomName || ""}`;
   masterWordRound.textContent = room.status === "lobby" ? `${players.length}/${room.config?.playerLimit || "?"}` : `${room.roundNumber || 0}/${room.maxRounds || 13}`;
   masterWordScore.textContent = String(room.score || 0);
-  masterWordUsed.textContent = `${room.opportunitiesUsed || 0}/${room.maxRounds || 13}`;
   masterWordShareButton.hidden = !isHost;
   masterWordRestartButton.hidden = !isHost || room.status === "lobby";
   renderMasterWordPlayers(players, player, room);
@@ -3711,27 +3709,36 @@ function sanitizeMasterWordClueValue(value) {
 
 function renderMasterWordValidClues(room) {
   masterWordValidClues.replaceChildren(...(room.validClues || []).map((clue) => {
+    const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("span");
     item.className = "masterword-clue-chip";
     const word = document.createElement("strong");
     const author = document.createElement("small");
     word.textContent = clue.text || "";
-    author.textContent = `${clue.emoji || ""} ${clue.playerName || ""}`.trim();
+    author.textContent = `${clueAuthor.emoji || ""} ${clueAuthor.name || ""}`.trim() || "Jugador";
     item.append(author, word);
     return item;
   }));
   masterWordRemovedClues?.replaceChildren(...(room.removedClues || []).map((clue) => {
+    const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("article");
     item.className = "masterword-removed-clue";
     const author = document.createElement("small");
     const word = document.createElement("strong");
     const reason = document.createElement("em");
-    author.textContent = `${clue.emoji || ""} ${clue.playerName || ""}`.trim();
+    author.textContent = `${clueAuthor.emoji || ""} ${clueAuthor.name || ""}`.trim() || "Jugador";
     word.textContent = clue.text || "";
     reason.textContent = clue.reason || "retirada";
     item.append(author, word, reason);
     return item;
   }));
+}
+
+function getMasterWordClueAuthor(clue, room) {
+  if (clue?.playerName || clue?.emoji) return { name: clue.playerName || "", emoji: clue.emoji || "" };
+  const playerId = String(clue?.id || "").split(":")[0];
+  const player = (room.players || []).find((item) => item.id === playerId);
+  return { name: player?.name || "", emoji: player?.emoji || "" };
 }
 
 function getMasterWordStatusMessage(room, player) {

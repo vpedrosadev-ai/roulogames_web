@@ -10547,3 +10547,69 @@ body.masterword-active .content {
     grid-column: 2;
   }
 }
+/* MasterWord clue authors, score trim, create form action colors */
+.masterword-score-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#masterWordValidClues {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip {
+  display: grid !important;
+  grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 12px !important;
+  border-radius: 8px !important;
+  text-align: left !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small,
+#masterWordValidClues > .masterword-clue-chip strong {
+  display: block !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small {
+  color: rgba(27, 22, 48, 0.78) !important;
+  font-size: 0.78rem !important;
+  font-weight: 950 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip strong {
+  color: #1b1630 !important;
+  font-size: 1.02rem !important;
+  line-height: 1.08 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.masterword-form-actions .secondary {
+  color: #fff7fb !important;
+  border-color: rgba(255, 97, 120, 0.78) !important;
+  background: linear-gradient(180deg, rgba(174, 60, 84, 0.98), rgba(108, 35, 60, 0.98)) !important;
+}
+
+.masterword-form-actions button[type="submit"] {
+  color: #ecfff8 !important;
+  border-color: rgba(60, 220, 160, 0.82) !important;
+  background: linear-gradient(180deg, rgba(33, 174, 122, 0.98), rgba(21, 105, 82, 0.98)) !important;
+}
+
+@media (max-width: 760px) {
+  .masterword-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #masterWordValidClues > .masterword-clue-chip {
+    grid-template-columns: minmax(82px, 0.38fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+}
