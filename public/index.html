@@ -428,10 +428,24 @@
                 <input id="masterWordCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
               </div>
               <label><span>Jugadores</span><input id="masterWordCreatePlayerLimit" type="number" min="3" max="7" step="1" inputmode="numeric" value="5"></label>
-              <label><span>Rondas</span><select id="masterWordRoundMode"><option value="standard">Estandar: 13 rondas</option><option value="custom">Personalizar rondas</option></select></label>
-              <label><span>Numero de rondas</span><input id="masterWordRoundLimit" type="number" min="1" max="80" step="1" inputmode="numeric" value="13" disabled></label>
-              <label><span>Intentos</span><select id="masterWordAttemptMode"><option value="standard">Estandar: 2 intentos</option><option value="custom">Personalizar intentos</option></select></label>
-              <label><span>Intentos por palabra</span><input id="masterWordAttemptLimit" type="number" min="1" max="5" step="1" inputmode="numeric" value="2" disabled></label>
+              <input id="masterWordRoundMode" type="hidden" value="standard">
+              <div class="masterword-mode-field">
+                <span>Rondas</span>
+                <div class="masterword-mode-toggle" role="group" aria-label="Modo de rondas">
+                  <button type="button" class="is-selected" data-masterword-round-mode="standard">Estandar: 13</button>
+                  <button type="button" data-masterword-round-mode="custom">Personalizado</button>
+                </div>
+                <input id="masterWordRoundLimit" type="number" min="1" max="80" step="1" inputmode="numeric" value="13" hidden>
+              </div>
+              <input id="masterWordAttemptMode" type="hidden" value="standard">
+              <div class="masterword-mode-field">
+                <span>Intentos</span>
+                <div class="masterword-mode-toggle" role="group" aria-label="Modo de intentos">
+                  <button type="button" class="is-selected" data-masterword-attempt-mode="standard">Estandar: 2</button>
+                  <button type="button" data-masterword-attempt-mode="custom">Personalizado</button>
+                </div>
+                <input id="masterWordAttemptLimit" type="number" min="1" max="5" step="1" inputmode="numeric" value="2" hidden>
+              </div>
               <div class="masterword-form-actions">
                 <button type="button" class="secondary" data-masterword-back>Atras</button>
                 <button type="submit">Crear sala</button>
@@ -486,7 +500,7 @@
                   <div id="masterWordValidClues"></div>
                 </section>
                 <form id="masterWordGuessForm" class="masterword-guess-form" hidden>
-                  <input id="masterWordGuessInput" maxlength="40" placeholder="Respuesta">
+                  <input id="masterWordGuessInput" maxlength="40" required autocomplete="off" placeholder="Respuesta">
                   <div class="masterword-action-row">
                     <button type="submit" id="masterWordGuessButton">Adivinar</button>
                     <button type="button" id="masterWordSkipButton" class="secondary">Pasar</button>

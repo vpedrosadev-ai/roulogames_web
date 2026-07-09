@@ -1807,7 +1807,7 @@ function getMasterWordActivePlayer(room) {
 }
 
 function getMasterWordClueSlots(room) {
-  return room.players.length === 3 ? 2 : 1;
+  return 1;
 }
 
 function areMasterWordCluesReady(room) {

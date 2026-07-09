@@ -10089,3 +10089,210 @@ body.masterword-active .content {
     line-height: 1.02 !important;
   }
 }
+
+/* MasterWord final parity with Impostor room sizing */
+.home-menu-card[data-view-target="resistanceView"],
+.home-menu-card[data-view-target="masterWordView"] {
+  grid-column: span 3;
+  min-height: clamp(168px, 24vh, 230px);
+}
+
+.masterword-mode-field {
+  display: grid;
+  gap: 8px;
+}
+
+.masterword-mode-field > span {
+  color: rgba(255, 249, 231, 0.78);
+  font-weight: 900;
+}
+
+.masterword-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.masterword-form .masterword-mode-toggle button {
+  min-height: 42px;
+  padding: 8px;
+  color: #fff8e8;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.masterword-form .masterword-mode-toggle button.is-selected {
+  color: #1b1630;
+  background: linear-gradient(135deg, #ffdf6b, #f8a64f);
+}
+
+.masterword-mode-field input:not([hidden]) {
+  display: block;
+}
+
+.masterword-game:not([hidden]) {
+  display: grid !important;
+  width: min(1100px, 100%) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+
+.masterword-game > .masterword-command-strip {
+  justify-self: end !important;
+  width: min(100%, 560px) !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.masterword-game > .masterword-board {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(320px, 1.28fr) !important;
+  grid-template-areas: "players play" !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+}
+
+.masterword-players-panel,
+.masterword-play-panel {
+  min-height: 0 !important;
+}
+
+.masterword-players {
+  grid-template-columns: 1fr !important;
+}
+
+.masterword-player-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.masterword-clue-form input,
+.masterword-guess-form input {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 1rem;
+}
+
+@media (max-width: 820px) {
+  .home-menu-card,
+  .home-menu-card[data-view-target="gameView"],
+  .home-menu-card[data-view-target="impostorView"],
+  .home-menu-card[data-view-target="resistanceView"],
+  .home-menu-card[data-view-target="masterWordView"],
+  .home-menu-card[data-view-target="generatorView"],
+  .home-menu-card[data-view-target="converterView"],
+  .home-menu-card[data-view-target="audioView"] {
+    grid-column: 1 !important;
+    min-height: 132px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body.masterword-active:has(#masterWordGame:not([hidden])) .content {
+    height: auto !important;
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    overflow: visible !important;
+    padding-top: 6px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-game {
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-command-strip,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-game > .masterword-command-strip {
+    width: 100% !important;
+    justify-self: stretch !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-command-strip button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42px !important;
+    padding: 7px 5px !important;
+    font-size: clamp(0.64rem, 2.65vw, 0.84rem) !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-game > .masterword-board {
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr) !important;
+    grid-template-areas: "players play" !important;
+    gap: 5px !important;
+    overflow: visible !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-players-panel,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-play-panel {
+    padding: 8px !important;
+    overflow: visible !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-players {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-player-card {
+    min-height: 52px !important;
+    max-height: 52px !important;
+    padding: 5px 6px !important;
+    grid-template-columns: minmax(26px, 31px) minmax(0, 1fr) !important;
+    align-content: center !important;
+    row-gap: 1px !important;
+    overflow: hidden !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-player-card > span {
+    width: 31px !important;
+    height: 31px !important;
+    font-size: 1.08rem !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-player-card strong {
+    overflow: hidden !important;
+    font-size: 0.92rem !important;
+    line-height: 1.02 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-player-card small,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-player-card b {
+    overflow: hidden !important;
+    font-size: 0.68rem !important;
+    line-height: 1.02 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-score-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-score-grid article {
+    padding: 7px 5px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-score-grid strong {
+    font-size: clamp(1rem, 5vw, 1.42rem) !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-role-card {
+    padding: 9px !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-role-card strong {
+    font-size: clamp(1.1rem, 6vw, 1.8rem) !important;
+  }
+}

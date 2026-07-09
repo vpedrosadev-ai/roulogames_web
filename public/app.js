@@ -266,6 +266,8 @@ const masterWordRoundMode = document.querySelector("#masterWordRoundMode");
 const masterWordRoundLimit = document.querySelector("#masterWordRoundLimit");
 const masterWordAttemptMode = document.querySelector("#masterWordAttemptMode");
 const masterWordAttemptLimit = document.querySelector("#masterWordAttemptLimit");
+const masterWordRoundModeButtons = document.querySelectorAll("[data-masterword-round-mode]");
+const masterWordAttemptModeButtons = document.querySelectorAll("[data-masterword-attempt-mode]");
 const masterWordJoinForm = document.querySelector("#masterWordJoinForm");
 const masterWordJoinRoomName = document.querySelector("#masterWordJoinRoomName");
 const masterWordJoinEmoji = document.querySelector("#masterWordJoinEmoji");
@@ -1850,8 +1852,8 @@ masterWordJoinForm?.addEventListener("submit", joinMasterWordRoom);
 masterWordChooseCreate?.addEventListener("click", () => showMasterWordForm("create"));
 masterWordChooseJoin?.addEventListener("click", () => showMasterWordForm("join"));
 masterWordBackButtons.forEach((button) => button.addEventListener("click", showMasterWordChoice));
-masterWordRoundMode?.addEventListener("change", syncMasterWordCreateOptions);
-masterWordAttemptMode?.addEventListener("change", syncMasterWordCreateOptions);
+masterWordRoundModeButtons.forEach((button) => button.addEventListener("click", () => setMasterWordMode("round", button.dataset.masterwordRoundMode)));
+masterWordAttemptModeButtons.forEach((button) => button.addEventListener("click", () => setMasterWordMode("attempt", button.dataset.masterwordAttemptMode)));
 masterWordShareButton?.addEventListener("click", shareMasterWordRoom);
 masterWordRestartButton?.addEventListener("click", restartMasterWordGame);
 masterWordLeaveButton?.addEventListener("click", leaveMasterWordToMenu);
@@ -3330,17 +3332,30 @@ function showMasterWordForm(mode) {
   if (mode === "join") masterWordJoinRoomName?.focus();
 }
 
+function setMasterWordMode(kind, value) {
+  const mode = value === "custom" ? "custom" : "standard";
+  const target = kind === "round" ? masterWordRoundMode : masterWordAttemptMode;
+  if (target) target.value = mode;
+  syncMasterWordCreateOptions();
+}
+
 function syncMasterWordCreateOptions() {
   if (masterWordRoundLimit) {
     const customRounds = masterWordRoundMode?.value === "custom";
+    masterWordRoundLimit.hidden = !customRounds;
     masterWordRoundLimit.disabled = !customRounds;
+    masterWordRoundLimit.required = customRounds;
     if (!customRounds) masterWordRoundLimit.value = "13";
   }
   if (masterWordAttemptLimit) {
     const customAttempts = masterWordAttemptMode?.value === "custom";
+    masterWordAttemptLimit.hidden = !customAttempts;
     masterWordAttemptLimit.disabled = !customAttempts;
+    masterWordAttemptLimit.required = customAttempts;
     if (!customAttempts) masterWordAttemptLimit.value = "2";
   }
+  masterWordRoundModeButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.masterwordRoundMode === (masterWordRoundMode?.value || "standard")));
+  masterWordAttemptModeButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.masterwordAttemptMode === (masterWordAttemptMode?.value || "standard")));
 }
 
 function getMasterWordCreateConfig() {
@@ -3631,11 +3646,14 @@ function renderMasterWordActions(room, player, players, isHost) {
 
 function renderMasterWordClueInputs(room, player) {
   const slots = Number(player?.clueSlots || room.clueSlots || 1);
+  const activeInput = document.activeElement;
+  if (masterWordClueInputs.contains(activeInput) && masterWordClueInputs.querySelectorAll("input").length === slots) return;
   const existing = [...masterWordClueInputs.querySelectorAll("input")].map((input) => input.value);
   masterWordClueInputs.replaceChildren(...Array.from({ length: slots }, (_, index) => {
     const input = document.createElement("input");
     input.maxLength = 28;
     input.required = true;
+    input.autocomplete = "off";
     input.placeholder = slots > 1 ? `Pista ${index + 1}` : "Pista de una palabra";
     input.value = existing[index] || "";
     return input;
