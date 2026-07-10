@@ -2045,6 +2045,7 @@ function masterWordRoomResponse(room, privatePlayer = null) {
       isActive,
       clueSlots,
       hasSubmitted: (room.clues?.[privatePlayer.id] || []).length === clueSlots,
+      submittedClues: (room.clues?.[privatePlayer.id] || []).map((text) => ({ text })),
       word: !isActive && ["clue", "guessing", "finished"].includes(room.status) ? room.word : "",
       canClue: room.status === "clue" && !isActive && (room.clues?.[privatePlayer.id] || []).length !== clueSlots,
       canGuess: room.status === "guessing" && isActive

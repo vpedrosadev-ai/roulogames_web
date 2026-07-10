@@ -1,4 +1,4 @@
-const navLinks = document.querySelectorAll(".nav-link");
+﻿const navLinks = document.querySelectorAll(".nav-link");
 const homeMenuCards = document.querySelectorAll(".home-menu-card");
 const views = document.querySelectorAll(".view");
 const mobileNavMoreButton = document.querySelector("#mobileNavMoreButton");
@@ -279,6 +279,7 @@ const masterWordRestartButton = document.querySelector("#masterWordRestartButton
 const masterWordLeaveButton = document.querySelector("#masterWordLeaveButton");
 const masterWordRoomLabel = document.querySelector("#masterWordRoomLabel");
 const masterWordPlayers = document.querySelector("#masterWordPlayers");
+const masterWordRoundStatLabel = document.querySelector("#masterWordRoundStatLabel");
 const masterWordRound = document.querySelector("#masterWordRound");
 const masterWordScore = document.querySelector("#masterWordScore");
 const masterWordRoleCard = document.querySelector("#masterWordRoleCard");
@@ -2589,16 +2590,10 @@ async function restartimpostorGame() {
 async function kickimpostorPlayer(event) {
   const button = event.target.closest("[data-kick-player-id]");
   if (!impostorSession?.isHost) return;
-  if (!button && window.matchMedia?.("(max-width: 760px)")?.matches) {
-    const chip = event.target.closest(".impostor-chip[data-player-id]");
-    if (!chip || chip.dataset.playerId === impostorSession.playerId || impostorRoom?.status !== "lobby") return;
-    event.preventDefault();
-    showImpostorKickPopup(chip.dataset.playerId);
-    return;
-  }
-  if (!button) return;
+  const chip = event.target.closest(".impostor-chip[data-player-id]");
+  if (!button && (!chip || chip.dataset.playerId === impostorSession.playerId || impostorRoom?.status !== "lobby")) return;
   event.preventDefault();
-  await performImpostorKick(button.dataset.kickPlayerId, button);
+  showImpostorKickPopup(button?.dataset.kickPlayerId || chip.dataset.playerId);
 }
 
 function showImpostorKickPopup(targetPlayerId) {
@@ -2860,17 +2855,7 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     chip.querySelector("span").textContent = player.emoji;
     chip.querySelector("strong").textContent = player.name;
     chip.querySelector("small").textContent = roleText;
-    chip.querySelector("b").textContent = voteText;
-    if (canKick && player.id !== currentPlayer?.id) {
-      const kick = document.createElement("button");
-      kick.type = "button";
-      kick.className = "impostor-kick-button";
-      kick.dataset.kickPlayerId = player.id;
-      kick.setAttribute("aria-label", t("impostor.kickPlayer"));
-      kick.title = t("impostor.kickPlayer");
-      kick.textContent = "×";
-      chip.append(kick);
-    }
+    chip.querySelector("b").textContent = voteText;
     return chip;
   }));
   observeimpostorChipSizing();
@@ -3610,6 +3595,7 @@ function renderMasterWordRoom(room = masterWordRoom) {
   const isHost = Boolean(player?.isHost || masterWordSession?.isHost);
   if (masterWordSession) masterWordSession.isHost = isHost;
   masterWordRoomLabel.textContent = `Sala: ${room.roomName || ""}`;
+  if (masterWordRoundStatLabel) masterWordRoundStatLabel.textContent = room.status === "lobby" ? "Jugadores" : "Ronda";
   masterWordRound.textContent = room.status === "lobby" ? `${players.length}/${room.config?.playerLimit || "?"}` : `${room.roundNumber || 0}/${room.maxRounds || 13}`;
   masterWordScore.textContent = String(room.score || 0);
   masterWordShareButton.hidden = !isHost;
@@ -3636,15 +3622,6 @@ function renderMasterWordPlayers(players, currentPlayer, room) {
     card.querySelector("strong").textContent = item.name || "";
     card.querySelector("small").textContent = status;
     card.querySelector("b").textContent = item.isActive ? "Jugador activo" : item.hasSubmitted ? "Enviado" : "";
-    if (canKick && item.id !== currentPlayer?.id) {
-      const kick = document.createElement("button");
-      kick.type = "button";
-      kick.className = "masterword-kick-button";
-      kick.dataset.masterwordKickId = item.id;
-      kick.setAttribute("aria-label", "Expulsar jugador");
-      kick.textContent = "x";
-      card.append(kick);
-    }
     return card;
   }));
 }
@@ -3680,8 +3657,9 @@ function renderMasterWordActions(room, player, players, isHost) {
   masterWordClueForm.hidden = !player?.canClue;
   masterWordGuessForm.hidden = !player?.canGuess;
   const noVisibleCluesForGuesser = player?.isActive && ["guessing", "finished"].includes(status) && !(room.validClues?.length || 0);
-  const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0) + (noVisibleCluesForGuesser ? 1 : 0);
-  masterWordClueBoard.hidden = !["guessing", "finished"].includes(status) || !visibleClues;
+  const submittedClues = room.status === "clue" && player?.hasSubmitted ? (player.submittedClues?.length || 0) : 0;
+  const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0) + submittedClues + (noVisibleCluesForGuesser ? 1 : 0);
+  masterWordClueBoard.hidden = !["clue", "guessing", "finished"].includes(status) || !visibleClues;
   if (!masterWordClueForm.hidden) renderMasterWordClueInputs(room, player);
   renderMasterWordValidClues(room);
   masterWordGuessButton.disabled = !player?.canGuess;
@@ -3725,7 +3703,16 @@ function sanitizeMasterWordClueValue(value) {
 }
 
 function renderMasterWordValidClues(room) {
-  const validClueNodes = (room.validClues || []).map((clue) => {
+  const submittedClues = room.status === "clue" && room.player?.hasSubmitted ? (room.player.submittedClues || []) : [];
+  const validClueNodes = submittedClues.map((clue) => {
+    const item = document.createElement("span");
+    item.className = "masterword-clue-chip is-submitted";
+    const word = document.createElement("strong");
+    word.textContent = clue.text || "";
+    item.append(word);
+    return item;
+  });
+  validClueNodes.push(...(room.validClues || []).map((clue) => {
     const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("span");
     item.className = "masterword-clue-chip";
@@ -3734,15 +3721,13 @@ function renderMasterWordValidClues(room) {
     word.textContent = clue.text || "";
     item.append(author, word);
     return item;
-  });
+  }));
   if (!validClueNodes.length && room.player?.isActive && ["guessing", "finished"].includes(room.status || "")) {
     const item = document.createElement("span");
     item.className = "masterword-clue-chip is-empty";
-    const author = document.createElement("small");
     const word = document.createElement("strong");
-    author.textContent = "Pistas";
     word.textContent = "Todas las pistas se han eliminado por estar repetidas.";
-    item.append(author, word);
+    item.append(word);
     validClueNodes.push(item);
   }
   masterWordValidClues.replaceChildren(...validClueNodes);
@@ -4339,16 +4324,7 @@ function renderResistancePlayers(players, currentPlayer, room) {
     card.querySelector("span").textContent = item.emoji || "";
     card.querySelector("strong").textContent = item.name || "";
     card.querySelector("small").textContent = status;
-    card.querySelector("b").textContent = item.hasTeamVoted ? "Voto emitido" : item.hasMissionVoted ? "Accion enviada" : "";
-    if (canKick && item.id !== currentPlayer?.id) {
-      const kick = document.createElement("button");
-      kick.type = "button";
-      kick.className = "resistance-kick-button";
-      kick.dataset.resistanceKickId = item.id;
-      kick.setAttribute("aria-label", "Expulsar jugador");
-      kick.textContent = "x";
-      card.append(kick);
-    }
+    card.querySelector("b").textContent = item.hasTeamVoted ? "Voto emitido" : item.hasMissionVoted ? "Accion enviada" : "";
     return card;
   }));
 }
@@ -5206,15 +5182,6 @@ function renderMultiplayerPlayers(room = multiplayerRoom) {
       ? t("game.disconnected")
       : player.finished || Number(player.completedRound ?? -1) >= room.roundIndex ? "✓" : "";
     row.append(emoji, name, score, state);
-    if (multiplayerSession?.isHost && Number(room.roundIndex || 0) === 0 && player.id !== multiplayerSession.playerId) {
-      const kick = document.createElement("button");
-      kick.type = "button";
-      kick.className = "multiplayer-kick-button";
-      kick.dataset.multiplayerKickId = player.id;
-      kick.setAttribute("aria-label", "Expulsar jugador");
-      kick.textContent = "x";
-      row.append(kick);
-    }
     return row;
   }));
 }

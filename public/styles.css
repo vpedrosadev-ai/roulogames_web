@@ -10741,3 +10741,88 @@ body.masterword-active .content {
   font-weight: 950;
   line-height: 1;
 }
+/* Room card kick by card tap, MasterWord clue spacing final */
+.impostor-chip[data-player-id],
+.masterword-player-card[data-player-id],
+.resistance-player-card[data-player-id],
+#multiplayerPlayersList article[data-player-id] {
+  cursor: pointer;
+}
+
+.impostor-kick-button,
+.masterword-kick-button,
+.resistance-kick-button,
+.multiplayer-kick-button {
+  display: none !important;
+}
+
+.masterword-score-grid article {
+  justify-items: center !important;
+  text-align: center !important;
+}
+
+.masterword-score-grid span,
+.masterword-score-grid strong {
+  justify-self: center !important;
+  text-align: center !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip {
+  grid-template-columns: minmax(42px, 0.12fr) minmax(0, 1fr) !important;
+  gap: 5px !important;
+  padding: 9px 10px 9px 4px !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small,
+.masterword-removed-clue small {
+  padding: 0 !important;
+  justify-items: center !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small span,
+.masterword-removed-clue small span {
+  font-size: 1.04rem !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small b,
+.masterword-removed-clue small b {
+  font-size: 0.62rem !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-submitted {
+  grid-template-columns: minmax(0, 1fr) !important;
+  padding-left: 12px !important;
+  background: #ffdf6b !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-empty {
+  grid-template-columns: minmax(0, 1fr) !important;
+  padding-left: 12px !important;
+  border-color: rgba(255, 97, 120, 0.82) !important;
+  background: linear-gradient(180deg, rgba(174, 60, 84, 0.96), rgba(108, 35, 60, 0.98)) !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-empty strong {
+  color: #fff1f3 !important;
+}
+
+.masterword-removed-clue {
+  grid-template-columns: minmax(42px, 0.12fr) minmax(0, 1fr) max-content !important;
+  gap: 5px !important;
+  padding-left: 4px !important;
+}
+
+@media (max-width: 760px) {
+  #masterWordValidClues > .masterword-clue-chip,
+  .masterword-removed-clue {
+    grid-template-columns: minmax(36px, 0.12fr) minmax(0, 1fr) !important;
+    gap: 4px !important;
+    padding-left: 3px !important;
+  }
+
+  #masterWordValidClues > .masterword-clue-chip.is-submitted,
+  #masterWordValidClues > .masterword-clue-chip.is-empty {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding-left: 10px !important;
+  }
+}
