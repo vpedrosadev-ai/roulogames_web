@@ -3433,10 +3433,20 @@ function enterMasterWordRoom(payload) {
 }
 
 function scrollMasterWordGameTop() {
+  const reset = () => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.scrollingElement?.scrollTo?.(0, 0);
+    document.querySelector(".app-shell")?.scrollTo?.(0, 0);
+    document.querySelector(".content")?.scrollTo?.(0, 0);
+    document.querySelector("#masterWordView")?.scrollTo?.(0, 0);
+  };
+  reset();
   requestAnimationFrame(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.querySelector(".content")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
-    masterWordGame?.scrollIntoView({ block: "start", inline: "nearest" });
+    reset();
+    setTimeout(reset, 80);
+    setTimeout(reset, 220);
   });
 }
 

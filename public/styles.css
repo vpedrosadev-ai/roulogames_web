@@ -10826,3 +10826,49 @@ body.masterword-active .content {
     padding-left: 10px !important;
   }
 }
+/* Desktop game nav two columns and MasterWord mobile page scroll */
+@media (min-width: 821px) {
+  .nav-menu {
+    grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+    min-width: min(34vw, 520px) !important;
+    max-width: 560px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body.masterword-active,
+  body.masterword-active .app-shell,
+  body.masterword-active .content,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .content,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-view,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-game,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-game > .masterword-board,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-players-panel,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-play-panel,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-clue-board,
+  body.masterword-active:has(#masterWordGame:not([hidden])) #masterWordValidClues,
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-removed-clues {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.masterword-active {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  body.masterword-active .content {
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-game > .masterword-board {
+    align-items: start !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-player-card {
+    max-height: none !important;
+  }
+}
