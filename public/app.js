@@ -1642,7 +1642,10 @@ let impostorOrbitFrame = null;
 let impostorKnownPlayerIds = new Set();
 let impostorChipScaleFrame = null;
 let impostorChipResizeObserver = null;
+let pendingMultiplayerKickTargetId = "";
 let pendingImpostorKickTargetId = "";
+let pendingResistanceKickTargetId = "";
+let pendingMasterWordKickTargetId = "";
 let resistanceSession = null;
 let resistanceRoom = null;
 let resistancePollTimer = null;
@@ -1811,6 +1814,7 @@ popupSummaryButton.addEventListener("click", () => closeCompletedRoundPopup());
 multiplayerPodiumCloseButton.addEventListener("click", hideMultiplayerPodium);
 hostConfigCloseButton?.addEventListener("click", hideHostConfigPopup);
 window.addEventListener("pagehide", () => releaseMultiplayerRoomIfHost({ useBeacon: true }));
+multiplayerPlayersList?.addEventListener("click", kickMultiplayerPlayer);
 impostorCreateForm?.addEventListener("submit", createimpostorRoom);
 impostorJoinForm?.addEventListener("submit", joinimpostorRoom);
 impostorChooseCreate?.addEventListener("click", () => showimpostorForm("create"));
@@ -1864,6 +1868,7 @@ masterWordShareButton?.addEventListener("click", shareMasterWordRoom);
 masterWordRestartButton?.addEventListener("click", restartMasterWordGame);
 masterWordLeaveButton?.addEventListener("click", leaveMasterWordToMenu);
 masterWordStartButton?.addEventListener("click", startMasterWordGame);
+masterWordPlayers?.addEventListener("click", kickMasterWordPlayer);
 masterWordClueForm?.addEventListener("submit", submitMasterWordClues);
 masterWordClueInputs?.addEventListener("beforeinput", restrictMasterWordClueInput);
 masterWordClueInputs?.addEventListener("input", sanitizeMasterWordClueInput);
@@ -3616,9 +3621,11 @@ function renderMasterWordRoom(room = masterWordRoom) {
 
 function renderMasterWordPlayers(players, currentPlayer, room) {
   const clueSlots = Number(room.clueSlots || 1);
+  const canKick = masterWordSession?.isHost && room.status === "lobby";
   masterWordPlayers.replaceChildren(...players.map((item) => {
     const card = document.createElement("article");
     card.className = "masterword-player-card";
+    card.dataset.playerId = item.id;
     if (item.id === currentPlayer?.id) card.classList.add("is-current");
     if (item.isActive) card.classList.add("is-active-player");
     if (item.hasSubmitted) card.classList.add("has-submitted");
@@ -3629,6 +3636,15 @@ function renderMasterWordPlayers(players, currentPlayer, room) {
     card.querySelector("strong").textContent = item.name || "";
     card.querySelector("small").textContent = status;
     card.querySelector("b").textContent = item.isActive ? "Jugador activo" : item.hasSubmitted ? "Enviado" : "";
+    if (canKick && item.id !== currentPlayer?.id) {
+      const kick = document.createElement("button");
+      kick.type = "button";
+      kick.className = "masterword-kick-button";
+      kick.dataset.masterwordKickId = item.id;
+      kick.setAttribute("aria-label", "Expulsar jugador");
+      kick.textContent = "x";
+      card.append(kick);
+    }
     return card;
   }));
 }
@@ -4096,23 +4112,122 @@ async function restartResistanceGame() {
 
 async function kickResistancePlayer(event) {
   const button = event.target.closest("[data-resistance-kick-id]");
-  if (!button || !resistanceSession?.isHost) return;
+  if (!resistanceSession?.isHost) return;
+  if (!button) {
+    const card = event.target.closest(".resistance-player-card[data-player-id]");
+    if (!card || card.dataset.playerId === resistanceSession.playerId || resistanceRoom?.status !== "lobby") return;
+    event.preventDefault();
+    showRoomKickPopup("resistance", card.dataset.playerId);
+    return;
+  }
   event.preventDefault();
-  button.disabled = true;
+  showRoomKickPopup("resistance", button.dataset.resistanceKickId);
+}
+
+async function performResistanceKick(targetPlayerId, control = null) {
+  if (!targetPlayerId || !resistanceSession?.isHost) return;
+  if (control) control.disabled = true;
   try {
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/kick`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, targetPlayerId: button.dataset.resistanceKickId })
+      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, targetPlayerId })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo expulsar");
+    hideRoomKickPopup("resistance");
     resistanceRoom = payload;
     renderResistanceRoom(payload);
   } catch (error) {
     resistanceGameMessage.textContent = error.message;
-    button.disabled = false;
+    if (control) control.disabled = false;
   }
+}
+
+async function kickMasterWordPlayer(event) {
+  const button = event.target.closest("[data-masterword-kick-id]");
+  if (!masterWordSession?.isHost) return;
+  if (!button) {
+    const card = event.target.closest(".masterword-player-card[data-player-id]");
+    if (!card || card.dataset.playerId === masterWordSession.playerId || masterWordRoom?.status !== "lobby") return;
+    event.preventDefault();
+    showRoomKickPopup("masterword", card.dataset.playerId);
+    return;
+  }
+  event.preventDefault();
+  showRoomKickPopup("masterword", button.dataset.masterwordKickId);
+}
+
+async function performMasterWordKick(targetPlayerId, control = null) {
+  if (!targetPlayerId || !masterWordSession?.isHost) return;
+  if (control) control.disabled = true;
+  try {
+    const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/kick`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token, targetPlayerId })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo expulsar");
+    hideRoomKickPopup("masterword");
+    masterWordRoom = payload;
+    masterWordKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+    renderMasterWordRoom(payload);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+    if (control) control.disabled = false;
+  }
+}
+
+function showRoomKickPopup(kind, targetPlayerId) {
+  const room = kind === "resistance" ? resistanceRoom : kind === "masterword" ? masterWordRoom : multiplayerRoom;
+  const target = (room?.players || []).find((player) => player.id === targetPlayerId);
+  if (!target) return;
+  if (kind === "resistance") pendingResistanceKickTargetId = targetPlayerId;
+  else if (kind === "masterword") pendingMasterWordKickTargetId = targetPlayerId;
+  else pendingMultiplayerKickTargetId = targetPlayerId;
+  let popup = document.querySelector(`#${kind}KickPopup`);
+  if (!popup) {
+    popup = document.createElement("section");
+    popup.id = `${kind}KickPopup`;
+    popup.className = "impostor-popup impostor-kick-popup";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-modal", "true");
+    popup.innerHTML = `
+      <div class="impostor-popup-card impostor-kick-popup-card">
+        <header>
+          <h2>Expulsar jugador</h2>
+          <button type="button" class="secondary compact-button" data-room-kick-close>Cerrar</button>
+        </header>
+        <p></p>
+        <div class="impostor-kick-popup-actions">
+          <button type="button" class="secondary" data-room-kick-close>Cancelar</button>
+          <button type="button" class="danger" data-room-kick-confirm>Expulsar</button>
+        </div>
+      </div>
+    `;
+    popup.addEventListener("click", (popupEvent) => {
+      if (popupEvent.target === popup || popupEvent.target.closest("[data-room-kick-close]")) hideRoomKickPopup(kind);
+      const confirmButton = popupEvent.target.closest("[data-room-kick-confirm]");
+      if (!confirmButton) return;
+      if (kind === "resistance") performResistanceKick(pendingResistanceKickTargetId, confirmButton);
+      else if (kind === "masterword") performMasterWordKick(pendingMasterWordKickTargetId, confirmButton);
+      else performMultiplayerKick(pendingMultiplayerKickTargetId, confirmButton);
+    });
+    document.body.append(popup);
+  }
+  popup.querySelector("p").textContent = `Â¿Quieres expulsar a ${target.name || "este jugador"} de la sala?`;
+  popup.hidden = false;
+  document.body.classList.add("songs-popup-open");
+}
+
+function hideRoomKickPopup(kind) {
+  const popup = document.querySelector(`#${kind}KickPopup`);
+  if (popup) popup.hidden = true;
+  if (kind === "resistance") pendingResistanceKickTargetId = "";
+  else if (kind === "masterword") pendingMasterWordKickTargetId = "";
+  else pendingMultiplayerKickTargetId = "";
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
 async function proposeResistanceTeam() {
@@ -4214,6 +4329,7 @@ function renderResistancePlayers(players, currentPlayer, room) {
   resistancePlayers.replaceChildren(...players.map((item) => {
     const card = document.createElement("article");
     card.className = "resistance-player-card";
+    card.dataset.playerId = item.id;
     if (item.id === currentPlayer?.id) card.classList.add("is-current");
     if (item.isLeader) card.classList.add("is-leader");
     if (item.onTeam) card.classList.add("is-on-team");
@@ -5076,6 +5192,7 @@ function renderMultiplayerPlayers(room = multiplayerRoom) {
   multiplayerRoomLabel.textContent = room.roomName;
   multiplayerPlayersList.replaceChildren(...room.players.map((player) => {
     const row = document.createElement("article");
+    row.dataset.playerId = player.id;
     if (player.id === multiplayerSession?.playerId) row.classList.add("is-current");
     if (!player.connected) row.classList.add("is-disconnected");
     const emoji = document.createElement("span");
@@ -5089,8 +5206,55 @@ function renderMultiplayerPlayers(room = multiplayerRoom) {
       ? t("game.disconnected")
       : player.finished || Number(player.completedRound ?? -1) >= room.roundIndex ? "✓" : "";
     row.append(emoji, name, score, state);
+    if (multiplayerSession?.isHost && Number(room.roundIndex || 0) === 0 && player.id !== multiplayerSession.playerId) {
+      const kick = document.createElement("button");
+      kick.type = "button";
+      kick.className = "multiplayer-kick-button";
+      kick.dataset.multiplayerKickId = player.id;
+      kick.setAttribute("aria-label", "Expulsar jugador");
+      kick.textContent = "x";
+      row.append(kick);
+    }
     return row;
   }));
+}
+
+async function kickMultiplayerPlayer(event) {
+  if (!multiplayerSession?.isHost) return;
+  const button = event.target.closest("[data-multiplayer-kick-id]");
+  const row = button ? null : event.target.closest("article[data-player-id]");
+  const targetPlayerId = button?.dataset.multiplayerKickId || row?.dataset.playerId || "";
+  if (!targetPlayerId || targetPlayerId === multiplayerSession.playerId || Number(multiplayerRoom?.roundIndex || 0) > 0) return;
+  event.preventDefault();
+  showMultiplayerKickPopup(targetPlayerId);
+}
+
+function showMultiplayerKickPopup(targetPlayerId) {
+  const target = (multiplayerRoom?.players || []).find((player) => player.id === targetPlayerId);
+  if (!target) return;
+  pendingMultiplayerKickTargetId = targetPlayerId;
+  showRoomKickPopup("multiplayer", targetPlayerId);
+}
+
+async function performMultiplayerKick(targetPlayerId, control = null) {
+  if (!targetPlayerId || !multiplayerSession?.isHost) return;
+  if (control) control.disabled = true;
+  try {
+    const response = await fetch(`/api/multiplayer/rooms/${encodeURIComponent(multiplayerSession.roomName)}/kick`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId: multiplayerSession.playerId, token: multiplayerSession.token, targetPlayerId })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo expulsar");
+    hideRoomKickPopup("multiplayer");
+    multiplayerRoom = payload;
+    multiplayerKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+    renderMultiplayerPlayers(payload);
+  } catch (error) {
+    gameStatus.textContent = error.message;
+    if (control) control.disabled = false;
+  }
 }
 
 async function updateMultiplayerScore() {

@@ -595,6 +595,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && multiplayerScoreMatch) return updateMultiplayerScore(req, res, multiplayerScoreMatch[1]);
     const multiplayerReadyMatch = url.pathname.match(/^\/api\/multiplayer\/rooms\/([^/]+)\/ready$/);
     if (req.method === "POST" && multiplayerReadyMatch) return readyMultiplayerPlayer(req, res, multiplayerReadyMatch[1]);
+    const multiplayerKickMatch = url.pathname.match(/^\/api\/multiplayer\/rooms\/([^/]+)\/kick$/);
+    if (req.method === "POST" && multiplayerKickMatch) return kickMultiplayerPlayer(req, res, multiplayerKickMatch[1]);
     const multiplayerLeaveMatch = url.pathname.match(/^\/api\/multiplayer\/rooms\/([^/]+)\/leave$/);
     if (req.method === "POST" && multiplayerLeaveMatch) return leaveMultiplayerRoom(req, res, multiplayerLeaveMatch[1]);
 
@@ -640,6 +642,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && masterWordStartMatch) return startMasterWordGame(req, res, masterWordStartMatch[1]);
     const masterWordRestartMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/restart$/);
     if (req.method === "POST" && masterWordRestartMatch) return restartMasterWordGame(req, res, masterWordRestartMatch[1]);
+    const masterWordKickMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/kick$/);
+    if (req.method === "POST" && masterWordKickMatch) return kickMasterWordPlayer(req, res, masterWordKickMatch[1]);
     const masterWordClueMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/clue$/);
     if (req.method === "POST" && masterWordClueMatch) return submitMasterWordClue(req, res, masterWordClueMatch[1]);
     const masterWordGuessMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/guess$/);
@@ -1018,10 +1022,15 @@ async function joinMultiplayerRoom(req, res, roomName) {
   const body = await readJson(req);
   const identity = normalizeMultiplayerIdentity(body);
   if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
-  if (room.players.length >= 12) return sendJson(res, { error: "Room is full" }, 409);
-  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) {
-    return sendJson(res, { error: "Player name is already in use" }, 409);
+  const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
+  if (existingPlayer) {
+    existingPlayer.token = randomBytes(24).toString("hex");
+    existingPlayer.emoji = identity.emoji;
+    existingPlayer.lastSeen = Date.now();
+    room.updatedAt = Date.now();
+    return sendJson(res, multiplayerRoomResponse(room, existingPlayer), 200);
   }
+  if (room.players.length >= 12) return sendJson(res, { error: "Room is full" }, 409);
   const player = createMultiplayerPlayer(identity);
   room.players.push(player);
   room.updatedAt = Date.now();
@@ -1062,6 +1071,23 @@ async function readyMultiplayerPlayer(req, res, roomName) {
   player.readyRound = room.roundIndex;
   player.lastSeen = Date.now();
   syncMultiplayerRoundState(room);
+  room.updatedAt = Date.now();
+  sendJson(res, multiplayerRoomResponse(room));
+}
+
+async function kickMultiplayerPlayer(req, res, roomName) {
+  const room = multiplayerRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  const hostId = getMultiplayerHostId(room);
+  if (!player || player.id !== hostId) return sendJson(res, { error: "Only room creator can kick players" }, 403);
+  if (Number(room.roundIndex || 0) > 0) return sendJson(res, { error: "Players can only be kicked before the game starts" }, 409);
+  const targetId = String(body.targetPlayerId || "");
+  if (!targetId || targetId === hostId) return sendJson(res, { error: "Invalid player to kick" }, 400);
+  const before = room.players.length;
+  room.players = room.players.filter((item) => item.id !== targetId);
+  if (room.players.length === before) return sendJson(res, { error: "Player not found" }, 404);
   room.updatedAt = Date.now();
   sendJson(res, multiplayerRoomResponse(room));
 }
@@ -1256,10 +1282,15 @@ async function joinimpostorRoom(req, res, roomName) {
   if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
   const identity = normalizeimpostorIdentity(await readJson(req));
   if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
-  if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
-  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) {
-    return sendJson(res, { error: "Player name is already in use" }, 409);
+  const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
+  if (existingPlayer) {
+    existingPlayer.token = randomBytes(24).toString("hex");
+    existingPlayer.emoji = identity.emoji;
+    existingPlayer.lastSeen = Date.now();
+    room.updatedAt = Date.now();
+    return sendJson(res, impostorRoomResponse(room, existingPlayer), 200);
   }
+  if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
   const player = createimpostorPlayer(identity, nextimpostorSeatNumber(room));
   room.players.push(player);
   if (room.players.length === Number(room.config.playerLimit)) assignimpostorRoles(room);
@@ -1575,7 +1606,7 @@ async function joinMasterWordRoom(req, res, roomName) {
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const identity = normalizeMasterWordIdentity(await readJson(req));
   if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
-  const existingPlayer = room.players.find((player) => player.name === identity.name);
+  const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
   if (existingPlayer) {
     existingPlayer.token = randomBytes(24).toString("hex");
     existingPlayer.emoji = identity.emoji;
@@ -1585,9 +1616,6 @@ async function joinMasterWordRoom(req, res, roomName) {
   }
   if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
   if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
-  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) {
-    return sendJson(res, { error: "Player name is already in use" }, 409);
-  }
   const player = createMasterWordPlayer(identity, nextMasterWordSeatNumber(room));
   room.players.push(player);
   if (room.players.length === Number(room.config.playerLimit)) startMasterWordRound(room);
@@ -1620,6 +1648,23 @@ async function restartMasterWordGame(req, res, roomName) {
   if (!isMasterWordHost(room, player)) return sendJson(res, { error: "Only host can restart" }, 403);
   resetMasterWordGame(room);
   if (room.players.length >= 3) startMasterWordRound(room);
+  room.updatedAt = Date.now();
+  sendJson(res, masterWordRoomResponse(room, player));
+}
+
+async function kickMasterWordPlayer(req, res, roomName) {
+  const room = masterWordRooms.get(normalizeRoomKey(roomName));
+  if (!room) return sendJson(res, { error: "Room not found" }, 404);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  const hostId = room.hostId || room.players[0]?.id;
+  if (!isMasterWordHost(room, player)) return sendJson(res, { error: "Only host can kick players" }, 403);
+  if (room.status !== "lobby") return sendJson(res, { error: "Players can only be kicked before the game starts" }, 409);
+  const targetId = String(body.targetPlayerId || "");
+  if (!targetId || targetId === hostId) return sendJson(res, { error: "Invalid player to kick" }, 400);
+  const before = room.players.length;
+  room.players = room.players.filter((item) => item.id !== targetId);
+  if (room.players.length === before) return sendJson(res, { error: "Player not found" }, 404);
   room.updatedAt = Date.now();
   sendJson(res, masterWordRoomResponse(room, player));
 }
@@ -2030,7 +2075,7 @@ async function joinResistanceRoom(req, res, roomName) {
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const identity = normalizeResistanceIdentity(await readJson(req));
   if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
-  const existingPlayer = room.players.find((player) => player.name === identity.name);
+  const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
   if (existingPlayer) {
     existingPlayer.token = randomBytes(24).toString("hex");
     existingPlayer.emoji = identity.emoji;
@@ -2040,9 +2085,6 @@ async function joinResistanceRoom(req, res, roomName) {
   }
   if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
   if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
-  if (room.players.some((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase())) {
-    return sendJson(res, { error: "Player name is already in use" }, 409);
-  }
   const player = createResistancePlayer(identity, nextResistanceSeatNumber(room));
   room.players.push(player);
   if (room.players.length === Number(room.config.playerLimit)) assignResistanceRoles(room);

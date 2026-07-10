@@ -10687,3 +10687,57 @@ body.masterword-active .content {
     grid-column: 2 !important;
   }
 }
+/* MasterWord lobby kick button parity */
+.masterword-player-card,
+.resistance-player-card {
+  position: relative;
+}
+
+.masterword-kick-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(255, 97, 120, 0.82);
+  border-radius: 999px;
+  color: #fff1f3;
+  background: linear-gradient(180deg, rgba(174, 60, 84, 0.96), rgba(108, 35, 60, 0.98));
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.masterword-kick-button:hover,
+.masterword-kick-button:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.masterword-kick-button:disabled {
+  opacity: 0.55;
+  transform: none;
+}
+/* Multiplayer lobby kick button parity */
+#multiplayerPlayersList article {
+  position: relative;
+}
+
+.multiplayer-kick-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(255, 97, 120, 0.82);
+  border-radius: 999px;
+  color: #fff1f3;
+  background: linear-gradient(180deg, rgba(174, 60, 84, 0.96), rgba(108, 35, 60, 0.98));
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1;
+}
