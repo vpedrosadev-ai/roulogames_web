@@ -10613,3 +10613,77 @@ body.masterword-active .content {
     gap: 8px !important;
   }
 }
+/* MasterWord mobile score fill and stacked clue authors */
+#masterWordValidClues > .masterword-clue-chip,
+.masterword-removed-clue {
+  grid-template-columns: minmax(64px, 0.18fr) minmax(0, 1fr) !important;
+}
+
+.masterword-removed-clue {
+  grid-template-columns: minmax(64px, 0.18fr) minmax(0, 1fr) max-content !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small,
+.masterword-removed-clue small {
+  display: grid !important;
+  justify-items: center !important;
+  gap: 2px !important;
+  text-align: center !important;
+  white-space: normal !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip small span,
+.masterword-removed-clue small span {
+  display: block;
+  font-size: 1.12rem;
+  line-height: 1;
+}
+
+#masterWordValidClues > .masterword-clue-chip small b,
+.masterword-removed-clue small b {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.72rem;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-empty {
+  grid-template-columns: minmax(64px, 0.18fr) minmax(0, 1fr) !important;
+  border-color: rgba(255, 223, 107, 0.36) !important;
+  background: rgba(255, 223, 107, 0.18) !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-empty strong {
+  color: #fff8dd !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-empty small {
+  color: rgba(255, 249, 231, 0.74) !important;
+}
+
+@media (max-width: 760px) {
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-score-grid {
+    width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    justify-items: stretch !important;
+  }
+
+  body.masterword-active:has(#masterWordGame:not([hidden])) .masterword-score-grid article {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #masterWordValidClues > .masterword-clue-chip,
+  .masterword-removed-clue,
+  #masterWordValidClues > .masterword-clue-chip.is-empty {
+    grid-template-columns: minmax(48px, 0.2fr) minmax(0, 1fr) !important;
+  }
+
+  .masterword-removed-clue em {
+    grid-column: 2 !important;
+  }
+}

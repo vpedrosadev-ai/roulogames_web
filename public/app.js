@@ -3663,7 +3663,8 @@ function renderMasterWordActions(room, player, players, isHost) {
   masterWordStartButton.textContent = players.length < 3 ? `Esperando ${players.length}/3` : "Iniciar partida";
   masterWordClueForm.hidden = !player?.canClue;
   masterWordGuessForm.hidden = !player?.canGuess;
-  const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0);
+  const noVisibleCluesForGuesser = player?.isActive && ["guessing", "finished"].includes(status) && !(room.validClues?.length || 0);
+  const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0) + (noVisibleCluesForGuesser ? 1 : 0);
   masterWordClueBoard.hidden = !["guessing", "finished"].includes(status) || !visibleClues;
   if (!masterWordClueForm.hidden) renderMasterWordClueInputs(room, player);
   renderMasterWordValidClues(room);
@@ -3708,30 +3709,49 @@ function sanitizeMasterWordClueValue(value) {
 }
 
 function renderMasterWordValidClues(room) {
-  masterWordValidClues.replaceChildren(...(room.validClues || []).map((clue) => {
+  const validClueNodes = (room.validClues || []).map((clue) => {
     const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("span");
     item.className = "masterword-clue-chip";
     const word = document.createElement("strong");
-    const author = document.createElement("small");
+    const author = buildMasterWordClueAuthorNode(clueAuthor);
     word.textContent = clue.text || "";
-    author.textContent = `${clueAuthor.emoji || ""} ${clueAuthor.name || ""}`.trim() || "Jugador";
     item.append(author, word);
     return item;
-  }));
+  });
+  if (!validClueNodes.length && room.player?.isActive && ["guessing", "finished"].includes(room.status || "")) {
+    const item = document.createElement("span");
+    item.className = "masterword-clue-chip is-empty";
+    const author = document.createElement("small");
+    const word = document.createElement("strong");
+    author.textContent = "Pistas";
+    word.textContent = "Todas las pistas se han eliminado por estar repetidas.";
+    item.append(author, word);
+    validClueNodes.push(item);
+  }
+  masterWordValidClues.replaceChildren(...validClueNodes);
   masterWordRemovedClues?.replaceChildren(...(room.removedClues || []).map((clue) => {
     const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("article");
     item.className = "masterword-removed-clue";
-    const author = document.createElement("small");
+    const author = buildMasterWordClueAuthorNode(clueAuthor);
     const word = document.createElement("strong");
     const reason = document.createElement("em");
-    author.textContent = `${clueAuthor.emoji || ""} ${clueAuthor.name || ""}`.trim() || "Jugador";
     word.textContent = clue.text || "";
     reason.textContent = clue.reason || "retirada";
     item.append(author, word, reason);
     return item;
   }));
+}
+
+function buildMasterWordClueAuthorNode(clueAuthor) {
+  const author = document.createElement("small");
+  const emoji = document.createElement("span");
+  const name = document.createElement("b");
+  emoji.textContent = clueAuthor.emoji || "";
+  name.textContent = clueAuthor.name || "Jugador";
+  author.append(emoji, name);
+  return author;
 }
 
 function getMasterWordClueAuthor(clue, room) {
