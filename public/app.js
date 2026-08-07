@@ -1156,6 +1156,7 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.wordPrefix": "Paraula: {value}",
     "impostor.hintPrefix": "Pista: {value}",
     "impostor.starts": "Comenca {name}",
+    "impostor.startsBadge": "COMENCA",
     "impostor.youStart": "Comences tu",
     "impostor.kickPlayer": "Expulsa jugador",
     "impostor.sessionLost": "Has sortit d'aquesta sala. Torna a entrar amb el teu nom si cal."
@@ -1262,6 +1263,7 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.wordPrefix": "Palabra: {value}",
     "impostor.hintPrefix": "Pista: {value}",
     "impostor.starts": "Empieza {name}",
+    "impostor.startsBadge": "EMPIEZA",
     "impostor.youStart": "Empiezas tu",
     "impostor.kickPlayer": "Expulsar jugador",
     "impostor.sessionLost": "Has salido de esta sala. Vuelve a entrar con tu nombre si hace falta."
@@ -1368,6 +1370,7 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.wordPrefix": "Word: {value}",
     "impostor.hintPrefix": "Hint: {value}",
     "impostor.starts": "{name} starts",
+    "impostor.startsBadge": "STARTS",
     "impostor.youStart": "You start",
     "impostor.kickPlayer": "Kick player",
     "impostor.sessionLost": "You left this room. Rejoin with your name if needed."
@@ -1884,14 +1887,14 @@ window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
 impostorEventClose?.addEventListener("click", hideImpostorEventPopup);
 impostorVotePopup?.addEventListener("click", (event) => {
-  if (event.target === impostorVotePopup) hideImpostorVotePopup();
+  dismissImpostorPopupOnClick(event, hideImpostorVotePopup);
 });
 impostorEventPopup?.addEventListener("click", (event) => {
-  if (event.target === impostorEventPopup) hideImpostorEventPopup();
+  dismissImpostorPopupOnClick(event, hideImpostorEventPopup);
 });
 impostorGuessPopupClose?.addEventListener("click", hideImpostorGuessPopup);
 impostorGuessPopup?.addEventListener("click", (event) => {
-  if (event.target === impostorGuessPopup) hideImpostorGuessPopup();
+  dismissImpostorPopupOnClick(event, hideImpostorGuessPopup);
 });
 
 form.addEventListener("submit", async (event) => {
@@ -2566,6 +2569,7 @@ async function startimpostorGame() {
 
 async function restartimpostorGame() {
   if (!impostorSession?.isHost || !impostorRestartButton) return;
+  closeAllImpostorPopups();
   impostorRestartButton.disabled = true;
   try {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/restart`, {
@@ -2621,9 +2625,16 @@ function showImpostorKickPopup(targetPlayerId) {
       </div>
     `;
     popup.addEventListener("click", (popupEvent) => {
-      if (popupEvent.target === popup || popupEvent.target.closest("[data-impostor-kick-close]")) hideImpostorKickPopup();
       const confirmButton = popupEvent.target.closest("[data-impostor-kick-confirm]");
-      if (confirmButton) performImpostorKick(pendingImpostorKickTargetId, confirmButton);
+      if (confirmButton) {
+        performImpostorKick(pendingImpostorKickTargetId, confirmButton);
+        return;
+      }
+      if (popupEvent.target.closest("[data-impostor-kick-close]")) {
+        hideImpostorKickPopup();
+        return;
+      }
+      dismissImpostorPopupOnClick(popupEvent, hideImpostorKickPopup);
     });
     document.body.append(popup);
   }
@@ -2760,7 +2771,7 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   impostorShareButton.hidden = !isHost;
   if (impostorRestartButton) {
     impostorRestartButton.hidden = !isHost || status === "lobby";
-    impostorRestartButton.disabled = !isHost || activePlayers.length < 3;
+    impostorRestartButton.disabled = !isHost || players.length < 3;
   }
   if (options.flash) {
     impostorGame?.classList.add("is-impostor-flashing");
@@ -2845,9 +2856,11 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     if (player.eliminated && player.role) chip.classList.add(`is-expelled-${player.role}`);
     if (player.hasVoted) chip.classList.add("has-voted");
     if (player.starts) chip.classList.add("is-starting-player");
-    const roleText = player.role && (revealAll || player.eliminated)
-      ? `${t(`impostor.role.${player.role}`)}${player.word ? ` - ${player.word}` : ""}`
-      : (player.eliminated ? t("impostor.out") : t("impostor.inGame"));
+    const roleText = player.starts && !player.eliminated && !revealAll
+      ? t("impostor.startsBadge")
+      : player.role && (revealAll || player.eliminated)
+        ? `${t(`impostor.role.${player.role}`)}${player.word ? ` - ${player.word}` : ""}`
+        : (player.eliminated ? t("impostor.out") : t("impostor.inGame"));
     const voteText = ["playing", "tiebreak"].includes(status) && !player.eliminated
       ? (player.hasVoted ? t("impostor.voted") : t("impostor.pendingVote"))
       : "";
@@ -3069,9 +3082,25 @@ function hideImpostorEventPopup() {
   if (impostorVotePopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
+function dismissImpostorPopupOnClick(event, hidePopup) {
+  if (event.target.closest("button, input, textarea, select, option, label, a")) return;
+  hidePopup();
+}
+
+function closeAllImpostorPopups() {
+  if (impostorVotePopup) impostorVotePopup.hidden = true;
+  if (impostorEventPopup) impostorEventPopup.hidden = true;
+  if (impostorGuessPopup) impostorGuessPopup.hidden = true;
+  const kickPopup = document.querySelector("#impostorKickPopup");
+  if (kickPopup) kickPopup.hidden = true;
+  pendingImpostorKickTargetId = "";
+  document.body.classList.remove("songs-popup-open");
+}
+
 function announceImpostorEvent(room, { force = false } = {}) {
   if (!room?.eventId || (!force && room.eventId === impostorShownEventId)) return;
   impostorShownEventId = room.eventId;
+  if (room.lastEvent?.type === "start") closeAllImpostorPopups();
   const title = getImpostorEventTitle(room);
   const eventMessage = formatimpostorEvent(room.lastEvent);
   const guessResult = formatimpostorGuessResult(room.lastEvent);
@@ -3256,10 +3285,7 @@ function leaveimpostorRoom() {
   impostorLastVotesCast = 0;
   impostorOutcomeEventId = "";
   impostorKnownPlayerIds = new Set();
-  hideImpostorVotePopup();
-  hideImpostorEventPopup();
-  hideImpostorGuessPopup();
-  hideImpostorKickPopup();
+  closeAllImpostorPopups();
   if (impostorLobbyTitle) impostorLobbyTitle.hidden = false;
   if (impostorRoomHeader) impostorRoomHeader.hidden = true;
 }

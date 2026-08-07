@@ -1,0 +1,36 @@
+.impostor-chip.is-starting-player:not(.is-eliminated) {
+  border-color: rgba(247, 213, 126, 0.9) !important;
+  background: linear-gradient(135deg, rgba(247, 213, 126, 0.24), rgba(255, 255, 255, 0.08)) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(247, 213, 126, 0.64),
+    0 0 22px rgba(247, 213, 126, 0.2),
+    0 14px 26px rgba(0, 0, 0, 0.32) !important;
+}
+
+.impostor-chip.is-starting-player:not(.is-eliminated) small {
+  color: #ffe78d !important;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 760px) {
+  .impostor-popup-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .impostor-popup-card > header {
+    display: contents;
+  }
+
+  .impostor-popup-card > header > h2 {
+    order: -1;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .impostor-popup-card > header > .compact-button {
+    order: 100;
+    align-self: center;
+    margin-top: 16px;
+  }
+}

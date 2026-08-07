@@ -1385,7 +1385,7 @@ function normalizeNewimpostorRoom(value) {
   const config = normalizeimpostorConfig(value?.config);
   if (!key || !roomName || !identity || !config) return null;
   const host = createimpostorPlayer(identity, 1);
-  return { key, roomName, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  return { key, roomName, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
 }
 
 function normalizeimpostorConfig(value = {}) {
@@ -1423,6 +1423,7 @@ function assignimpostorRoles(room) {
   const wordSet = impostor_WORD_SETS[room.config.wordSet] || impostor_WORD_SETS.general;
   const secret = wordSet[Math.floor(Math.random() * wordSet.length)];
   const impostorIds = new Set(shuffleimpostorItems(room.players.map((player) => player.id)).slice(0, room.config.impostorCount));
+  const startingPlayer = shuffleimpostorItems(room.players)[0] || null;
   room.players.forEach((player) => {
     player.role = impostorIds.has(player.id) ? "impostor" : "crew";
     player.eliminated = false;
@@ -1435,7 +1436,8 @@ function assignimpostorRoles(room) {
   room.votes = {};
   room.tieCandidates = [];
   room.winner = "";
-  setimpostorEvent(room, { type: "start" });
+  room.startingPlayerId = startingPlayer?.id || "";
+  setimpostorEvent(room, { type: "start", startingPlayerName: startingPlayer?.name || "" });
 }
 
 function resolveimpostorVotesIfReady(room) {
@@ -1551,6 +1553,8 @@ function impostorRoomResponse(room, privatePlayer = null) {
     lastEvent: room.lastEvent || null,
     status: room.status,
     winner: room.winner || "",
+    startingPlayerId: room.startingPlayerId || "",
+    startingPlayerName: room.players.find((player) => player.id === room.startingPlayerId)?.name || "",
     activeCount,
     votesCast: Object.keys(room.votes || {}).length,
     tieCandidates: room.tieCandidates || [],
@@ -1562,6 +1566,7 @@ function impostorRoomResponse(room, privatePlayer = null) {
       eliminated: Boolean(player.eliminated),
       connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
       hasVoted: Boolean(room.votes?.[player.id]),
+      starts: player.id === room.startingPlayerId,
       role: revealAll || player.eliminated ? player.role : "",
       word: revealAll ? room.word : "",
       won: revealAll ? Boolean(player.won) : undefined
@@ -1573,6 +1578,7 @@ function impostorRoomResponse(room, privatePlayer = null) {
       role: privatePlayer.role,
       eliminated: Boolean(privatePlayer.eliminated),
       hasVoted: Boolean(room.votes?.[privatePlayer.id]),
+      starts: privatePlayer.id === room.startingPlayerId,
       word: privatePlayer.role === "crew" || revealAll ? room.word : "",
       hint: privatePlayer.role === "impostor" && room.config?.impostorHint ? room.hint : "",
       won: revealAll ? Boolean(privatePlayer.won) : undefined
