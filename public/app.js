@@ -324,8 +324,10 @@ const scoreboardRoomLabel = document.querySelector("#scoreboardRoomLabel");
 const scoreboardModeLabel = document.querySelector("#scoreboardModeLabel");
 const scoreboardShareButton = document.querySelector("#scoreboardShareButton");
 const scoreboardHistoryButton = document.querySelector("#scoreboardHistoryButton");
+const scoreboardSettingsButton = document.querySelector("#scoreboardSettingsButton");
 const scoreboardManagePlayersButton = document.querySelector("#scoreboardManagePlayersButton");
 const scoreboardAddRoundButton = document.querySelector("#scoreboardAddRoundButton");
+const scoreboardRoundNavigation = document.querySelector("#scoreboardRoundNavigation");
 const scoreboardPreviousRoundButton = document.querySelector("#scoreboardPreviousRoundButton");
 const scoreboardNextRoundButton = document.querySelector("#scoreboardNextRoundButton");
 const scoreboardSortOrderButton = document.querySelector("#scoreboardSortOrderButton");
@@ -337,6 +339,8 @@ const scoreboardTable = document.querySelector("#scoreboardTable");
 const scoreboardTableHead = document.querySelector("#scoreboardTableHead");
 const scoreboardTableBody = document.querySelector("#scoreboardTableBody");
 const scoreboardEmptyState = document.querySelector("#scoreboardEmptyState");
+const scoreboardSettingsPopup = document.querySelector("#scoreboardSettingsPopup");
+const scoreboardSettingsClose = document.querySelector("#scoreboardSettingsClose");
 const scoreboardJoinPopup = document.querySelector("#scoreboardJoinPopup");
 const scoreboardJoinPopupTitle = document.querySelector("#scoreboardJoinPopupTitle");
 const scoreboardJoinPopupClose = document.querySelector("#scoreboardJoinPopupClose");
@@ -1491,6 +1495,8 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.loadingRooms": "Carregant sales actives...",
     "scoreboard.noRooms": "No hi ha sales actives. Crea la primera.",
     "scoreboard.room": "Sala",
+    "scoreboard.settings": "Configuracio",
+    "scoreboard.configureRoom": "Configura la sala",
     "scoreboard.players": "Jugadors",
     "scoreboard.rounds": "rondes",
     "scoreboard.protected": "Privada",
@@ -1599,6 +1605,8 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.loadingRooms": "Cargando salas activas...",
     "scoreboard.noRooms": "No hay salas activas. Crea la primera.",
     "scoreboard.room": "Sala",
+    "scoreboard.settings": "Ajustes",
+    "scoreboard.configureRoom": "Configurar sala",
     "scoreboard.players": "Jugadores",
     "scoreboard.rounds": "rondas",
     "scoreboard.protected": "Privada",
@@ -1707,6 +1715,8 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.loadingRooms": "Loading active rooms...",
     "scoreboard.noRooms": "No active rooms. Create the first one.",
     "scoreboard.room": "Room",
+    "scoreboard.settings": "Settings",
+    "scoreboard.configureRoom": "Configure room",
     "scoreboard.players": "Players",
     "scoreboard.rounds": "rounds",
     "scoreboard.protected": "Private",
@@ -2321,6 +2331,8 @@ scoreboardSpectateButton?.addEventListener("click", joinScoreboardAsSpectator);
 scoreboardNicknameJoinForm?.addEventListener("submit", joinScoreboardWithNickname);
 scoreboardShareButton?.addEventListener("click", shareScoreboardRoom);
 scoreboardHistoryButton?.addEventListener("click", showScoreboardHistory);
+scoreboardSettingsButton?.addEventListener("click", () => showScoreboardPopup(scoreboardSettingsPopup));
+scoreboardSettingsClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardSettingsPopup));
 scoreboardManagePlayersButton?.addEventListener("click", showScoreboardPlayersPopup);
 scoreboardAddRoundButton?.addEventListener("click", addScoreboardRound);
 scoreboardPreviousRoundButton?.addEventListener("click", () => changeScoreboardCurrentRound("previous"));
@@ -2356,7 +2368,7 @@ scoreboardFinishPopupClose?.addEventListener("click", () => hideScoreboardPopup(
 scoreboardFinishCurrentButton?.addEventListener("click", () => finishScoreboard("finish"));
 scoreboardFinishAllButton?.addEventListener("click", () => finishScoreboard("finish-all"));
 scoreboardHistoryClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardHistoryPopup));
-[scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
+[scoreboardSettingsPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
   .filter(Boolean)
   .forEach((popup) => popup.addEventListener("click", (event) => {
     if (event.target === popup) hideScoreboardPopup(popup);
@@ -5257,15 +5269,14 @@ function renderScoreboardRoom(room = scoreboardRoom) {
   if (scoreboardNewGameButton) scoreboardNewGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
   if (scoreboardNextGameButton) scoreboardNextGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
   const showRoundControls = hostCanControl && room.playersCanEdit && room.status === "active";
+  if (scoreboardRoundNavigation) scoreboardRoundNavigation.hidden = !showRoundControls;
   if (scoreboardPreviousRoundButton) {
-    scoreboardPreviousRoundButton.hidden = !showRoundControls;
     scoreboardPreviousRoundButton.disabled = Number(room.currentRound || 0) <= 0;
   }
   if (scoreboardNextRoundButton) {
-    scoreboardNextRoundButton.hidden = !showRoundControls;
     scoreboardNextRoundButton.disabled = Number(room.currentRound || 0) >= Number(room.roundCount || 1) - 1;
   }
-  if (scoreboardHistoryButton) scoreboardHistoryButton.hidden = !(room.games || []).length;
+  if (scoreboardHistoryButton) scoreboardHistoryButton.hidden = Number(room.gameNumber || 1) < 2;
   if (scoreboardSortOrderButton) scoreboardSortOrderButton.textContent = `\u2195 ${t("scoreboard.orderButton", { order })}`;
   if (["finished", "completed"].includes(room.status)) {
     const isOverall = room.resultScope === "all" || room.status === "completed";
@@ -5850,7 +5861,8 @@ function showScoreboardHistory() {
 function announceScoreboardScoreEvents(room) {
   const unseen = (room.scoreEvents || []).filter((event) => event?.id && !scoreboardKnownScoreEventIds.has(event.id));
   unseen.forEach((event) => scoreboardKnownScoreEventIds.add(event.id));
-  if (!unseen.length) return;
+  const visibleEvents = unseen.filter((event) => !isOwnScoreboardActivityEvent(event));
+  if (!visibleEvents.length) return;
   let container = document.querySelector(".scoreboard-activity-notifications");
   if (!container) {
     container = document.createElement("div");
@@ -5858,7 +5870,7 @@ function announceScoreboardScoreEvents(room) {
     container.setAttribute("aria-live", "assertive");
     document.body.append(container);
   }
-  unseen.forEach((event) => {
+  visibleEvents.forEach((event) => {
     const eventType = event.type || "score";
     if (eventType === "round") {
       addScoreboardActivityNotification(container, {
@@ -5909,6 +5921,12 @@ function announceScoreboardScoreEvents(room) {
   window.setTimeout(() => { if (!container.childElementCount) container.remove(); }, 4500);
 }
 
+function isOwnScoreboardActivityEvent(event) {
+  if (!scoreboardSession || !event?.actorId) return false;
+  const viewerId = scoreboardSession.isHost ? scoreboardSession.hostId : scoreboardSession.playerId;
+  return Boolean(viewerId && event.actorId === viewerId);
+}
+
 function addScoreboardActivityNotification(container, { type, icon, title, detail, badge }) {
   const notification = document.createElement("article");
   notification.className = `scoreboard-activity-notification is-${type}`;
@@ -5937,13 +5955,13 @@ function showScoreboardPopup(popup) {
 
 function hideScoreboardPopup(popup) {
   if (popup) popup.hidden = true;
-  if (![scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup].some((item) => item && !item.hidden)) {
+  if (![scoreboardSettingsPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup].some((item) => item && !item.hidden)) {
     document.body.classList.remove("songs-popup-open");
   }
 }
 
 function closeScoreboardPopups(except = null) {
-  [scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
+  [scoreboardSettingsPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
     .filter((popup) => popup && popup !== except)
     .forEach((popup) => { popup.hidden = true; });
   if (!except) document.body.classList.remove("songs-popup-open");
@@ -6129,6 +6147,7 @@ function applyScoreboardLanguage() {
     ["#scoreboardPasswordLabel", "scoreboard.password"], ["#scoreboardPasswordHint", "scoreboard.passwordHint"],
     ["#scoreboardPlayersCanEditLabel", "scoreboard.playersCanEdit"], ["#scoreboardPlayersCanEditHint", "scoreboard.playersCanEditHint"],
     ["#scoreboardJoinTitle", "scoreboard.join"], ["#scoreboardRoomKicker", "scoreboard.room"],
+    ["#scoreboardSettingsEyebrow", "scoreboard.configureRoom"], ["#scoreboardSettingsTitle", "scoreboard.settings"],
     ["#scoreboardEmptyTitle", "scoreboard.noPlayers"], ["#scoreboardEmptyHint", "scoreboard.noPlayersHint"],
     ["#scoreboardJoinPopupEyebrow", "scoreboard.enterRoom"], ["#scoreboardSpectateTitle", "scoreboard.spectate"],
     ["#scoreboardSpectateHint", "scoreboard.spectateHint"], ["#scoreboardJoinNicknameLabel", "scoreboard.joinNickname"],
@@ -6148,7 +6167,8 @@ function applyScoreboardLanguage() {
   const buttons = [
     [".nav-link[data-view-target='scoreboardView']", "scoreboard.title"],
     ["#scoreboardCreateButton", "scoreboard.create"], ["#scoreboardRefreshRoomsButton", "scoreboard.refresh"],
-    ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardManagePlayersButton", "scoreboard.players"],
+    ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardSettingsButton", "scoreboard.settings"],
+    ["#scoreboardSettingsClose", "common.close"], ["#scoreboardManagePlayersButton", "scoreboard.players"],
     ["#scoreboardHistoryButton", "scoreboard.history"],
     ["#scoreboardAddRoundButton", "scoreboard.addRound"],
     ["#scoreboardPreviousRoundButton", "scoreboard.previousRound"], ["#scoreboardNextRoundButton", "scoreboard.nextRound"],

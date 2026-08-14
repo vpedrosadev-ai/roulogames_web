@@ -1272,7 +1272,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
     if (roundIndex !== getScoreboardCurrentRound(room)) return sendJson(res, { error: "Players can only edit the current round" }, 403);
     const previousValue = player.scores[roundIndex];
     player.scores[roundIndex] = value;
-    addScoreboardScoreEvent(room, player.name, [{ player, roundIndex, previousValue, value }]);
+    addScoreboardScoreEvent(room, player.id, player.name, [{ player, roundIndex, previousValue, value }]);
     markScoreboardChanged(room);
     return sendJson(res, scoreboardRoomResponse(room));
   }
@@ -1293,7 +1293,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
     if (!player || roundIndex < 0 || value === undefined) return sendJson(res, { error: "Invalid score cell" }, 400);
     const previousValue = player.scores[roundIndex];
     player.scores[roundIndex] = value;
-    addScoreboardScoreEvent(room, room.hostName, [{ player, roundIndex, previousValue, value }]);
+    addScoreboardScoreEvent(room, room.hostId, room.hostName, [{ player, roundIndex, previousValue, value }]);
     markScoreboardChanged(room);
   } else if (action === "player") {
     const player = room.players.find((item) => item.id === String(body.targetPlayerId || ""));
@@ -1304,7 +1304,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
     const changes = scores.map((value, roundIndex) => ({ player, roundIndex, previousValue: player.scores[roundIndex], value }));
     player.name = name;
     player.scores = scores;
-    addScoreboardScoreEvent(room, room.hostName, changes);
+    addScoreboardScoreEvent(room, room.hostId, room.hostName, changes);
     markScoreboardChanged(room);
   } else if (action === "kick") {
     const targetId = String(body.targetPlayerId || "");
@@ -1326,7 +1326,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
     room.players.forEach((player) => { player.scores.splice(roundIndex, 1); });
     room.roundCount -= 1;
     room.currentRound = Math.max(0, Math.min(room.roundCount - 1, currentRound - (roundIndex < currentRound ? 1 : 0)));
-    addScoreboardScoreEvent(room, room.hostName, changes);
+    addScoreboardScoreEvent(room, room.hostId, room.hostName, changes);
     markScoreboardChanged(room);
   } else if (action === "round-score") {
     const roundIndex = normalizeScoreboardRoundIndex(body.roundIndex, room);
@@ -1340,7 +1340,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
     if (updates.some((update) => update.value === undefined)) return sendJson(res, { error: "Score is outside allowed range" }, 400);
     const changes = updates.map((update) => ({ player: update.player, roundIndex, previousValue: update.player.scores[roundIndex], value: update.value }));
     updates.forEach((update) => { update.player.scores[roundIndex] = update.value; });
-    addScoreboardScoreEvent(room, room.hostName, changes);
+    addScoreboardScoreEvent(room, room.hostId, room.hostName, changes);
     markScoreboardChanged(room);
   } else if (action === "current-round") {
     if (!room.playersCanEdit) return sendJson(res, { error: "Current round controls are disabled" }, 409);
@@ -1352,6 +1352,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
     room.currentRound = nextRound;
     addScoreboardActivityEvent(room, {
       type: "round",
+      actorId: room.hostId,
       actorName: room.hostName,
       direction: direction > 0 ? "next" : "previous",
       roundIndex: nextRound
@@ -1365,7 +1366,7 @@ async function handleScoreboardAction(req, res, roomName, action) {
   } else if (action === "reset") {
     const changes = room.players.flatMap((player) => player.scores.map((previousValue, roundIndex) => ({ player, roundIndex, previousValue, value: null })));
     room.players.forEach((player) => { player.scores = Array(room.roundCount).fill(null); });
-    addScoreboardScoreEvent(room, room.hostName, changes);
+    addScoreboardScoreEvent(room, room.hostId, room.hostName, changes);
     room.status = "active";
     room.resultId = "";
     room.resultScope = "";
@@ -1409,7 +1410,7 @@ function joinScoreboardRoom(res, room, body) {
   const existing = room.players.find((player) => player.name.toLocaleLowerCase() === nickname.toLocaleLowerCase());
   if (existing) {
     existing.controlToken = randomBytes(24).toString("hex");
-    addScoreboardActivityEvent(room, { type: "join", actorName: existing.name, playerName: existing.name, rejoined: true });
+    addScoreboardActivityEvent(room, { type: "join", actorId: existing.id, actorName: existing.name, playerName: existing.name, rejoined: true });
     room.updatedAt = Date.now();
     return sendJson(res, { ...scoreboardRoomResponse(room), viewer: { role: "player", playerId: existing.id, token: existing.controlToken, reclaimed: true } });
   }
@@ -1420,7 +1421,7 @@ function joinScoreboardRoom(res, room, body) {
   const player = createScoreboardPlayer(nickname, room.roundCount, room.nextPosition++, getScoreboardCurrentRound(room));
   room.players.push(player);
   markScoreboardChanged(room);
-  addScoreboardActivityEvent(room, { type: "join", actorName: player.name, playerName: player.name, rejoined: false });
+  addScoreboardActivityEvent(room, { type: "join", actorId: player.id, actorName: player.name, playerName: player.name, rejoined: false });
   sendJson(res, { ...scoreboardRoomResponse(room), viewer: { role: "player", playerId: player.id, token: player.controlToken } }, 201);
 }
 
@@ -1548,11 +1549,12 @@ function addScoreboardActivityEvent(room, details) {
   room.scoreEvents = [...(Array.isArray(room.scoreEvents) ? room.scoreEvents : []), event].slice(-50);
 }
 
-function addScoreboardScoreEvent(room, actorName, changes) {
+function addScoreboardScoreEvent(room, actorId, actorName, changes) {
   const actualChanges = changes.filter((change) => change.previousValue !== change.value);
   if (!actualChanges.length) return;
   addScoreboardActivityEvent(room, {
     type: "score",
+    actorId,
     actorName,
     changeCount: actualChanges.length,
     changes: actualChanges.slice(0, 40).map(({ player, roundIndex, previousValue, value }) => ({

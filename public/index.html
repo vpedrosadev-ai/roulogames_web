@@ -624,12 +624,12 @@
               <div class="scoreboard-command-actions">
                 <button type="button" id="scoreboardShareButton" class="secondary"><span aria-hidden="true">&#128279;</span> Copiar enlace</button>
                 <button type="button" id="scoreboardHistoryButton" class="secondary" hidden><span aria-hidden="true">&#128202;</span> Partidas anteriores</button>
-                <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#128101;</span> Jugadores</button>
                 <button type="button" id="scoreboardAddRoundButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">+</span> Anadir ronda</button>
-                <button type="button" id="scoreboardPreviousRoundButton" class="secondary scoreboard-host-control scoreboard-current-round-control" hidden><span aria-hidden="true">&#8592;</span> Ronda anterior</button>
-                <button type="button" id="scoreboardNextRoundButton" class="secondary scoreboard-host-control scoreboard-current-round-control" hidden>Siguiente ronda <span aria-hidden="true">&#8594;</span></button>
-                <button type="button" id="scoreboardSortOrderButton" class="secondary scoreboard-host-control" hidden></button>
-                <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
+                <div id="scoreboardRoundNavigation" class="scoreboard-round-navigation scoreboard-host-control" hidden>
+                  <button type="button" id="scoreboardPreviousRoundButton" class="secondary"><span aria-hidden="true">&#8592;</span> Ronda anterior</button>
+                  <button type="button" id="scoreboardNextRoundButton" class="secondary">Siguiente ronda <span aria-hidden="true">&#8594;</span></button>
+                </div>
+                <button type="button" id="scoreboardSettingsButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#9881;</span> Ajustes</button>
                 <button type="button" id="scoreboardFinishButton" class="scoreboard-host-control" hidden><span aria-hidden="true">&#9733;</span> Finalizar</button>
                 <button type="button" id="scoreboardLeaveButton" class="secondary">Salir</button>
               </div>
@@ -646,6 +646,23 @@
               </div>
             </div>
           </section>
+        </section>
+
+        <section id="scoreboardSettingsPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardSettingsTitle">
+          <div class="scoreboard-popup-card scoreboard-small-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardSettingsEyebrow">Configurar sala</span>
+                <h2 id="scoreboardSettingsTitle">Ajustes</h2>
+              </div>
+              <button type="button" id="scoreboardSettingsClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <div class="scoreboard-settings-actions">
+              <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#128101;</span> Jugadores</button>
+              <button type="button" id="scoreboardSortOrderButton" class="secondary scoreboard-host-control" hidden></button>
+              <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
+            </div>
+          </div>
         </section>
 
         <section id="scoreboardJoinPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardJoinPopupTitle">

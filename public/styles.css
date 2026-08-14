@@ -11238,6 +11238,16 @@ body.scoreboard-active .title-bar {
 .scoreboard-command-actions { justify-content: flex-end; }
 .scoreboard-command-actions button { min-height: 38px; padding: 7px 11px; font-size: 0.74rem; }
 .scoreboard-command-actions button > span { margin-right: 3px; }
+.scoreboard-round-navigation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1 1 280px;
+  max-width: 380px;
+  gap: 8px;
+}
+.scoreboard-round-navigation > button { width: 100%; }
+.scoreboard-settings-actions { display: grid; gap: 9px; }
+.scoreboard-settings-actions > button { width: 100%; min-height: 46px; }
 .scoreboard-host-control[hidden],
 .scoreboard-player-count-field[hidden],
 .scoreboard-nickname-form > label[hidden],
@@ -11824,6 +11834,7 @@ body.scoreboard-active .title-bar {
 
   .scoreboard-command-actions { width: 100%; justify-content: stretch; }
   .scoreboard-command-actions button { flex: 1 1 128px; }
+  .scoreboard-round-navigation { flex-basis: 100%; width: 100%; max-width: none; }
 
   .scoreboard-table-scroller {
     overflow: auto;
