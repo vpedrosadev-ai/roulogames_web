@@ -587,6 +587,13 @@
                 <input id="scoreboardCreatePassword" type="password" maxlength="40" autocomplete="new-password" placeholder="Sin contrasena">
                 <small id="scoreboardPasswordHint">Espectadores siempre pueden entrar sin contrasena.</small>
               </label>
+              <label class="scoreboard-toggle-option">
+                <input id="scoreboardPlayersCanEdit" type="checkbox">
+                <span>
+                  <strong id="scoreboardPlayersCanEditLabel">Permitir que cada jugador edite sus puntuaciones</strong>
+                  <small id="scoreboardPlayersCanEditHint">Cada apodo solo controla su propia fila.</small>
+                </span>
+              </label>
               <button type="submit" id="scoreboardCreateButton">Crear sala</button>
             </form>
 
@@ -616,10 +623,12 @@
               </div>
               <div class="scoreboard-command-actions">
                 <button type="button" id="scoreboardShareButton" class="secondary"><span aria-hidden="true">&#128279;</span> Copiar enlace</button>
-                <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control"><span aria-hidden="true">&#128101;</span> Jugadores</button>
-                <button type="button" id="scoreboardAddRoundButton" class="secondary scoreboard-host-control"><span aria-hidden="true">+</span> Anadir ronda</button>
-                <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control"><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
-                <button type="button" id="scoreboardFinishButton" class="scoreboard-host-control"><span aria-hidden="true">&#9733;</span> Finalizar partida</button>
+                <button type="button" id="scoreboardHistoryButton" class="secondary" hidden><span aria-hidden="true">&#128202;</span> Partidas anteriores</button>
+                <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#128101;</span> Jugadores</button>
+                <button type="button" id="scoreboardAddRoundButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">+</span> Anadir ronda</button>
+                <button type="button" id="scoreboardSortOrderButton" class="secondary scoreboard-host-control" hidden></button>
+                <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
+                <button type="button" id="scoreboardFinishButton" class="scoreboard-host-control" hidden><span aria-hidden="true">&#9733;</span> Finalizar</button>
                 <button type="button" id="scoreboardLeaveButton" class="secondary">Salir</button>
               </div>
             </header>
@@ -675,11 +684,12 @@
               </div>
               <button type="button" id="scoreboardPlayersPopupClose" class="secondary compact-button">Cerrar</button>
             </header>
-            <label class="scoreboard-player-count-field">
+            <label id="scoreboardPlayerCountField" class="scoreboard-player-count-field">
               <span id="scoreboardPlayerCountLabel">Numero de jugadores</span>
               <input id="scoreboardPlayerCount" type="number" min="0" max="60" step="1" inputmode="numeric" value="0">
             </label>
             <div id="scoreboardPlayerNameFields" class="scoreboard-player-name-fields"></div>
+            <button type="button" id="scoreboardAddPlayerButton" class="secondary">+ Anadir jugador</button>
             <button type="submit" id="scoreboardSavePlayersButton">Guardar jugadores</button>
           </form>
         </section>
@@ -695,7 +705,7 @@
             </header>
             <label>
               <span id="scoreboardCellScoreLabel">Puntuacion</span>
-              <input id="scoreboardCellScore" type="number" step="any" inputmode="decimal" placeholder="En blanco = 0">
+              <input id="scoreboardCellScore" type="text" inputmode="text" autocomplete="off" placeholder="En blanco = 0">
             </label>
             <div class="scoreboard-popup-actions">
               <button type="button" id="scoreboardClearCellButton" class="secondary">Dejar en blanco</button>
@@ -736,7 +746,7 @@
             </header>
             <label>
               <span id="scoreboardRoundAmountLabel">Puntuacion que se sumara</span>
-              <input id="scoreboardRoundAmount" type="number" step="any" inputmode="decimal" required value="0">
+              <input id="scoreboardRoundAmount" type="text" inputmode="text" autocomplete="off" required value="0">
             </label>
             <fieldset>
               <legend id="scoreboardRoundPlayersLabel">Selecciona jugadores</legend>
@@ -746,7 +756,10 @@
               </div>
               <div id="scoreboardRoundPlayerList" class="scoreboard-round-player-list"></div>
             </fieldset>
-            <button type="submit" id="scoreboardApplyRoundButton">Sumar puntuacion</button>
+            <div class="scoreboard-popup-actions">
+              <button type="button" id="scoreboardDeleteRoundButton" class="danger">Eliminar ronda</button>
+              <button type="submit" id="scoreboardApplyRoundButton">Sumar puntuacion</button>
+            </div>
           </form>
         </section>
 
@@ -775,6 +788,36 @@
             </header>
             <div id="scoreboardPodium" class="scoreboard-podium"></div>
             <ol id="scoreboardFinalList" class="scoreboard-final-list"></ol>
+            <button type="button" id="scoreboardNewGameButton" class="scoreboard-host-control" hidden>Nueva partida</button>
+          </div>
+        </section>
+
+        <section id="scoreboardFinishPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardFinishPopupTitle">
+          <div class="scoreboard-popup-card scoreboard-small-popup-card">
+            <header>
+              <h2 id="scoreboardFinishPopupTitle">Finalizar</h2>
+              <button type="button" id="scoreboardFinishPopupClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <p id="scoreboardFinishPopupText">Elige si quieres cerrar esta partida o toda la sesion.</p>
+            <div class="scoreboard-popup-actions scoreboard-finish-actions">
+              <button type="button" id="scoreboardFinishCurrentButton" class="secondary">Finalizar partida actual</button>
+              <button type="button" id="scoreboardFinishAllButton">Finalizar todas</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="scoreboardHistoryPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardHistoryTitle">
+          <div class="scoreboard-popup-card scoreboard-history-card">
+            <header>
+              <div>
+                <span id="scoreboardHistoryEyebrow">Puntuaciones guardadas</span>
+                <h2 id="scoreboardHistoryTitle">Partidas anteriores</h2>
+              </div>
+              <button type="button" id="scoreboardHistoryClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <div class="scoreboard-history-scroller">
+              <table id="scoreboardHistoryTable" class="scoreboard-history-table"></table>
+            </div>
           </div>
         </section>
 
