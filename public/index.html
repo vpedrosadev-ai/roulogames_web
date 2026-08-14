@@ -53,6 +53,7 @@
         <button type="button" class="nav-link" data-view-target="impostorView"><span class="nav-icon" aria-hidden="true">?</span>Impostor</button>
         <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
         <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
+        <button type="button" class="nav-link" data-view-target="scoreboardView"><span class="nav-icon" aria-hidden="true">#</span>Tabla de puntuacion</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
       </nav>
       <div id="languageSelector" class="language-selector">
@@ -110,6 +111,12 @@
               <strong>Palabra maestra</strong>
               <small id="homeMasterWordHint">Pistas secretas y palabras cooperativas</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMasterWordPlayers">Min. 3 players</small></em>
+            </button>
+            <button type="button" class="home-menu-card scoreboard-home-card" data-view-target="scoreboardView">
+              <span aria-hidden="true">#</span>
+              <strong>Tabla de puntuacion</strong>
+              <small id="homeScoreboardHint">Recuento compartido por rondas</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeScoreboardPlayers">Sin limite de jugadores</small></em>
             </button>
           </div>
         </section>
@@ -520,6 +527,254 @@
               <button type="button" id="masterWordResultClose" class="secondary compact-button">Cerrar</button>
             </header>
             <div id="masterWordResultBody" class="masterword-popup-content"></div>
+          </div>
+        </section>
+
+        <section id="scoreboardView" class="view scoreboard-view" aria-labelledby="scoreboardTitle" hidden>
+          <section id="scoreboardLobby" class="scoreboard-lobby" aria-label="Lobby de tabla de puntuacion">
+            <header class="scoreboard-hero">
+              <span id="scoreboardEyebrow">Marcador compartido</span>
+              <h1 id="scoreboardTitle">Tabla de puntuacion</h1>
+              <p id="scoreboardSubtitle">Crea una sala para llevar la puntuacion de cualquier juego, ronda a ronda.</p>
+            </header>
+
+            <div id="scoreboardChoice" class="scoreboard-choice">
+              <button type="button" id="scoreboardChooseCreate" class="scoreboard-choice-button">
+                <span aria-hidden="true">+</span>
+                <strong>Crear sala</strong>
+              </button>
+              <button type="button" id="scoreboardChooseJoin" class="scoreboard-choice-button">
+                <span aria-hidden="true">&#8594;</span>
+                <strong>Unirse a una sala</strong>
+              </button>
+            </div>
+
+            <form id="scoreboardCreateForm" class="scoreboard-form" hidden>
+              <header>
+                <div>
+                  <span id="scoreboardCreateEyebrow">Nueva tabla</span>
+                  <h2 id="scoreboardCreateTitle">Crear sala</h2>
+                </div>
+                <button type="button" class="secondary compact-button" data-scoreboard-back>Atras</button>
+              </header>
+              <label>
+                <span id="scoreboardRoomNameLabel">Nombre de la sala</span>
+                <input id="scoreboardCreateRoomName" maxlength="24" required autocomplete="off" placeholder="Nombre de la sala">
+              </label>
+              <label>
+                <span id="scoreboardHostNameLabel">Tu apodo</span>
+                <input id="scoreboardCreateHostName" maxlength="24" required autocomplete="nickname" placeholder="Apodo del administrador">
+              </label>
+              <div class="scoreboard-config-grid">
+                <label>
+                  <span id="scoreboardRoundsLabel">Numero de rondas</span>
+                  <input id="scoreboardCreateRounds" type="number" min="1" max="80" step="1" inputmode="numeric" value="5" required>
+                </label>
+                <fieldset>
+                  <legend id="scoreboardOrderLabel">Orden de puntuacion</legend>
+                  <label class="scoreboard-radio-option">
+                    <input type="radio" name="scoreboardSortOrder" value="desc" checked>
+                    <span id="scoreboardDescendingLabel">Mayor puntuacion primero</span>
+                  </label>
+                  <label class="scoreboard-radio-option">
+                    <input type="radio" name="scoreboardSortOrder" value="asc">
+                    <span id="scoreboardAscendingLabel">Menor puntuacion primero</span>
+                  </label>
+                </fieldset>
+              </div>
+              <label>
+                <span id="scoreboardPasswordLabel">Contrasena para jugadores <small>(opcional)</small></span>
+                <input id="scoreboardCreatePassword" type="password" maxlength="40" autocomplete="new-password" placeholder="Sin contrasena">
+                <small id="scoreboardPasswordHint">Espectadores siempre pueden entrar sin contrasena.</small>
+              </label>
+              <button type="submit" id="scoreboardCreateButton">Crear sala</button>
+            </form>
+
+            <section id="scoreboardJoinPanel" class="scoreboard-join-panel" hidden>
+              <header>
+                <div>
+                  <span id="scoreboardJoinEyebrow">Salas abiertas</span>
+                  <h2 id="scoreboardJoinTitle">Unirse a una sala</h2>
+                </div>
+                <div class="scoreboard-join-head-actions">
+                  <button type="button" id="scoreboardRefreshRoomsButton" class="secondary compact-button">Actualizar</button>
+                  <button type="button" class="secondary compact-button" data-scoreboard-back>Atras</button>
+                </div>
+              </header>
+              <div id="scoreboardRoomList" class="scoreboard-room-list" aria-live="polite"></div>
+            </section>
+
+            <p id="scoreboardLobbyMessage" class="message" aria-live="polite"></p>
+          </section>
+
+          <section id="scoreboardGame" class="scoreboard-game" hidden>
+            <header class="scoreboard-command-bar">
+              <div class="scoreboard-room-heading">
+                <span id="scoreboardRoomKicker">Sala</span>
+                <strong id="scoreboardRoomLabel"></strong>
+                <small id="scoreboardModeLabel"></small>
+              </div>
+              <div class="scoreboard-command-actions">
+                <button type="button" id="scoreboardShareButton" class="secondary"><span aria-hidden="true">&#128279;</span> Copiar enlace</button>
+                <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control"><span aria-hidden="true">&#128101;</span> Jugadores</button>
+                <button type="button" id="scoreboardAddRoundButton" class="secondary scoreboard-host-control"><span aria-hidden="true">+</span> Anadir ronda</button>
+                <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control"><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
+                <button type="button" id="scoreboardFinishButton" class="scoreboard-host-control"><span aria-hidden="true">&#9733;</span> Finalizar partida</button>
+                <button type="button" id="scoreboardLeaveButton" class="secondary">Salir</button>
+              </div>
+            </header>
+            <p id="scoreboardGameMessage" class="message" aria-live="polite"></p>
+            <div id="scoreboardTableScroller" class="scoreboard-table-scroller" tabindex="0">
+              <table id="scoreboardTable" class="scoreboard-table">
+                <thead id="scoreboardTableHead"></thead>
+                <tbody id="scoreboardTableBody"></tbody>
+              </table>
+              <div id="scoreboardEmptyState" class="scoreboard-empty-state" hidden>
+                <strong id="scoreboardEmptyTitle">Todavia no hay jugadores</strong>
+                <span id="scoreboardEmptyHint">El administrador puede anadirlos desde el boton Jugadores.</span>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="scoreboardJoinPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardJoinPopupTitle">
+          <div class="scoreboard-popup-card scoreboard-join-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardJoinPopupEyebrow">Entrar en</span>
+                <h2 id="scoreboardJoinPopupTitle"></h2>
+              </div>
+              <button type="button" id="scoreboardJoinPopupClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <button type="button" id="scoreboardSpectateButton" class="scoreboard-spectate-button">
+              <span aria-hidden="true">&#128065;</span>
+              <strong id="scoreboardSpectateTitle">Entrar como espectador</strong>
+              <small id="scoreboardSpectateHint">Acceso directo, sin apodo ni contrasena.</small>
+            </button>
+            <form id="scoreboardNicknameJoinForm" class="scoreboard-nickname-form">
+              <label>
+                <span id="scoreboardJoinNicknameLabel">Entrar con apodo</span>
+                <input id="scoreboardJoinNickname" maxlength="24" required autocomplete="nickname" placeholder="Tu apodo">
+              </label>
+              <label id="scoreboardJoinPasswordField">
+                <span id="scoreboardJoinPasswordLabel">Contrasena</span>
+                <input id="scoreboardJoinPassword" type="password" maxlength="40" autocomplete="current-password" placeholder="Contrasena de la sala">
+              </label>
+              <button type="submit" id="scoreboardJoinNicknameButton">Entrar con apodo</button>
+            </form>
+            <p id="scoreboardJoinMessage" class="message" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section id="scoreboardPlayersPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardPlayersPopupTitle">
+          <form id="scoreboardPlayersForm" class="scoreboard-popup-card scoreboard-players-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardPlayersPopupEyebrow">Configurar tabla</span>
+                <h2 id="scoreboardPlayersPopupTitle">Jugadores</h2>
+              </div>
+              <button type="button" id="scoreboardPlayersPopupClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <label class="scoreboard-player-count-field">
+              <span id="scoreboardPlayerCountLabel">Numero de jugadores</span>
+              <input id="scoreboardPlayerCount" type="number" min="0" max="60" step="1" inputmode="numeric" value="0">
+            </label>
+            <div id="scoreboardPlayerNameFields" class="scoreboard-player-name-fields"></div>
+            <button type="submit" id="scoreboardSavePlayersButton">Guardar jugadores</button>
+          </form>
+        </section>
+
+        <section id="scoreboardCellPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardCellPopupTitle">
+          <form id="scoreboardCellForm" class="scoreboard-popup-card scoreboard-small-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardCellPopupEyebrow">Editar puntuacion</span>
+                <h2 id="scoreboardCellPopupTitle"></h2>
+              </div>
+              <button type="button" id="scoreboardCellPopupClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <label>
+              <span id="scoreboardCellScoreLabel">Puntuacion</span>
+              <input id="scoreboardCellScore" type="number" step="any" inputmode="decimal" placeholder="En blanco = 0">
+            </label>
+            <div class="scoreboard-popup-actions">
+              <button type="button" id="scoreboardClearCellButton" class="secondary">Dejar en blanco</button>
+              <button type="submit" id="scoreboardSaveCellButton">Guardar</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="scoreboardPlayerPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardPlayerPopupTitle">
+          <form id="scoreboardPlayerForm" class="scoreboard-popup-card scoreboard-player-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardPlayerPopupEyebrow">Editar jugador</span>
+                <h2 id="scoreboardPlayerPopupTitle"></h2>
+              </div>
+              <button type="button" id="scoreboardPlayerPopupClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <label>
+              <span id="scoreboardPlayerNicknameLabel">Apodo</span>
+              <input id="scoreboardPlayerNickname" maxlength="24" required autocomplete="off">
+            </label>
+            <div id="scoreboardPlayerScores" class="scoreboard-player-scores"></div>
+            <div class="scoreboard-popup-actions">
+              <button type="button" id="scoreboardDeletePlayerButton" class="danger">Expulsar jugador</button>
+              <button type="submit" id="scoreboardSavePlayerButton">Guardar cambios</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="scoreboardRoundPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardRoundPopupTitle">
+          <form id="scoreboardRoundForm" class="scoreboard-popup-card scoreboard-round-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardRoundPopupEyebrow">Puntuacion multiple</span>
+                <h2 id="scoreboardRoundPopupTitle"></h2>
+              </div>
+              <button type="button" id="scoreboardRoundPopupClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <label>
+              <span id="scoreboardRoundAmountLabel">Puntuacion que se sumara</span>
+              <input id="scoreboardRoundAmount" type="number" step="any" inputmode="decimal" required value="0">
+            </label>
+            <fieldset>
+              <legend id="scoreboardRoundPlayersLabel">Selecciona jugadores</legend>
+              <div class="scoreboard-round-select-actions">
+                <button type="button" id="scoreboardSelectAllPlayers" class="secondary compact-button">Todos</button>
+                <button type="button" id="scoreboardClearPlayerSelection" class="secondary compact-button">Ninguno</button>
+              </div>
+              <div id="scoreboardRoundPlayerList" class="scoreboard-round-player-list"></div>
+            </fieldset>
+            <button type="submit" id="scoreboardApplyRoundButton">Sumar puntuacion</button>
+          </form>
+        </section>
+
+        <section id="scoreboardConfirmPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardConfirmTitle">
+          <div class="scoreboard-popup-card scoreboard-small-popup-card">
+            <header>
+              <h2 id="scoreboardConfirmTitle">Vaciar toda la tabla</h2>
+              <button type="button" id="scoreboardConfirmClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <p id="scoreboardConfirmText">Todas las puntuaciones volveran a estar en blanco.</p>
+            <div class="scoreboard-popup-actions">
+              <button type="button" id="scoreboardCancelResetButton" class="secondary">Cancelar</button>
+              <button type="button" id="scoreboardConfirmResetButton" class="danger">Vaciar tabla</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="scoreboardPodiumPopup" class="scoreboard-popup scoreboard-podium-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardPodiumTitle">
+          <div class="scoreboard-popup-card scoreboard-podium-card">
+            <header>
+              <div>
+                <span id="scoreboardPodiumEyebrow">Partida finalizada</span>
+                <h2 id="scoreboardPodiumTitle">Podio final</h2>
+              </div>
+              <button type="button" id="scoreboardPodiumClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <div id="scoreboardPodium" class="scoreboard-podium"></div>
+            <ol id="scoreboardFinalList" class="scoreboard-final-list"></ol>
           </div>
         </section>
 

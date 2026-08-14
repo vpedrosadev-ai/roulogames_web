@@ -304,6 +304,77 @@ const masterWordResultCard = document.querySelector("#masterWordResultCard");
 const masterWordResultTitle = document.querySelector("#masterWordResultTitle");
 const masterWordResultClose = document.querySelector("#masterWordResultClose");
 const masterWordResultBody = document.querySelector("#masterWordResultBody");
+const scoreboardLobby = document.querySelector("#scoreboardLobby");
+const scoreboardChoice = document.querySelector("#scoreboardChoice");
+const scoreboardChooseCreate = document.querySelector("#scoreboardChooseCreate");
+const scoreboardChooseJoin = document.querySelector("#scoreboardChooseJoin");
+const scoreboardCreateForm = document.querySelector("#scoreboardCreateForm");
+const scoreboardCreateRoomName = document.querySelector("#scoreboardCreateRoomName");
+const scoreboardCreateHostName = document.querySelector("#scoreboardCreateHostName");
+const scoreboardCreateRounds = document.querySelector("#scoreboardCreateRounds");
+const scoreboardCreatePassword = document.querySelector("#scoreboardCreatePassword");
+const scoreboardJoinPanel = document.querySelector("#scoreboardJoinPanel");
+const scoreboardRefreshRoomsButton = document.querySelector("#scoreboardRefreshRoomsButton");
+const scoreboardRoomList = document.querySelector("#scoreboardRoomList");
+const scoreboardBackButtons = document.querySelectorAll("[data-scoreboard-back]");
+const scoreboardLobbyMessage = document.querySelector("#scoreboardLobbyMessage");
+const scoreboardGame = document.querySelector("#scoreboardGame");
+const scoreboardRoomLabel = document.querySelector("#scoreboardRoomLabel");
+const scoreboardModeLabel = document.querySelector("#scoreboardModeLabel");
+const scoreboardShareButton = document.querySelector("#scoreboardShareButton");
+const scoreboardManagePlayersButton = document.querySelector("#scoreboardManagePlayersButton");
+const scoreboardAddRoundButton = document.querySelector("#scoreboardAddRoundButton");
+const scoreboardResetButton = document.querySelector("#scoreboardResetButton");
+const scoreboardFinishButton = document.querySelector("#scoreboardFinishButton");
+const scoreboardLeaveButton = document.querySelector("#scoreboardLeaveButton");
+const scoreboardGameMessage = document.querySelector("#scoreboardGameMessage");
+const scoreboardTable = document.querySelector("#scoreboardTable");
+const scoreboardTableHead = document.querySelector("#scoreboardTableHead");
+const scoreboardTableBody = document.querySelector("#scoreboardTableBody");
+const scoreboardEmptyState = document.querySelector("#scoreboardEmptyState");
+const scoreboardJoinPopup = document.querySelector("#scoreboardJoinPopup");
+const scoreboardJoinPopupTitle = document.querySelector("#scoreboardJoinPopupTitle");
+const scoreboardJoinPopupClose = document.querySelector("#scoreboardJoinPopupClose");
+const scoreboardSpectateButton = document.querySelector("#scoreboardSpectateButton");
+const scoreboardNicknameJoinForm = document.querySelector("#scoreboardNicknameJoinForm");
+const scoreboardJoinNickname = document.querySelector("#scoreboardJoinNickname");
+const scoreboardJoinPasswordField = document.querySelector("#scoreboardJoinPasswordField");
+const scoreboardJoinPassword = document.querySelector("#scoreboardJoinPassword");
+const scoreboardJoinMessage = document.querySelector("#scoreboardJoinMessage");
+const scoreboardPlayersPopup = document.querySelector("#scoreboardPlayersPopup");
+const scoreboardPlayersForm = document.querySelector("#scoreboardPlayersForm");
+const scoreboardPlayersPopupClose = document.querySelector("#scoreboardPlayersPopupClose");
+const scoreboardPlayerCount = document.querySelector("#scoreboardPlayerCount");
+const scoreboardPlayerNameFields = document.querySelector("#scoreboardPlayerNameFields");
+const scoreboardCellPopup = document.querySelector("#scoreboardCellPopup");
+const scoreboardCellForm = document.querySelector("#scoreboardCellForm");
+const scoreboardCellPopupTitle = document.querySelector("#scoreboardCellPopupTitle");
+const scoreboardCellPopupClose = document.querySelector("#scoreboardCellPopupClose");
+const scoreboardCellScore = document.querySelector("#scoreboardCellScore");
+const scoreboardClearCellButton = document.querySelector("#scoreboardClearCellButton");
+const scoreboardPlayerPopup = document.querySelector("#scoreboardPlayerPopup");
+const scoreboardPlayerForm = document.querySelector("#scoreboardPlayerForm");
+const scoreboardPlayerPopupTitle = document.querySelector("#scoreboardPlayerPopupTitle");
+const scoreboardPlayerPopupClose = document.querySelector("#scoreboardPlayerPopupClose");
+const scoreboardPlayerNickname = document.querySelector("#scoreboardPlayerNickname");
+const scoreboardPlayerScores = document.querySelector("#scoreboardPlayerScores");
+const scoreboardDeletePlayerButton = document.querySelector("#scoreboardDeletePlayerButton");
+const scoreboardRoundPopup = document.querySelector("#scoreboardRoundPopup");
+const scoreboardRoundForm = document.querySelector("#scoreboardRoundForm");
+const scoreboardRoundPopupTitle = document.querySelector("#scoreboardRoundPopupTitle");
+const scoreboardRoundPopupClose = document.querySelector("#scoreboardRoundPopupClose");
+const scoreboardRoundAmount = document.querySelector("#scoreboardRoundAmount");
+const scoreboardRoundPlayerList = document.querySelector("#scoreboardRoundPlayerList");
+const scoreboardSelectAllPlayers = document.querySelector("#scoreboardSelectAllPlayers");
+const scoreboardClearPlayerSelection = document.querySelector("#scoreboardClearPlayerSelection");
+const scoreboardConfirmPopup = document.querySelector("#scoreboardConfirmPopup");
+const scoreboardConfirmClose = document.querySelector("#scoreboardConfirmClose");
+const scoreboardCancelResetButton = document.querySelector("#scoreboardCancelResetButton");
+const scoreboardConfirmResetButton = document.querySelector("#scoreboardConfirmResetButton");
+const scoreboardPodiumPopup = document.querySelector("#scoreboardPodiumPopup");
+const scoreboardPodium = document.querySelector("#scoreboardPodium");
+const scoreboardFinalList = document.querySelector("#scoreboardFinalList");
+const scoreboardPodiumClose = document.querySelector("#scoreboardPodiumClose");
 const languageSelector = document.querySelector("#languageSelector");
 const languageButton = document.querySelector("#languageButton");
 const languageMenu = document.querySelector("#languageMenu");
@@ -1377,8 +1448,239 @@ const IMPOSTOR_TRANSLATIONS = {
   }
 };
 
+const SCOREBOARD_TRANSLATIONS = {
+  ca: {
+    "scoreboard.title": "Taula de puntuacio",
+    "scoreboard.subtitle": "Crea una sala per portar la puntuacio de qualsevol joc, ronda a ronda.",
+    "scoreboard.eyebrow": "Marcador compartit",
+    "scoreboard.homeHint": "Recompte compartit per rondes",
+    "scoreboard.homePlayers": "Sense limit de jugadors",
+    "scoreboard.create": "Crea una sala",
+    "scoreboard.join": "Uneix-te a una sala",
+    "scoreboard.roomName": "Nom de la sala",
+    "scoreboard.hostName": "El teu sobrenom",
+    "scoreboard.hostPlaceholder": "Sobrenom de l'administrador",
+    "scoreboard.roundCount": "Nombre de rondes",
+    "scoreboard.sortOrder": "Ordre de puntuacio",
+    "scoreboard.highFirst": "Puntuacio mes alta primer",
+    "scoreboard.lowFirst": "Puntuacio mes baixa primer",
+    "scoreboard.password": "Contrasenya per a jugadors (opcional)",
+    "scoreboard.passwordPlaceholder": "Sense contrasenya",
+    "scoreboard.passwordHint": "Els espectadors sempre poden entrar sense contrasenya.",
+    "scoreboard.openRooms": "Sales obertes",
+    "scoreboard.refresh": "Actualitza",
+    "scoreboard.loadingRooms": "Carregant sales actives...",
+    "scoreboard.noRooms": "No hi ha sales actives. Crea la primera.",
+    "scoreboard.room": "Sala",
+    "scoreboard.players": "Jugadors",
+    "scoreboard.rounds": "rondes",
+    "scoreboard.protected": "Privada",
+    "scoreboard.open": "Oberta",
+    "scoreboard.share": "Copia l'enllac",
+    "scoreboard.addRound": "Afegeix ronda",
+    "scoreboard.reset": "Buida taula",
+    "scoreboard.finish": "Finalitza partida",
+    "scoreboard.leave": "Surt",
+    "scoreboard.hostMode": "Administrador · {order}",
+    "scoreboard.playerMode": "Jugador · nomes lectura",
+    "scoreboard.spectatorMode": "Espectador · nomes lectura",
+    "scoreboard.orderHigh": "mes punts guanyen",
+    "scoreboard.orderLow": "menys punts guanyen",
+    "scoreboard.total": "Total",
+    "scoreboard.round": "Ronda",
+    "scoreboard.noPlayers": "Encara no hi ha jugadors",
+    "scoreboard.noPlayersHint": "L'administrador pot afegir-los amb el boto Jugadors.",
+    "scoreboard.enterRoom": "Entra a",
+    "scoreboard.spectate": "Entra com a espectador",
+    "scoreboard.spectateHint": "Acces directe, sense sobrenom ni contrasenya.",
+    "scoreboard.joinNickname": "Entra amb sobrenom",
+    "scoreboard.nickname": "Sobrenom",
+    "scoreboard.yourNickname": "El teu sobrenom",
+    "scoreboard.roomPassword": "Contrasenya",
+    "scoreboard.playerCount": "Nombre de jugadors",
+    "scoreboard.savePlayers": "Desa jugadors",
+    "scoreboard.editScore": "Edita puntuacio",
+    "scoreboard.score": "Puntuacio",
+    "scoreboard.blankScore": "En blanc = 0",
+    "scoreboard.makeBlank": "Deixa en blanc",
+    "scoreboard.save": "Desa",
+    "scoreboard.editPlayer": "Edita jugador",
+    "scoreboard.kick": "Expulsa jugador",
+    "scoreboard.saveChanges": "Desa canvis",
+    "scoreboard.multiScore": "Puntuacio multiple",
+    "scoreboard.amountToAdd": "Puntuacio que se sumara",
+    "scoreboard.selectPlayers": "Selecciona jugadors",
+    "scoreboard.all": "Tots",
+    "scoreboard.none": "Cap",
+    "scoreboard.applyScore": "Suma puntuacio",
+    "scoreboard.resetTitle": "Buida tota la taula",
+    "scoreboard.resetText": "Totes les puntuacions tornaran a estar en blanc.",
+    "scoreboard.cancel": "Cancel·la",
+    "scoreboard.finalPodium": "Podi final",
+    "scoreboard.finished": "Partida finalitzada",
+    "scoreboard.copied": "Enllac copiat",
+    "scoreboard.playerAdded": "Sobrenom afegit. La taula es nomes de lectura per a jugadors.",
+    "scoreboard.existingSpectator": "Aquest sobrenom ja existeix. Has entrat com a espectador.",
+    "scoreboard.selectOne": "Selecciona almenys un jugador.",
+    "scoreboard.confirmKick": "Expulsar {name}?",
+    "scoreboard.points": "{score} punts"
+  },
+  es: {
+    "scoreboard.title": "Tabla de puntuacion",
+    "scoreboard.subtitle": "Crea una sala para llevar la puntuacion de cualquier juego, ronda a ronda.",
+    "scoreboard.eyebrow": "Marcador compartido",
+    "scoreboard.homeHint": "Recuento compartido por rondas",
+    "scoreboard.homePlayers": "Sin limite de jugadores",
+    "scoreboard.create": "Crear sala",
+    "scoreboard.join": "Unirse a una sala",
+    "scoreboard.roomName": "Nombre de la sala",
+    "scoreboard.hostName": "Tu apodo",
+    "scoreboard.hostPlaceholder": "Apodo del administrador",
+    "scoreboard.roundCount": "Numero de rondas",
+    "scoreboard.sortOrder": "Orden de puntuacion",
+    "scoreboard.highFirst": "Mayor puntuacion primero",
+    "scoreboard.lowFirst": "Menor puntuacion primero",
+    "scoreboard.password": "Contrasena para jugadores (opcional)",
+    "scoreboard.passwordPlaceholder": "Sin contrasena",
+    "scoreboard.passwordHint": "Espectadores siempre pueden entrar sin contrasena.",
+    "scoreboard.openRooms": "Salas abiertas",
+    "scoreboard.refresh": "Actualizar",
+    "scoreboard.loadingRooms": "Cargando salas activas...",
+    "scoreboard.noRooms": "No hay salas activas. Crea la primera.",
+    "scoreboard.room": "Sala",
+    "scoreboard.players": "Jugadores",
+    "scoreboard.rounds": "rondas",
+    "scoreboard.protected": "Privada",
+    "scoreboard.open": "Abierta",
+    "scoreboard.share": "Copiar enlace",
+    "scoreboard.addRound": "Anadir ronda",
+    "scoreboard.reset": "Vaciar tabla",
+    "scoreboard.finish": "Finalizar partida",
+    "scoreboard.leave": "Salir",
+    "scoreboard.hostMode": "Administrador · {order}",
+    "scoreboard.playerMode": "Jugador · solo lectura",
+    "scoreboard.spectatorMode": "Espectador · solo lectura",
+    "scoreboard.orderHigh": "mas puntos ganan",
+    "scoreboard.orderLow": "menos puntos ganan",
+    "scoreboard.total": "Total",
+    "scoreboard.round": "Ronda",
+    "scoreboard.noPlayers": "Todavia no hay jugadores",
+    "scoreboard.noPlayersHint": "El administrador puede anadirlos desde el boton Jugadores.",
+    "scoreboard.enterRoom": "Entrar en",
+    "scoreboard.spectate": "Entrar como espectador",
+    "scoreboard.spectateHint": "Acceso directo, sin apodo ni contrasena.",
+    "scoreboard.joinNickname": "Entrar con apodo",
+    "scoreboard.nickname": "Apodo",
+    "scoreboard.yourNickname": "Tu apodo",
+    "scoreboard.roomPassword": "Contrasena",
+    "scoreboard.playerCount": "Numero de jugadores",
+    "scoreboard.savePlayers": "Guardar jugadores",
+    "scoreboard.editScore": "Editar puntuacion",
+    "scoreboard.score": "Puntuacion",
+    "scoreboard.blankScore": "En blanco = 0",
+    "scoreboard.makeBlank": "Dejar en blanco",
+    "scoreboard.save": "Guardar",
+    "scoreboard.editPlayer": "Editar jugador",
+    "scoreboard.kick": "Expulsar jugador",
+    "scoreboard.saveChanges": "Guardar cambios",
+    "scoreboard.multiScore": "Puntuacion multiple",
+    "scoreboard.amountToAdd": "Puntuacion que se sumara",
+    "scoreboard.selectPlayers": "Selecciona jugadores",
+    "scoreboard.all": "Todos",
+    "scoreboard.none": "Ninguno",
+    "scoreboard.applyScore": "Sumar puntuacion",
+    "scoreboard.resetTitle": "Vaciar toda la tabla",
+    "scoreboard.resetText": "Todas las puntuaciones volveran a estar en blanco.",
+    "scoreboard.cancel": "Cancelar",
+    "scoreboard.finalPodium": "Podio final",
+    "scoreboard.finished": "Partida finalizada",
+    "scoreboard.copied": "Enlace copiado",
+    "scoreboard.playerAdded": "Apodo anadido. La tabla es de solo lectura para jugadores.",
+    "scoreboard.existingSpectator": "Ese apodo ya existe. Has entrado como espectador.",
+    "scoreboard.selectOne": "Selecciona al menos un jugador.",
+    "scoreboard.confirmKick": "Expulsar a {name}?",
+    "scoreboard.points": "{score} puntos"
+  },
+  en: {
+    "scoreboard.title": "Scoreboard",
+    "scoreboard.subtitle": "Create a room to track any game's score, round by round.",
+    "scoreboard.eyebrow": "Shared score tracker",
+    "scoreboard.homeHint": "Shared round-by-round scoring",
+    "scoreboard.homePlayers": "No player limit",
+    "scoreboard.create": "Create room",
+    "scoreboard.join": "Join a room",
+    "scoreboard.roomName": "Room name",
+    "scoreboard.hostName": "Your nickname",
+    "scoreboard.hostPlaceholder": "Administrator nickname",
+    "scoreboard.roundCount": "Number of rounds",
+    "scoreboard.sortOrder": "Score order",
+    "scoreboard.highFirst": "Highest score first",
+    "scoreboard.lowFirst": "Lowest score first",
+    "scoreboard.password": "Player password (optional)",
+    "scoreboard.passwordPlaceholder": "No password",
+    "scoreboard.passwordHint": "Spectators can always enter without a password.",
+    "scoreboard.openRooms": "Open rooms",
+    "scoreboard.refresh": "Refresh",
+    "scoreboard.loadingRooms": "Loading active rooms...",
+    "scoreboard.noRooms": "No active rooms. Create the first one.",
+    "scoreboard.room": "Room",
+    "scoreboard.players": "Players",
+    "scoreboard.rounds": "rounds",
+    "scoreboard.protected": "Private",
+    "scoreboard.open": "Open",
+    "scoreboard.share": "Copy link",
+    "scoreboard.addRound": "Add round",
+    "scoreboard.reset": "Clear table",
+    "scoreboard.finish": "Finish game",
+    "scoreboard.leave": "Leave",
+    "scoreboard.hostMode": "Administrator · {order}",
+    "scoreboard.playerMode": "Player · read only",
+    "scoreboard.spectatorMode": "Spectator · read only",
+    "scoreboard.orderHigh": "most points win",
+    "scoreboard.orderLow": "fewest points win",
+    "scoreboard.total": "Total",
+    "scoreboard.round": "Round",
+    "scoreboard.noPlayers": "No players yet",
+    "scoreboard.noPlayersHint": "Administrator can add them with Players button.",
+    "scoreboard.enterRoom": "Enter",
+    "scoreboard.spectate": "Enter as spectator",
+    "scoreboard.spectateHint": "Direct access, no nickname or password.",
+    "scoreboard.joinNickname": "Enter with nickname",
+    "scoreboard.nickname": "Nickname",
+    "scoreboard.yourNickname": "Your nickname",
+    "scoreboard.roomPassword": "Password",
+    "scoreboard.playerCount": "Number of players",
+    "scoreboard.savePlayers": "Save players",
+    "scoreboard.editScore": "Edit score",
+    "scoreboard.score": "Score",
+    "scoreboard.blankScore": "Blank = 0",
+    "scoreboard.makeBlank": "Leave blank",
+    "scoreboard.save": "Save",
+    "scoreboard.editPlayer": "Edit player",
+    "scoreboard.kick": "Remove player",
+    "scoreboard.saveChanges": "Save changes",
+    "scoreboard.multiScore": "Multiple scores",
+    "scoreboard.amountToAdd": "Score to add",
+    "scoreboard.selectPlayers": "Select players",
+    "scoreboard.all": "All",
+    "scoreboard.none": "None",
+    "scoreboard.applyScore": "Add score",
+    "scoreboard.resetTitle": "Clear whole table",
+    "scoreboard.resetText": "Every score will become blank.",
+    "scoreboard.cancel": "Cancel",
+    "scoreboard.finalPodium": "Final podium",
+    "scoreboard.finished": "Game finished",
+    "scoreboard.copied": "Link copied",
+    "scoreboard.playerAdded": "Nickname added. Players have read-only table access.",
+    "scoreboard.existingSpectator": "That nickname already exists. You joined as a spectator.",
+    "scoreboard.selectOne": "Select at least one player.",
+    "scoreboard.confirmKick": "Remove {name}?",
+    "scoreboard.points": "{score} points"
+  }
+};
+
 SUPPORTED_LANGUAGES.forEach((language) => {
-  Object.assign(TRANSLATIONS[language], IMPOSTOR_TRANSLATIONS[language]);
+  Object.assign(TRANSLATIONS[language], IMPOSTOR_TRANSLATIONS[language], SCOREBOARD_TRANSLATIONS[language]);
 });
 const STATIC_TEXT_TARGETS = [
   ["#homeSubtitle", "home.subtitle"],
@@ -1661,6 +1963,15 @@ let masterWordPollTimer = null;
 let masterWordShownEventId = "";
 let masterWordShownResultKey = "";
 let masterWordKnownPlayerIds = new Set();
+let scoreboardSession = null;
+let scoreboardRoom = null;
+let scoreboardPollTimer = null;
+let scoreboardSelectedRoom = null;
+let scoreboardAvailableRooms = [];
+let scoreboardEditingCell = null;
+let scoreboardEditingPlayerId = "";
+let scoreboardEditingRoundIndex = -1;
+let scoreboardShownResultId = "";
 let gameCompleteFlybyPending = false;
 let inviteRoomName = "";
 let youtubeApiPromise = null;
@@ -1697,6 +2008,7 @@ titleHomeLinks.forEach((link) => {
     url.searchParams.delete("impostor");
     url.searchParams.delete("resistance");
     url.searchParams.delete("masterword");
+    url.searchParams.delete("scoreboard");
     window.history.replaceState({}, "", url);
     showView("homeView");
     closeMobileNavMenu();
@@ -1798,6 +2110,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !customPlaylistPopup.hidden) hideCustomPlaylistPopup();
   if (event.key === "Escape" && !multiplayerPodiumPopup.hidden) hideMultiplayerPodium();
   if (event.key === "Escape" && resistanceRoundPopup && !resistanceRoundPopup.hidden) hideResistanceRoundPopup();
+  if (event.key === "Escape") closeScoreboardPopups();
 });
 
 function closeMobileNavMenu() {
@@ -1883,6 +2196,45 @@ masterWordResultPopup?.addEventListener("click", (event) => {
   if (event.target === masterWordResultPopup) hideMasterWordResultPopup();
 });
 window.addEventListener("pagehide", () => releaseMasterWordRoomIfHost({ useBeacon: true }));
+scoreboardCreateForm?.addEventListener("submit", createScoreboardRoom);
+scoreboardChooseCreate?.addEventListener("click", () => showScoreboardLobbyPanel("create"));
+scoreboardChooseJoin?.addEventListener("click", () => showScoreboardLobbyPanel("join"));
+scoreboardRefreshRoomsButton?.addEventListener("click", loadScoreboardRooms);
+scoreboardBackButtons.forEach((button) => button.addEventListener("click", showScoreboardChoice));
+scoreboardRoomList?.addEventListener("click", selectScoreboardRoom);
+scoreboardJoinPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardJoinPopup));
+scoreboardSpectateButton?.addEventListener("click", joinScoreboardAsSpectator);
+scoreboardNicknameJoinForm?.addEventListener("submit", joinScoreboardWithNickname);
+scoreboardShareButton?.addEventListener("click", shareScoreboardRoom);
+scoreboardManagePlayersButton?.addEventListener("click", showScoreboardPlayersPopup);
+scoreboardAddRoundButton?.addEventListener("click", addScoreboardRound);
+scoreboardResetButton?.addEventListener("click", () => showScoreboardPopup(scoreboardConfirmPopup));
+scoreboardFinishButton?.addEventListener("click", finishScoreboardGame);
+scoreboardLeaveButton?.addEventListener("click", leaveScoreboardToMenu);
+scoreboardTable?.addEventListener("click", handleScoreboardTableClick);
+scoreboardPlayersPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardPlayersPopup));
+scoreboardPlayersForm?.addEventListener("submit", saveScoreboardPlayers);
+scoreboardPlayerCount?.addEventListener("input", syncScoreboardPlayerNameFields);
+scoreboardCellPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardCellPopup));
+scoreboardCellForm?.addEventListener("submit", saveScoreboardCell);
+scoreboardClearCellButton?.addEventListener("click", clearScoreboardCell);
+scoreboardPlayerPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardPlayerPopup));
+scoreboardPlayerForm?.addEventListener("submit", saveScoreboardPlayer);
+scoreboardDeletePlayerButton?.addEventListener("click", deleteScoreboardPlayer);
+scoreboardRoundPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardRoundPopup));
+scoreboardRoundForm?.addEventListener("submit", applyScoreboardRoundScore);
+scoreboardSelectAllPlayers?.addEventListener("click", () => setScoreboardRoundSelection(true));
+scoreboardClearPlayerSelection?.addEventListener("click", () => setScoreboardRoundSelection(false));
+scoreboardConfirmClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
+scoreboardCancelResetButton?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
+scoreboardConfirmResetButton?.addEventListener("click", resetScoreboardScores);
+scoreboardPodiumClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardPodiumPopup));
+[scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup]
+  .filter(Boolean)
+  .forEach((popup) => popup.addEventListener("click", (event) => {
+    if (event.target === popup) hideScoreboardPopup(popup);
+  }));
+window.addEventListener("pagehide", () => releaseScoreboardRoomIfHost({ useBeacon: true }));
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
 impostorEventClose?.addEventListener("click", hideImpostorEventPopup);
@@ -4550,6 +4902,612 @@ function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {
   clearInterval(resistancePollTimer);
 }
 
+function showScoreboardLobby() {
+  if (!scoreboardLobby || !scoreboardGame) return;
+  if (scoreboardSession) {
+    scoreboardLobby.hidden = true;
+    scoreboardGame.hidden = false;
+    renderScoreboardRoom(scoreboardRoom);
+    return;
+  }
+  scoreboardLobby.hidden = false;
+  scoreboardGame.hidden = true;
+  scoreboardLobbyMessage.textContent = "";
+  const inviteRoom = new URLSearchParams(window.location.search).get("scoreboard")?.trim();
+  if (inviteRoom) {
+    showScoreboardLobbyPanel("join");
+    void loadScoreboardRooms(inviteRoom);
+    return;
+  }
+  showScoreboardChoice();
+}
+
+function showScoreboardChoice() {
+  if (!scoreboardChoice || !scoreboardCreateForm || !scoreboardJoinPanel) return;
+  scoreboardChoice.hidden = false;
+  scoreboardCreateForm.hidden = true;
+  scoreboardJoinPanel.hidden = true;
+  scoreboardLobbyMessage.textContent = "";
+}
+
+function showScoreboardLobbyPanel(panel) {
+  if (!scoreboardChoice || !scoreboardCreateForm || !scoreboardJoinPanel) return;
+  scoreboardChoice.hidden = true;
+  scoreboardCreateForm.hidden = panel !== "create";
+  scoreboardJoinPanel.hidden = panel !== "join";
+  scoreboardLobbyMessage.textContent = "";
+  if (panel === "create") scoreboardCreateRoomName?.focus();
+  if (panel === "join") void loadScoreboardRooms();
+}
+
+async function createScoreboardRoom(event) {
+  event.preventDefault();
+  scoreboardLobbyMessage.textContent = "";
+  const roomName = scoreboardCreateRoomName.value.trim();
+  const hostName = scoreboardCreateHostName.value.trim();
+  const roundCount = Math.max(1, Math.min(80, Math.floor(Number(scoreboardCreateRounds.value) || 1)));
+  const sortOrder = scoreboardCreateForm.querySelector("[name='scoreboardSortOrder']:checked")?.value === "asc" ? "asc" : "desc";
+  const password = scoreboardCreatePassword.value;
+  try {
+    const response = await fetch("/api/scoreboard/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomName, hostName, roundCount, sortOrder, password })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || t("scoreboard.create"));
+    enterScoreboardRoom(payload, { role: "host" });
+    showScoreboardPlayersPopup();
+  } catch (error) {
+    scoreboardLobbyMessage.textContent = error.message;
+  }
+}
+
+async function loadScoreboardRooms(preferredRoomName = "") {
+  if (!scoreboardRoomList) return;
+  scoreboardRoomList.replaceChildren();
+  const loading = document.createElement("div");
+  loading.className = "scoreboard-room-list-empty";
+  loading.textContent = t("scoreboard.loadingRooms");
+  scoreboardRoomList.append(loading);
+  try {
+    const response = await fetch("/api/scoreboard/rooms");
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || t("scoreboard.loadingRooms"));
+    scoreboardAvailableRooms = Array.isArray(payload.rooms) ? payload.rooms : [];
+    renderScoreboardRoomList(scoreboardAvailableRooms);
+    const wanted = String(preferredRoomName || new URLSearchParams(window.location.search).get("scoreboard") || "").trim();
+    if (wanted) {
+      const room = scoreboardAvailableRooms.find((item) => item.roomName.toLocaleLowerCase() === wanted.toLocaleLowerCase());
+      if (room) openScoreboardJoinPopup(room);
+    }
+  } catch (error) {
+    loading.textContent = error.message;
+  }
+}
+
+function renderScoreboardRoomList(rooms) {
+  if (!scoreboardRoomList) return;
+  if (!rooms.length) {
+    const empty = document.createElement("div");
+    empty.className = "scoreboard-room-list-empty";
+    empty.textContent = t("scoreboard.noRooms");
+    scoreboardRoomList.replaceChildren(empty);
+    return;
+  }
+  scoreboardRoomList.replaceChildren(...rooms.map((room) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "scoreboard-room-card";
+    button.dataset.roomName = room.roomName;
+    const name = document.createElement("strong");
+    name.textContent = room.roomName;
+    const meta = document.createElement("small");
+    meta.textContent = `${room.playerCount} ${t("scoreboard.players")} · ${room.roundCount} ${t("scoreboard.rounds")} · ${room.sortOrder === "asc" ? t("scoreboard.lowFirst") : t("scoreboard.highFirst")}`;
+    const access = document.createElement("span");
+    access.textContent = room.passwordRequired ? t("scoreboard.protected") : t("scoreboard.open");
+    button.append(name, meta, access);
+    return button;
+  }));
+}
+
+function selectScoreboardRoom(event) {
+  const card = event.target.closest("[data-room-name]");
+  if (!card) return;
+  const room = scoreboardAvailableRooms.find((item) => item.roomName === card.dataset.roomName);
+  if (room) openScoreboardJoinPopup(room);
+}
+
+function openScoreboardJoinPopup(room) {
+  scoreboardSelectedRoom = room;
+  scoreboardJoinPopupTitle.textContent = room.roomName;
+  scoreboardJoinPasswordField.hidden = !room.passwordRequired;
+  scoreboardJoinPassword.required = Boolean(room.passwordRequired);
+  scoreboardJoinPassword.value = "";
+  scoreboardJoinNickname.value = "";
+  scoreboardJoinMessage.textContent = "";
+  showScoreboardPopup(scoreboardJoinPopup);
+}
+
+async function joinScoreboardAsSpectator() {
+  await joinSelectedScoreboardRoom({ spectator: true });
+}
+
+async function joinScoreboardWithNickname(event) {
+  event.preventDefault();
+  await joinSelectedScoreboardRoom({
+    spectator: false,
+    nickname: scoreboardJoinNickname.value.trim(),
+    password: scoreboardJoinPassword.value
+  });
+}
+
+async function joinSelectedScoreboardRoom(identity) {
+  if (!scoreboardSelectedRoom) return;
+  scoreboardJoinMessage.textContent = "";
+  try {
+    const response = await fetch(`/api/scoreboard/rooms/${encodeURIComponent(scoreboardSelectedRoom.roomName)}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(identity)
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || t("scoreboard.join"));
+    enterScoreboardRoom(payload, { role: payload.viewer?.role || "spectator", playerId: payload.viewer?.playerId || "" });
+    scoreboardGameMessage.textContent = payload.viewer?.existingNickname
+      ? t("scoreboard.existingSpectator")
+      : payload.viewer?.role === "player" ? t("scoreboard.playerAdded") : "";
+    hideScoreboardPopup(scoreboardJoinPopup);
+  } catch (error) {
+    scoreboardJoinMessage.textContent = error.message;
+  }
+}
+
+function enterScoreboardRoom(payload, viewer = {}) {
+  const privateSession = payload.session || {};
+  scoreboardSession = {
+    roomName: payload.roomName,
+    hostId: privateSession.hostId || "",
+    token: privateSession.token || "",
+    isHost: Boolean(privateSession.isHost || viewer.role === "host"),
+    role: viewer.role || (privateSession.isHost ? "host" : "spectator"),
+    playerId: viewer.playerId || ""
+  };
+  scoreboardRoom = payload;
+  scoreboardShownResultId = "";
+  scoreboardLobby.hidden = true;
+  scoreboardGame.hidden = false;
+  const url = new URL(window.location.href);
+  url.searchParams.set("scoreboard", payload.roomName);
+  window.history.replaceState({}, "", url);
+  clearInterval(scoreboardPollTimer);
+  scoreboardPollTimer = window.setInterval(pollScoreboardRoom, 1200);
+  renderScoreboardRoom(payload);
+}
+
+async function pollScoreboardRoom() {
+  if (!scoreboardSession) return;
+  try {
+    const params = new URLSearchParams();
+    if (scoreboardSession.isHost) {
+      params.set("hostId", scoreboardSession.hostId);
+      params.set("token", scoreboardSession.token);
+    }
+    const suffix = params.size ? `?${params}` : "";
+    const response = await fetch(`/api/scoreboard/rooms/${encodeURIComponent(scoreboardSession.roomName)}${suffix}`);
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "Room unavailable");
+    scoreboardRoom = payload;
+    renderScoreboardRoom(payload);
+  } catch (error) {
+    clearInterval(scoreboardPollTimer);
+    scoreboardPollTimer = null;
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+function renderScoreboardRoom(room = scoreboardRoom) {
+  if (!room || !scoreboardSession) return;
+  scoreboardRoomLabel.textContent = room.roomName;
+  const order = room.sortOrder === "asc" ? t("scoreboard.orderLow") : t("scoreboard.orderHigh");
+  const roleKey = scoreboardSession.isHost ? "scoreboard.hostMode" : scoreboardSession.role === "player" ? "scoreboard.playerMode" : "scoreboard.spectatorMode";
+  scoreboardModeLabel.textContent = t(roleKey, { order });
+  document.querySelectorAll(".scoreboard-host-control").forEach((button) => { button.hidden = !scoreboardSession.isHost; });
+  scoreboardTable.classList.toggle("is-readonly", !scoreboardSession.isHost);
+  renderScoreboardTable(room);
+  if (room.status === "finished" && room.resultId && scoreboardShownResultId !== room.resultId) showScoreboardPodium(room);
+}
+
+function renderScoreboardTable(room) {
+  const headRow = document.createElement("tr");
+  const playerHead = document.createElement("th");
+  playerHead.scope = "col";
+  playerHead.textContent = t("scoreboard.players");
+  headRow.append(playerHead);
+  for (let roundIndex = 0; roundIndex < room.roundCount; roundIndex += 1) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "scoreboard-round-header-button";
+    button.dataset.roundIndex = String(roundIndex);
+    button.disabled = !scoreboardSession.isHost;
+    const label = document.createElement("span");
+    label.textContent = t("scoreboard.round");
+    const number = document.createElement("strong");
+    number.textContent = String(roundIndex + 1);
+    button.append(label, number);
+    cell.append(button);
+    headRow.append(cell);
+  }
+  scoreboardTableHead.replaceChildren(headRow);
+
+  const players = sortScoreboardPlayers(room.players || [], room.sortOrder);
+  scoreboardTableBody.replaceChildren(...players.map((player) => {
+    const row = document.createElement("tr");
+    const playerCell = document.createElement("td");
+    const playerButton = document.createElement("button");
+    playerButton.type = "button";
+    playerButton.className = "scoreboard-player-cell-button";
+    playerButton.dataset.playerId = player.id;
+    playerButton.disabled = !scoreboardSession.isHost;
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+    const totalLabel = document.createElement("small");
+    totalLabel.textContent = t("scoreboard.total");
+    const total = document.createElement("b");
+    total.textContent = formatScoreboardNumber(scoreboardPlayerTotal(player));
+    playerButton.append(name, totalLabel, total);
+    playerCell.append(playerButton);
+    row.append(playerCell);
+    for (let roundIndex = 0; roundIndex < room.roundCount; roundIndex += 1) {
+      const scoreCell = document.createElement("td");
+      const button = document.createElement("button");
+      const value = player.scores?.[roundIndex] ?? null;
+      button.type = "button";
+      button.className = `scoreboard-score-cell-button${value === null ? " is-blank" : ""}`;
+      button.dataset.playerId = player.id;
+      button.dataset.roundIndex = String(roundIndex);
+      button.disabled = !scoreboardSession.isHost;
+      if (value !== null) button.textContent = formatScoreboardNumber(value);
+      button.setAttribute("aria-label", `${player.name}, ${t("scoreboard.round")} ${roundIndex + 1}: ${value === null ? t("scoreboard.blankScore") : value}`);
+      scoreCell.append(button);
+      row.append(scoreCell);
+    }
+    return row;
+  }));
+  scoreboardEmptyState.hidden = players.length > 0;
+}
+
+function sortScoreboardPlayers(players, sortOrder) {
+  const direction = sortOrder === "asc" ? 1 : -1;
+  return [...players].sort((a, b) => direction * (scoreboardPlayerTotal(a) - scoreboardPlayerTotal(b)) || Number(a.position || 0) - Number(b.position || 0) || a.name.localeCompare(b.name));
+}
+
+function scoreboardPlayerTotal(player) {
+  return (player.scores || []).reduce((total, value) => total + (Number(value) || 0), 0);
+}
+
+function formatScoreboardNumber(value) {
+  return Number(value || 0).toLocaleString(currentLanguage, { maximumFractionDigits: 2 });
+}
+
+function handleScoreboardTableClick(event) {
+  if (!scoreboardSession?.isHost) return;
+  const scoreButton = event.target.closest(".scoreboard-score-cell-button");
+  if (scoreButton) {
+    showScoreboardCellPopup(scoreButton.dataset.playerId, Number(scoreButton.dataset.roundIndex));
+    return;
+  }
+  const playerButton = event.target.closest(".scoreboard-player-cell-button");
+  if (playerButton) {
+    showScoreboardPlayerPopup(playerButton.dataset.playerId);
+    return;
+  }
+  const roundButton = event.target.closest(".scoreboard-round-header-button");
+  if (roundButton) showScoreboardRoundPopup(Number(roundButton.dataset.roundIndex));
+}
+
+function showScoreboardPlayersPopup() {
+  if (!scoreboardSession?.isHost || !scoreboardRoom) return;
+  scoreboardPlayerCount.value = String(scoreboardRoom.players?.length || 0);
+  scoreboardPlayerNameFields.replaceChildren(...(scoreboardRoom.players || []).map((player, index) => createScoreboardPlayerNameField(index, player)));
+  showScoreboardPopup(scoreboardPlayersPopup);
+  scoreboardPlayerCount.focus();
+}
+
+function syncScoreboardPlayerNameFields() {
+  const count = Math.max(0, Math.min(60, Math.floor(Number(scoreboardPlayerCount.value) || 0)));
+  const current = Array.from(scoreboardPlayerNameFields.querySelectorAll("input")).map((input) => ({ id: input.dataset.playerId || "", name: input.value }));
+  scoreboardPlayerNameFields.replaceChildren(...Array.from({ length: count }, (_, index) => createScoreboardPlayerNameField(index, current[index] || null)));
+}
+
+function createScoreboardPlayerNameField(index, player) {
+  const label = document.createElement("label");
+  label.className = "scoreboard-player-name-field";
+  const number = document.createElement("span");
+  number.textContent = `#${index + 1}`;
+  const input = document.createElement("input");
+  input.maxLength = 24;
+  input.required = true;
+  input.placeholder = `${t("scoreboard.nickname")} ${index + 1}`;
+  input.value = player?.name || "";
+  input.dataset.playerId = player?.id || "";
+  label.append(number, input);
+  return label;
+}
+
+async function saveScoreboardPlayers(event) {
+  event.preventDefault();
+  const players = Array.from(scoreboardPlayerNameFields.querySelectorAll("input")).map((input) => ({ id: input.dataset.playerId || "", name: input.value.trim() }));
+  try {
+    await scoreboardAction("players", { players });
+    hideScoreboardPopup(scoreboardPlayersPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+function showScoreboardCellPopup(playerId, roundIndex) {
+  const player = scoreboardRoom?.players?.find((item) => item.id === playerId);
+  if (!player) return;
+  scoreboardEditingCell = { playerId, roundIndex };
+  scoreboardCellPopupTitle.textContent = `${player.name} · ${t("scoreboard.round")} ${roundIndex + 1}`;
+  scoreboardCellScore.value = player.scores?.[roundIndex] ?? "";
+  showScoreboardPopup(scoreboardCellPopup);
+  scoreboardCellScore.focus();
+  scoreboardCellScore.select();
+}
+
+async function saveScoreboardCell(event) {
+  event.preventDefault();
+  if (!scoreboardEditingCell) return;
+  const raw = scoreboardCellScore.value.trim();
+  await updateScoreboardCell(raw === "" ? null : Number(raw));
+}
+
+async function clearScoreboardCell() {
+  if (!scoreboardEditingCell) return;
+  await updateScoreboardCell(null);
+}
+
+async function updateScoreboardCell(value) {
+  try {
+    await scoreboardAction("cell", { ...scoreboardEditingCell, value });
+    hideScoreboardPopup(scoreboardCellPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+function showScoreboardPlayerPopup(playerId) {
+  const player = scoreboardRoom?.players?.find((item) => item.id === playerId);
+  if (!player) return;
+  scoreboardEditingPlayerId = playerId;
+  scoreboardPlayerPopupTitle.textContent = player.name;
+  scoreboardPlayerNickname.value = player.name;
+  scoreboardPlayerScores.replaceChildren(...Array.from({ length: scoreboardRoom.roundCount }, (_, roundIndex) => {
+    const label = document.createElement("label");
+    label.className = "scoreboard-player-score-field";
+    const number = document.createElement("span");
+    number.textContent = `${t("scoreboard.round")} ${roundIndex + 1}`;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = "any";
+    input.inputMode = "decimal";
+    input.dataset.roundIndex = String(roundIndex);
+    input.placeholder = t("scoreboard.blankScore");
+    input.value = player.scores?.[roundIndex] ?? "";
+    label.append(number, input);
+    return label;
+  }));
+  showScoreboardPopup(scoreboardPlayerPopup);
+  scoreboardPlayerNickname.focus();
+}
+
+async function saveScoreboardPlayer(event) {
+  event.preventDefault();
+  const scores = Array.from(scoreboardPlayerScores.querySelectorAll("input")).map((input) => input.value.trim() === "" ? null : Number(input.value));
+  try {
+    await scoreboardAction("player", { targetPlayerId: scoreboardEditingPlayerId, name: scoreboardPlayerNickname.value.trim(), scores });
+    hideScoreboardPopup(scoreboardPlayerPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+async function deleteScoreboardPlayer() {
+  const player = scoreboardRoom?.players?.find((item) => item.id === scoreboardEditingPlayerId);
+  if (!player || !window.confirm(t("scoreboard.confirmKick", { name: player.name }))) return;
+  try {
+    await scoreboardAction("kick", { targetPlayerId: player.id });
+    hideScoreboardPopup(scoreboardPlayerPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+function showScoreboardRoundPopup(roundIndex) {
+  scoreboardEditingRoundIndex = roundIndex;
+  scoreboardRoundPopupTitle.textContent = `${t("scoreboard.round")} ${roundIndex + 1}`;
+  scoreboardRoundAmount.value = "0";
+  scoreboardRoundPlayerList.replaceChildren(...sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).map((player) => {
+    const label = document.createElement("label");
+    label.className = "scoreboard-round-player-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = player.id;
+    const name = document.createElement("span");
+    name.textContent = player.name;
+    label.append(input, name);
+    return label;
+  }));
+  showScoreboardPopup(scoreboardRoundPopup);
+  scoreboardRoundAmount.focus();
+  scoreboardRoundAmount.select();
+}
+
+function setScoreboardRoundSelection(selected) {
+  scoreboardRoundPlayerList.querySelectorAll("input[type='checkbox']").forEach((input) => { input.checked = selected; });
+}
+
+async function applyScoreboardRoundScore(event) {
+  event.preventDefault();
+  const playerIds = Array.from(scoreboardRoundPlayerList.querySelectorAll("input:checked")).map((input) => input.value);
+  if (!playerIds.length) {
+    scoreboardGameMessage.textContent = t("scoreboard.selectOne");
+    return;
+  }
+  try {
+    await scoreboardAction("round-score", { roundIndex: scoreboardEditingRoundIndex, amount: Number(scoreboardRoundAmount.value), playerIds });
+    hideScoreboardPopup(scoreboardRoundPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+async function addScoreboardRound() {
+  try {
+    await scoreboardAction("round", {});
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+async function resetScoreboardScores() {
+  try {
+    await scoreboardAction("reset", {});
+    scoreboardShownResultId = "";
+    hideScoreboardPopup(scoreboardConfirmPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+async function finishScoreboardGame() {
+  try {
+    await scoreboardAction("finish", {});
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+async function scoreboardAction(action, values) {
+  if (!scoreboardSession?.isHost) throw new Error("Only room administrator can edit scoreboard");
+  const response = await fetch(`/api/scoreboard/rooms/${encodeURIComponent(scoreboardSession.roomName)}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hostId: scoreboardSession.hostId, token: scoreboardSession.token, ...values })
+  });
+  const payload = await readJsonResponse(response);
+  if (!response.ok) throw new Error(payload.error || "Scoreboard update failed");
+  scoreboardRoom = payload;
+  scoreboardGameMessage.textContent = "";
+  renderScoreboardRoom(payload);
+  return payload;
+}
+
+async function shareScoreboardRoom() {
+  if (!scoreboardSession) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("scoreboard", scoreboardSession.roomName);
+  await navigator.clipboard.writeText(url.toString());
+  flashButton(scoreboardShareButton, t("scoreboard.copied"), t("scoreboard.share"));
+}
+
+function showScoreboardPodium(room) {
+  const players = sortScoreboardPlayers(room.players || [], room.sortOrder);
+  scoreboardPodium.replaceChildren(...players.slice(0, 3).map((player, index) => {
+    const place = document.createElement("article");
+    place.className = `scoreboard-podium-place place-${index + 1}`;
+    place.dataset.rank = `#${index + 1}`;
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+    const score = document.createElement("b");
+    score.textContent = t("scoreboard.points", { score: formatScoreboardNumber(scoreboardPlayerTotal(player)) });
+    place.append(name, score);
+    return place;
+  }));
+  scoreboardFinalList.replaceChildren(...players.slice(3).map((player, index) => {
+    const row = document.createElement("li");
+    const rank = document.createElement("span");
+    rank.textContent = `#${index + 4}`;
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+    const score = document.createElement("b");
+    score.textContent = t("scoreboard.points", { score: formatScoreboardNumber(scoreboardPlayerTotal(player)) });
+    row.append(rank, name, score);
+    return row;
+  }));
+  scoreboardShownResultId = room.resultId;
+  showScoreboardPopup(scoreboardPodiumPopup);
+  playMultiplayerPodiumFanfare();
+}
+
+function showScoreboardPopup(popup) {
+  if (!popup) return;
+  closeScoreboardPopups(popup);
+  popup.hidden = false;
+  document.body.classList.add("songs-popup-open");
+}
+
+function hideScoreboardPopup(popup) {
+  if (popup) popup.hidden = true;
+  if (![scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup].some((item) => item && !item.hidden)) {
+    document.body.classList.remove("songs-popup-open");
+  }
+}
+
+function closeScoreboardPopups(except = null) {
+  [scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup]
+    .filter((popup) => popup && popup !== except)
+    .forEach((popup) => { popup.hidden = true; });
+  if (!except) document.body.classList.remove("songs-popup-open");
+}
+
+function leaveScoreboardToMenu() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("scoreboard");
+  window.history.replaceState({}, "", url);
+  leaveScoreboardRoom();
+  showScoreboardLobby();
+}
+
+function leaveScoreboardRoom() {
+  releaseScoreboardRoomIfHost();
+  clearInterval(scoreboardPollTimer);
+  scoreboardPollTimer = null;
+  scoreboardSession = null;
+  scoreboardRoom = null;
+  scoreboardSelectedRoom = null;
+  scoreboardAvailableRooms = [];
+  scoreboardEditingCell = null;
+  scoreboardEditingPlayerId = "";
+  scoreboardEditingRoundIndex = -1;
+  scoreboardShownResultId = "";
+  closeScoreboardPopups();
+}
+
+function releaseScoreboardRoomIfHost({ useBeacon = false } = {}) {
+  const session = scoreboardSession;
+  if (!session?.isHost) return;
+  session.isHost = false;
+  const url = `/api/scoreboard/rooms/${encodeURIComponent(session.roomName)}/leave`;
+  const body = JSON.stringify({ hostId: session.hostId, token: session.token });
+  if (useBeacon && navigator.sendBeacon) {
+    navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+  } else {
+    void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+  }
+  clearInterval(scoreboardPollTimer);
+}
+
+function applyScoreboardRoomFromUrl() {
+  const roomName = new URLSearchParams(window.location.search).get("scoreboard");
+  if (!roomName) return;
+  showView("scoreboardView");
+}
+
 function applyResistanceRoomFromUrl() {
   const roomName = new URLSearchParams(window.location.search).get("resistance");
   if (!roomName) return;
@@ -4668,7 +5626,69 @@ function applyLanguage() {
 
   updateLanguageSelector();
   syncimpostorWordSetCards();
+  applyScoreboardLanguage();
   if (impostorRoom && !document.querySelector("#impostorView")?.hidden) renderimpostorRoom(impostorRoom);
+  if (scoreboardRoom && !document.querySelector("#scoreboardView")?.hidden) renderScoreboardRoom(scoreboardRoom);
+}
+
+function applyScoreboardLanguage() {
+  const textTargets = [
+    ["#homeScoreboardHint", "scoreboard.homeHint"], ["#homeScoreboardPlayers", "scoreboard.homePlayers"],
+    [".home-menu-card[data-view-target='scoreboardView'] strong", "scoreboard.title"],
+    ["#scoreboardChooseCreate strong", "scoreboard.create"], ["#scoreboardChooseJoin strong", "scoreboard.join"],
+    ["#scoreboardEyebrow", "scoreboard.eyebrow"], ["#scoreboardTitle", "scoreboard.title"],
+    ["#scoreboardSubtitle", "scoreboard.subtitle"], ["#scoreboardCreateTitle", "scoreboard.create"],
+    ["#scoreboardRoomNameLabel", "scoreboard.roomName"], ["#scoreboardHostNameLabel", "scoreboard.hostName"],
+    ["#scoreboardRoundsLabel", "scoreboard.roundCount"], ["#scoreboardOrderLabel", "scoreboard.sortOrder"],
+    ["#scoreboardDescendingLabel", "scoreboard.highFirst"], ["#scoreboardAscendingLabel", "scoreboard.lowFirst"],
+    ["#scoreboardPasswordLabel", "scoreboard.password"], ["#scoreboardPasswordHint", "scoreboard.passwordHint"],
+    ["#scoreboardJoinTitle", "scoreboard.join"], ["#scoreboardRoomKicker", "scoreboard.room"],
+    ["#scoreboardEmptyTitle", "scoreboard.noPlayers"], ["#scoreboardEmptyHint", "scoreboard.noPlayersHint"],
+    ["#scoreboardJoinPopupEyebrow", "scoreboard.enterRoom"], ["#scoreboardSpectateTitle", "scoreboard.spectate"],
+    ["#scoreboardSpectateHint", "scoreboard.spectateHint"], ["#scoreboardJoinNicknameLabel", "scoreboard.joinNickname"],
+    ["#scoreboardJoinPasswordLabel", "scoreboard.roomPassword"], ["#scoreboardPlayersPopupTitle", "scoreboard.players"],
+    ["#scoreboardPlayerCountLabel", "scoreboard.playerCount"], ["#scoreboardCellPopupEyebrow", "scoreboard.editScore"],
+    ["#scoreboardCellScoreLabel", "scoreboard.score"], ["#scoreboardPlayerPopupEyebrow", "scoreboard.editPlayer"],
+    ["#scoreboardPlayerNicknameLabel", "scoreboard.nickname"], ["#scoreboardRoundPopupEyebrow", "scoreboard.multiScore"],
+    ["#scoreboardRoundAmountLabel", "scoreboard.amountToAdd"], ["#scoreboardRoundPlayersLabel", "scoreboard.selectPlayers"],
+    ["#scoreboardConfirmTitle", "scoreboard.resetTitle"], ["#scoreboardConfirmText", "scoreboard.resetText"],
+    ["#scoreboardPodiumEyebrow", "scoreboard.finished"], ["#scoreboardPodiumTitle", "scoreboard.finalPodium"]
+  ];
+  textTargets.forEach(([selector, key]) => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = t(key);
+  });
+  const buttons = [
+    [".nav-link[data-view-target='scoreboardView']", "scoreboard.title"],
+    ["#scoreboardCreateButton", "scoreboard.create"], ["#scoreboardRefreshRoomsButton", "scoreboard.refresh"],
+    ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardManagePlayersButton", "scoreboard.players"],
+    ["#scoreboardAddRoundButton", "scoreboard.addRound"], ["#scoreboardResetButton", "scoreboard.reset"],
+    ["#scoreboardFinishButton", "scoreboard.finish"], ["#scoreboardLeaveButton", "scoreboard.leave"],
+    ["#scoreboardJoinPopupClose", "common.close"],
+    ["#scoreboardJoinNicknameButton", "scoreboard.joinNickname"], ["#scoreboardPlayersPopupClose", "common.close"],
+    ["#scoreboardSavePlayersButton", "scoreboard.savePlayers"], ["#scoreboardCellPopupClose", "common.close"],
+    ["#scoreboardClearCellButton", "scoreboard.makeBlank"], ["#scoreboardSaveCellButton", "scoreboard.save"],
+    ["#scoreboardPlayerPopupClose", "common.close"], ["#scoreboardDeletePlayerButton", "scoreboard.kick"],
+    ["#scoreboardSavePlayerButton", "scoreboard.saveChanges"], ["#scoreboardRoundPopupClose", "common.close"],
+    ["#scoreboardSelectAllPlayers", "scoreboard.all"], ["#scoreboardClearPlayerSelection", "scoreboard.none"],
+    ["#scoreboardApplyRoundButton", "scoreboard.applyScore"], ["#scoreboardConfirmClose", "common.close"],
+    ["#scoreboardCancelResetButton", "scoreboard.cancel"], ["#scoreboardConfirmResetButton", "scoreboard.reset"],
+    ["#scoreboardPodiumClose", "common.close"]
+  ];
+  buttons.forEach(([selector, key]) => {
+    const button = document.querySelector(selector);
+    if (button) setButtonLabel(button, t(key));
+  });
+  document.querySelectorAll("[data-scoreboard-back]").forEach((button) => setButtonLabel(button, t("common.back")));
+  const attrs = [
+    ["#scoreboardCreateRoomName", "placeholder", "scoreboard.roomName"],
+    ["#scoreboardCreateHostName", "placeholder", "scoreboard.hostPlaceholder"],
+    ["#scoreboardCreatePassword", "placeholder", "scoreboard.passwordPlaceholder"],
+    ["#scoreboardJoinNickname", "placeholder", "scoreboard.yourNickname"],
+    ["#scoreboardJoinPassword", "placeholder", "scoreboard.roomPassword"],
+    ["#scoreboardCellScore", "placeholder", "scoreboard.blankScore"]
+  ];
+  attrs.forEach(([selector, attr, key]) => document.querySelector(selector)?.setAttribute(attr, t(key)));
 }
 
 function updateLanguageSelector() {
@@ -4763,10 +5783,12 @@ function showView(targetId) {
   if (targetId !== "impostorView" && document.querySelector("#impostorView")?.classList.contains("active")) leaveimpostorRoom();
   if (targetId !== "resistanceView" && document.querySelector("#resistanceView")?.classList.contains("active")) leaveResistanceRoom();
   if (targetId !== "masterWordView" && document.querySelector("#masterWordView")?.classList.contains("active")) leaveMasterWordRoom();
+  if (targetId !== "scoreboardView" && document.querySelector("#scoreboardView")?.classList.contains("active")) leaveScoreboardRoom();
   document.body.classList.toggle("arcade-game-active", targetId === "gameView");
   document.body.classList.toggle("impostor-active", targetId === "impostorView");
   document.body.classList.toggle("resistance-active", targetId === "resistanceView");
   document.body.classList.toggle("masterword-active", targetId === "masterWordView");
+  document.body.classList.toggle("scoreboard-active", targetId === "scoreboardView");
 
   views.forEach((view) => {
     const active = view.id === targetId;
@@ -4783,6 +5805,8 @@ function showView(targetId) {
   if (targetId === "impostorView") showimpostorLobby();
   if (targetId === "resistanceView") showResistanceLobby();
   if (targetId === "masterWordView") showMasterWordLobby();
+  if (targetId === "scoreboardView") showScoreboardLobby();
+  if (targetId === "scoreboardView") window.scrollTo(0, 0);
   updateViewportChromeVars();
 }
 
@@ -7479,5 +8503,6 @@ applyInviteRoomFromUrl();
 applyimpostorRoomFromUrl();
 applyResistanceRoomFromUrl();
 applyMasterWordRoomFromUrl();
+applyScoreboardRoomFromUrl();
 setGameBusy(true);
 loadSongGroups();

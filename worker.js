@@ -538,6 +538,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
+      if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
+      if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
       if (request.method === "GET" && url.pathname === "/api/shadow-songs") return json(await getSongGroupPayload("shadow", env));
       if (url.pathname.startsWith("/api/audio/jobs")) return unsupportedAudioDownload();
@@ -620,6 +622,11 @@ export default {
       if (request.method === "POST" && masterWordSkipMatch) return skipMasterWord(request, masterWordSkipMatch[1], env);
       const masterWordLeaveMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/leave$/);
       if (request.method === "POST" && masterWordLeaveMatch) return leaveMasterWordRoom(request, masterWordLeaveMatch[1], env);
+
+      const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(scoreboardRoomMatch[1], request, env);
+      const scoreboardActionMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)\/(join|players|cell|player|kick|round|round-score|reset|finish|leave)$/);
+      if (request.method === "POST" && scoreboardActionMatch) return handleScoreboardAction(request, scoreboardActionMatch[1], scoreboardActionMatch[2], env);
 
       const eventsMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)\/events$/);
       if (request.method === "GET" && eventsMatch) return jobEvent(eventsMatch[1]);
@@ -1217,6 +1224,333 @@ const impostor_WORD_SETS = {
     ["Georgina Rodriguez", "Jaca"], ["Risto Mejide", "Chester"], ["Chicote", "Cuchillo rojo"]
   ].map(([word, hint]) => ({ word, hint }))
 };
+
+async function listScoreboardRooms(env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "Scoreboard storage is not configured" }, 503);
+  const result = await env.LEADERBOARD_DB.prepare(
+    "SELECT state_json AS stateJson FROM multiplayer_rooms WHERE room_key LIKE 'scoreboard:%'"
+  ).all();
+  const rooms = (result.results || [])
+    .map((row) => {
+      try { return JSON.parse(row.stateJson); } catch { return null; }
+    })
+    .filter((room) => room && isScoreboardHostConnected(room))
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+    .map(scoreboardDirectoryEntry);
+  return json({ rooms });
+}
+
+async function createScoreboardRoom(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "Scoreboard storage is not configured" }, 503);
+  const room = normalizeNewScoreboardRoom(await request.json().catch(() => ({})));
+  if (!room) return json({ error: "Invalid room, administrator, or scoreboard settings" }, 400);
+  room.passwordHash = room.password ? await hashScoreboardPassword(room.password) : "";
+  delete room.password;
+  const existing = await loadScoreboardRoom(room.key, env);
+  if (existing && isScoreboardHostConnected(existing)) return json({ error: "Room name is already in use" }, 409);
+  if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(scoreboardStorageKey(room.key)).run();
+  await saveScoreboardRoom(room, env, true);
+  return json(scoreboardRoomResponse(room, true), 201);
+}
+
+async function getScoreboardRoom(roomName, request, env) {
+  const room = await loadScoreboardRoom(normalizeScoreboardRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const url = new URL(request.url);
+  if (authenticateScoreboardHost(room, { hostId: url.searchParams.get("hostId"), token: url.searchParams.get("token") })) {
+    room.lastHostSeen = Date.now();
+    room._touchOnly = true;
+    await saveScoreboardRoom(room, env);
+  }
+  return json(scoreboardRoomResponse(room));
+}
+
+async function handleScoreboardAction(request, roomName, action, env) {
+  const key = normalizeScoreboardRoomKey(roomName);
+  const room = await loadScoreboardRoom(key, env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  if (action === "join") return joinScoreboardRoom(room, body, env);
+  if (!authenticateScoreboardHost(room, body)) return json({ error: "Only room administrator can edit scoreboard" }, 403);
+  room.lastHostSeen = Date.now();
+
+  if (action === "players") {
+    const players = normalizeScoreboardPlayerList(body.players, room);
+    if (!players) return json({ error: "Player names must be unique and valid" }, 400);
+    room.players = players;
+    room.nextPosition = Math.max(room.nextPosition, ...players.map((player) => Number(player.position || 0) + 1), 1);
+    markScoreboardChanged(room);
+  } else if (action === "cell") {
+    const player = room.players.find((item) => item.id === String(body.playerId || ""));
+    const roundIndex = normalizeScoreboardRoundIndex(body.roundIndex, room);
+    const value = normalizeScoreboardValue(body.value, true);
+    if (!player || roundIndex < 0 || value === undefined) return json({ error: "Invalid score cell" }, 400);
+    player.scores[roundIndex] = value;
+    markScoreboardChanged(room);
+  } else if (action === "player") {
+    const player = room.players.find((item) => item.id === String(body.targetPlayerId || ""));
+    const name = normalizeScoreboardName(body.name);
+    const scores = normalizeScoreboardScores(body.scores, room.roundCount);
+    const duplicate = room.players.some((item) => item.id !== player?.id && item.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+    if (!player || !name || !scores || duplicate) return json({ error: "Invalid or duplicate player" }, 400);
+    player.name = name;
+    player.scores = scores;
+    markScoreboardChanged(room);
+  } else if (action === "kick") {
+    const targetId = String(body.targetPlayerId || "");
+    const before = room.players.length;
+    room.players = room.players.filter((item) => item.id !== targetId);
+    if (!targetId || room.players.length === before) return json({ error: "Player not found" }, 404);
+    markScoreboardChanged(room);
+  } else if (action === "round") {
+    if (room.roundCount >= 80) return json({ error: "Maximum round count reached" }, 409);
+    room.roundCount += 1;
+    room.players.forEach((player) => player.scores.push(null));
+    markScoreboardChanged(room);
+  } else if (action === "round-score") {
+    const roundIndex = normalizeScoreboardRoundIndex(body.roundIndex, room);
+    const amount = normalizeScoreboardValue(body.amount, false);
+    const playerIds = new Set(Array.isArray(body.playerIds) ? body.playerIds.map(String) : []);
+    if (roundIndex < 0 || amount === undefined || !playerIds.size) return json({ error: "Invalid multiple score update" }, 400);
+    const updates = room.players
+      .filter((player) => playerIds.has(player.id))
+      .map((player) => ({ player, value: normalizeScoreboardValue(Number(player.scores[roundIndex] || 0) + amount, false) }));
+    if (!updates.length) return json({ error: "No selected players found" }, 404);
+    if (updates.some((update) => update.value === undefined)) return json({ error: "Score is outside allowed range" }, 400);
+    updates.forEach((update) => { update.player.scores[roundIndex] = update.value; });
+    markScoreboardChanged(room);
+  } else if (action === "reset") {
+    room.players.forEach((player) => { player.scores = Array(room.roundCount).fill(null); });
+    room.status = "active";
+    room.resultId = "";
+    room.updatedAt = Date.now();
+  } else if (action === "finish") {
+    if (!room.players.length) return json({ error: "Add at least one player before finishing" }, 409);
+    finalizeScoreboardRoom(room, true);
+  } else if (action === "leave") {
+    await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(scoreboardStorageKey(key)).run();
+    return json({ ok: true });
+  }
+
+  await saveScoreboardRoom(room, env);
+  return json(scoreboardRoomResponse(room));
+}
+
+async function joinScoreboardRoom(room, body, env) {
+  if (body?.spectator) return json({ ...scoreboardRoomResponse(room), viewer: { role: "spectator" } });
+  const nickname = normalizeScoreboardName(body?.nickname);
+  if (!nickname) return json({ error: "Add a valid nickname" }, 400);
+  if (room.passwordHash && await hashScoreboardPassword(body?.password) !== room.passwordHash) {
+    return json({ error: "Incorrect room password" }, 403);
+  }
+  const existing = room.players.find((player) => player.name.toLocaleLowerCase() === nickname.toLocaleLowerCase());
+  if (existing) return json({ ...scoreboardRoomResponse(room), viewer: { role: "spectator", existingNickname: true } });
+  if (room.players.length >= 60) return json({ error: "Room player limit reached" }, 409);
+  const player = createScoreboardPlayer(nickname, room.roundCount, room.nextPosition++);
+  room.players.push(player);
+  markScoreboardChanged(room);
+  await saveScoreboardRoom(room, env);
+  return json({ ...scoreboardRoomResponse(room), viewer: { role: "player", playerId: player.id } }, 201);
+}
+
+async function loadScoreboardRoom(key, env) {
+  if (!key || !env.LEADERBOARD_DB) return null;
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(scoreboardStorageKey(key)).first();
+  return row?.stateJson ? { ...JSON.parse(row.stateJson), _version: row.updatedAt } : null;
+}
+
+async function saveScoreboardRoom(room, env, create = false) {
+  const storageKey = scoreboardStorageKey(room.key);
+  if (create) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(storageKey, scoreboardRoomJson(room), version).run();
+    room._version = version;
+    return;
+  }
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const version = `${Date.now()}-${crypto.randomUUID()}`;
+    const result = await env.LEADERBOARD_DB.prepare(
+      "UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?"
+    ).bind(scoreboardRoomJson(room), version, storageKey, room._version || "").run();
+    if (result.meta?.changes) {
+      room._version = version;
+      delete room._touchOnly;
+      return;
+    }
+    const latest = await loadScoreboardRoom(room.key, env);
+    if (!latest) throw new Error("Room not found");
+    if (room._touchOnly) {
+      Object.assign(room, latest);
+      return;
+    }
+    room._version = latest._version;
+    room.lastHostSeen = Math.max(Number(room.lastHostSeen || 0), Number(latest.lastHostSeen || 0));
+  }
+  throw new Error("Room update conflict");
+}
+
+function scoreboardStorageKey(key) {
+  return `scoreboard:${key}`;
+}
+
+function scoreboardRoomJson(room) {
+  const stored = { ...room };
+  delete stored._version;
+  delete stored._touchOnly;
+  return JSON.stringify(stored);
+}
+
+function normalizeNewScoreboardRoom(value) {
+  const key = normalizeScoreboardRoomKey(value?.roomName);
+  const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 24);
+  const hostName = normalizeScoreboardName(value?.hostName);
+  const roundCount = Math.floor(Number(value?.roundCount));
+  const sortOrder = value?.sortOrder === "asc" ? "asc" : value?.sortOrder === "desc" ? "desc" : "";
+  if (!key || !roomName || !hostName || !Number.isInteger(roundCount) || roundCount < 1 || roundCount > 80 || !sortOrder) return null;
+  return {
+    key,
+    roomName,
+    hostName,
+    hostId: crypto.randomUUID(),
+    token: crypto.randomUUID() + crypto.randomUUID(),
+    password: String(value?.password || "").slice(0, 40),
+    passwordHash: "",
+    sortOrder,
+    roundCount,
+    players: [],
+    nextPosition: 1,
+    status: "active",
+    resultId: "",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastHostSeen: Date.now()
+  };
+}
+
+function normalizeScoreboardRoomKey(value) {
+  let roomName = String(value || "");
+  try { roomName = decodeURIComponent(roomName); } catch { /* Keep raw value. */ }
+  return roomName.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24);
+}
+
+function normalizeScoreboardName(value) {
+  const name = String(value || "").trim().replace(/\s+/g, " ").slice(0, 24);
+  return name && /[\p{L}\p{N}]/u.test(name) ? name : "";
+}
+
+async function hashScoreboardPassword(value) {
+  const bytes = new TextEncoder().encode(String(value || ""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function createScoreboardPlayer(name, roundCount, position) {
+  return { id: crypto.randomUUID(), name, position, scores: Array(roundCount).fill(null) };
+}
+
+function normalizeScoreboardPlayerList(value, room) {
+  if (!Array.isArray(value) || value.length > 60) return null;
+  const existingById = new Map(room.players.map((player) => [player.id, player]));
+  const seen = new Set();
+  const players = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const name = normalizeScoreboardName(value[index]?.name);
+    const nameKey = name.toLocaleLowerCase();
+    if (!name || seen.has(nameKey)) return null;
+    seen.add(nameKey);
+    const existing = existingById.get(String(value[index]?.id || ""));
+    players.push(existing
+      ? { ...existing, name, position: index + 1, scores: normalizeScoreboardScores(existing.scores, room.roundCount) || Array(room.roundCount).fill(null) }
+      : createScoreboardPlayer(name, room.roundCount, index + 1));
+  }
+  return players;
+}
+
+function normalizeScoreboardScores(value, roundCount) {
+  if (!Array.isArray(value)) return null;
+  const scores = [];
+  for (let index = 0; index < roundCount; index += 1) {
+    const score = normalizeScoreboardValue(value[index] ?? null, true);
+    if (score === undefined) return null;
+    scores.push(score);
+  }
+  return scores;
+}
+
+function normalizeScoreboardValue(value, allowNull) {
+  if (allowNull && (value === null || value === "")) return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || Math.abs(number) > 1_000_000_000) return undefined;
+  return Math.round(number * 100) / 100;
+}
+
+function normalizeScoreboardRoundIndex(value, room) {
+  const roundIndex = Number(value);
+  return Number.isInteger(roundIndex) && roundIndex >= 0 && roundIndex < room.roundCount ? roundIndex : -1;
+}
+
+function authenticateScoreboardHost(room, value) {
+  return Boolean(room && value?.hostId === room.hostId && value?.token === room.token);
+}
+
+function markScoreboardChanged(room) {
+  room.status = "active";
+  room.resultId = "";
+  room.updatedAt = Date.now();
+  if (isScoreboardComplete(room)) finalizeScoreboardRoom(room);
+}
+
+function isScoreboardComplete(room) {
+  return room.players.length > 0 && room.players.every((player) =>
+    player.scores.length >= room.roundCount && player.scores.slice(0, room.roundCount).every((score) => score !== null)
+  );
+}
+
+function finalizeScoreboardRoom(room, force = false) {
+  if (!force && !isScoreboardComplete(room)) return;
+  room.status = "finished";
+  room.resultId = crypto.randomUUID();
+  room.updatedAt = Date.now();
+}
+
+function isScoreboardHostConnected(room) {
+  return Date.now() - Number(room.lastHostSeen || room.createdAt) < 45_000;
+}
+
+function scoreboardDirectoryEntry(room) {
+  return {
+    roomName: room.roomName,
+    playerCount: room.players.length,
+    roundCount: room.roundCount,
+    sortOrder: room.sortOrder,
+    passwordRequired: Boolean(room.passwordHash),
+    status: room.status
+  };
+}
+
+function scoreboardRoomResponse(room, includeSession = false) {
+  const response = {
+    roomName: room.roomName,
+    hostName: room.hostName,
+    sortOrder: room.sortOrder,
+    roundCount: room.roundCount,
+    status: room.status,
+    resultId: room.resultId,
+    players: [...room.players]
+      .map((player) => ({ id: player.id, name: player.name, position: player.position, scores: normalizeScoreboardScores(player.scores, room.roundCount) || Array(room.roundCount).fill(null) }))
+      .sort((a, b) => {
+        const direction = room.sortOrder === "asc" ? 1 : -1;
+        const totalA = a.scores.reduce((sum, score) => sum + Number(score || 0), 0);
+        const totalB = b.scores.reduce((sum, score) => sum + Number(score || 0), 0);
+        return direction * (totalA - totalB) || a.position - b.position || a.name.localeCompare(b.name);
+      }),
+    updatedAt: room.updatedAt
+  };
+  if (includeSession) response.session = { hostId: room.hostId, token: room.token, isHost: true };
+  return response;
+}
 
 async function createimpostorRoom(request, env) {
   if (!env.LEADERBOARD_DB) return json({ error: "Room storage is not configured" }, 503);
