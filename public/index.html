@@ -626,6 +626,8 @@
                 <button type="button" id="scoreboardHistoryButton" class="secondary" hidden><span aria-hidden="true">&#128202;</span> Partidas anteriores</button>
                 <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#128101;</span> Jugadores</button>
                 <button type="button" id="scoreboardAddRoundButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">+</span> Anadir ronda</button>
+                <button type="button" id="scoreboardPreviousRoundButton" class="secondary scoreboard-host-control scoreboard-current-round-control" hidden><span aria-hidden="true">&#8592;</span> Ronda anterior</button>
+                <button type="button" id="scoreboardNextRoundButton" class="secondary scoreboard-host-control scoreboard-current-round-control" hidden>Siguiente ronda <span aria-hidden="true">&#8594;</span></button>
                 <button type="button" id="scoreboardSortOrderButton" class="secondary scoreboard-host-control" hidden></button>
                 <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
                 <button type="button" id="scoreboardFinishButton" class="scoreboard-host-control" hidden><span aria-hidden="true">&#9733;</span> Finalizar</button>
@@ -788,7 +790,10 @@
             </header>
             <div id="scoreboardPodium" class="scoreboard-podium"></div>
             <ol id="scoreboardFinalList" class="scoreboard-final-list"></ol>
-            <button type="button" id="scoreboardNewGameButton" class="scoreboard-host-control" hidden>Nueva partida</button>
+            <div class="scoreboard-podium-actions">
+              <button type="button" id="scoreboardNewGameButton" class="secondary scoreboard-host-control" hidden>Nueva partida</button>
+              <button type="button" id="scoreboardNextGameButton" class="scoreboard-host-control" hidden>Siguiente partida</button>
+            </div>
           </div>
         </section>
 

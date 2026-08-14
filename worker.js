@@ -625,7 +625,7 @@ export default {
 
       const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
       if (request.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(scoreboardRoomMatch[1], request, env);
-      const scoreboardActionMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)\/(join|players|cell|player-cell|player|kick|round|delete-round|round-score|sort-order|reset|finish|finish-all|new-game|leave)$/);
+      const scoreboardActionMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)\/(join|players|cell|player-cell|player|kick|round|delete-round|round-score|current-round|sort-order|reset|finish|finish-all|new-game|leave)$/);
       if (request.method === "POST" && scoreboardActionMatch) return handleScoreboardAction(request, scoreboardActionMatch[1], scoreboardActionMatch[2], env);
 
       const eventsMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)\/events$/);
@@ -1279,7 +1279,9 @@ async function handleScoreboardAction(request, roomName, action, env) {
     const roundIndex = normalizeScoreboardRoundIndex(body.roundIndex, room);
     const value = normalizeScoreboardValue(body.value, true);
     if (!room.playersCanEdit) return json({ error: "Player score editing is disabled" }, 403);
+    if (room.status !== "active") return json({ error: "Current game is not active" }, 409);
     if (!player || roundIndex < 0 || value === undefined) return json({ error: "Invalid score cell" }, 400);
+    if (roundIndex !== getScoreboardCurrentRound(room)) return json({ error: "Players can only edit the current round" }, 403);
     const previousValue = player.scores[roundIndex];
     player.scores[roundIndex] = value;
     addScoreboardScoreEvent(room, player.name, [{ player, roundIndex, previousValue, value }]);
@@ -1329,11 +1331,13 @@ async function handleScoreboardAction(request, roomName, action, env) {
     markScoreboardChanged(room);
   } else if (action === "delete-round") {
     const roundIndex = normalizeScoreboardRoundIndex(body.roundIndex, room);
+    const currentRound = getScoreboardCurrentRound(room);
     if (room.roundCount <= 1) return json({ error: "Scoreboard must keep at least one round" }, 409);
     if (roundIndex < 0) return json({ error: "Invalid round" }, 400);
     const changes = room.players.map((player) => ({ player, roundIndex, previousValue: player.scores[roundIndex], value: null }));
     room.players.forEach((player) => { player.scores.splice(roundIndex, 1); });
     room.roundCount -= 1;
+    room.currentRound = Math.max(0, Math.min(room.roundCount - 1, currentRound - (roundIndex < currentRound ? 1 : 0)));
     addScoreboardScoreEvent(room, room.hostName, changes);
     markScoreboardChanged(room);
   } else if (action === "round-score") {
@@ -1350,6 +1354,21 @@ async function handleScoreboardAction(request, roomName, action, env) {
     updates.forEach((update) => { update.player.scores[roundIndex] = update.value; });
     addScoreboardScoreEvent(room, room.hostName, changes);
     markScoreboardChanged(room);
+  } else if (action === "current-round") {
+    if (!room.playersCanEdit) return json({ error: "Current round controls are disabled" }, 409);
+    if (room.status !== "active") return json({ error: "Current game is not active" }, 409);
+    const direction = body.direction === "next" ? 1 : body.direction === "previous" ? -1 : 0;
+    const currentRound = getScoreboardCurrentRound(room);
+    const nextRound = currentRound + direction;
+    if (!direction || nextRound < 0 || nextRound >= room.roundCount) return json({ error: "Round limit reached" }, 409);
+    room.currentRound = nextRound;
+    addScoreboardActivityEvent(room, {
+      type: "round",
+      actorName: room.hostName,
+      direction: direction > 0 ? "next" : "previous",
+      roundIndex: nextRound
+    });
+    room.updatedAt = Date.now();
   } else if (action === "sort-order") {
     const sortOrder = body.sortOrder === "asc" ? "asc" : body.sortOrder === "desc" ? "desc" : "";
     if (!sortOrder) return json({ error: "Invalid score order" }, 400);
@@ -1362,6 +1381,7 @@ async function handleScoreboardAction(request, roomName, action, env) {
     room.status = "active";
     room.resultId = "";
     room.resultScope = "";
+    room.currentRound = 0;
     room.updatedAt = Date.now();
   } else if (action === "finish") {
     if (!room.players.length) return json({ error: "Add at least one player before finishing" }, 409);
@@ -1378,6 +1398,7 @@ async function handleScoreboardAction(request, roomName, action, env) {
     room.games = [...normalizeScoreboardGames(room), createScoreboardGameSnapshot(room)];
     room.gameNumber = room.games.length + 1;
     room.players.forEach((player) => { player.scores = Array(room.roundCount).fill(null); });
+    room.currentRound = 0;
     room.status = "active";
     room.resultId = "";
     room.resultScope = "";
@@ -1401,6 +1422,7 @@ async function joinScoreboardRoom(room, body, env) {
   const existing = room.players.find((player) => player.name.toLocaleLowerCase() === nickname.toLocaleLowerCase());
   if (existing) {
     existing.controlToken = crypto.randomUUID() + crypto.randomUUID();
+    addScoreboardActivityEvent(room, { type: "join", actorName: existing.name, playerName: existing.name, rejoined: true });
     room.updatedAt = Date.now();
     await saveScoreboardRoom(room, env);
     return json({ ...scoreboardRoomResponse(room), viewer: { role: "player", playerId: existing.id, token: existing.controlToken, reclaimed: true } });
@@ -1409,9 +1431,10 @@ async function joinScoreboardRoom(room, body, env) {
     return json({ ...scoreboardRoomResponse(room), viewer: { role: "spectator", sessionComplete: true } });
   }
   if (room.players.length >= 60) return json({ error: "Room player limit reached" }, 409);
-  const player = createScoreboardPlayer(nickname, room.roundCount, room.nextPosition++);
+  const player = createScoreboardPlayer(nickname, room.roundCount, room.nextPosition++, getScoreboardCurrentRound(room));
   room.players.push(player);
   markScoreboardChanged(room);
+  addScoreboardActivityEvent(room, { type: "join", actorName: player.name, playerName: player.name, rejoined: false });
   await saveScoreboardRoom(room, env);
   return json({ ...scoreboardRoomResponse(room), viewer: { role: "player", playerId: player.id, token: player.controlToken } }, 201);
 }
@@ -1483,6 +1506,7 @@ function normalizeNewScoreboardRoom(value) {
     sortOrder,
     playersCanEdit: Boolean(value?.playersCanEdit),
     roundCount,
+    currentRound: 0,
     players: [],
     nextPosition: 1,
     status: "active",
@@ -1514,8 +1538,14 @@ async function hashScoreboardPassword(value) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function createScoreboardPlayer(name, roundCount, position) {
-  return { id: crypto.randomUUID(), controlToken: crypto.randomUUID() + crypto.randomUUID(), name, position, scores: Array(roundCount).fill(null) };
+function createScoreboardPlayer(name, roundCount, position, currentRound = 0) {
+  return {
+    id: crypto.randomUUID(),
+    controlToken: crypto.randomUUID() + crypto.randomUUID(),
+    name,
+    position,
+    scores: Array.from({ length: roundCount }, (_, roundIndex) => roundIndex < currentRound ? 0 : null)
+  };
 }
 
 function normalizeScoreboardPlayerList(value, room) {
@@ -1531,7 +1561,7 @@ function normalizeScoreboardPlayerList(value, room) {
     const existing = existingById.get(String(value[index]?.id || ""));
     players.push(existing
       ? { ...existing, name, position: index + 1, scores: normalizeScoreboardScores(existing.scores, room.roundCount) || Array(room.roundCount).fill(null) }
-      : createScoreboardPlayer(name, room.roundCount, index + 1));
+      : createScoreboardPlayer(name, room.roundCount, index + 1, getScoreboardCurrentRound(room)));
   }
   return players;
 }
@@ -1568,14 +1598,27 @@ function authenticateScoreboardPlayer(room, value) {
   return player && value?.token === player.controlToken ? player : null;
 }
 
+function getScoreboardCurrentRound(room) {
+  const currentRound = Number(room?.currentRound || 0);
+  return Number.isInteger(currentRound) ? Math.max(0, Math.min(Math.max(0, Number(room?.roundCount || 1) - 1), currentRound)) : 0;
+}
+
+function addScoreboardActivityEvent(room, details) {
+  const event = {
+    id: crypto.randomUUID(),
+    gameNumber: Math.max(1, Number(room.gameNumber || 1)),
+    createdAt: Date.now(),
+    ...details
+  };
+  room.scoreEvents = [...(Array.isArray(room.scoreEvents) ? room.scoreEvents : []), event].slice(-50);
+}
+
 function addScoreboardScoreEvent(room, actorName, changes) {
   const actualChanges = changes.filter((change) => change.previousValue !== change.value);
   if (!actualChanges.length) return;
-  const event = {
-    id: crypto.randomUUID(),
+  addScoreboardActivityEvent(room, {
+    type: "score",
     actorName,
-    gameNumber: Math.max(1, Number(room.gameNumber || 1)),
-    createdAt: Date.now(),
     changeCount: actualChanges.length,
     changes: actualChanges.slice(0, 40).map(({ player, roundIndex, previousValue, value }) => ({
       playerId: player.id,
@@ -1584,8 +1627,7 @@ function addScoreboardScoreEvent(room, actorName, changes) {
       previousValue,
       value
     }))
-  };
-  room.scoreEvents = [...(Array.isArray(room.scoreEvents) ? room.scoreEvents : []), event].slice(-50);
+  });
 }
 
 function markScoreboardChanged(room) {
@@ -1622,6 +1664,7 @@ function scoreboardDirectoryEntry(room) {
     sortOrder: room.sortOrder,
     playersCanEdit: Boolean(room.playersCanEdit),
     gameNumber: Math.max(1, Number(room.gameNumber || 1)),
+    currentRound: getScoreboardCurrentRound(room),
     passwordRequired: Boolean(room.passwordHash),
     status: room.status
   };
@@ -1634,6 +1677,7 @@ function scoreboardRoomResponse(room, includeSession = false) {
     sortOrder: room.sortOrder,
     playersCanEdit: Boolean(room.playersCanEdit),
     roundCount: room.roundCount,
+    currentRound: getScoreboardCurrentRound(room),
     status: room.status,
     resultId: room.resultId,
     resultScope: room.resultScope || (room.status === "finished" ? "game" : ""),

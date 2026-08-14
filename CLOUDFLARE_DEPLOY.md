@@ -14,7 +14,7 @@ Build output directory: public
 
 The build command copies:
 
-```text 
+```text |
 worker.js -> public/_worker.js
 ```
 

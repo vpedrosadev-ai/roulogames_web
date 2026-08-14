@@ -326,6 +326,8 @@ const scoreboardShareButton = document.querySelector("#scoreboardShareButton");
 const scoreboardHistoryButton = document.querySelector("#scoreboardHistoryButton");
 const scoreboardManagePlayersButton = document.querySelector("#scoreboardManagePlayersButton");
 const scoreboardAddRoundButton = document.querySelector("#scoreboardAddRoundButton");
+const scoreboardPreviousRoundButton = document.querySelector("#scoreboardPreviousRoundButton");
+const scoreboardNextRoundButton = document.querySelector("#scoreboardNextRoundButton");
 const scoreboardSortOrderButton = document.querySelector("#scoreboardSortOrderButton");
 const scoreboardResetButton = document.querySelector("#scoreboardResetButton");
 const scoreboardFinishButton = document.querySelector("#scoreboardFinishButton");
@@ -382,6 +384,7 @@ const scoreboardPodium = document.querySelector("#scoreboardPodium");
 const scoreboardFinalList = document.querySelector("#scoreboardFinalList");
 const scoreboardPodiumClose = document.querySelector("#scoreboardPodiumClose");
 const scoreboardNewGameButton = document.querySelector("#scoreboardNewGameButton");
+const scoreboardNextGameButton = document.querySelector("#scoreboardNextGameButton");
 const scoreboardFinishPopup = document.querySelector("#scoreboardFinishPopup");
 const scoreboardFinishPopupClose = document.querySelector("#scoreboardFinishPopupClose");
 const scoreboardFinishCurrentButton = document.querySelector("#scoreboardFinishCurrentButton");
@@ -1503,6 +1506,15 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.finishCurrent": "Finalitza la partida actual",
     "scoreboard.finishAll": "Finalitza-les totes",
     "scoreboard.newGame": "Nova partida",
+    "scoreboard.nextGame": "Seguent partida",
+    "scoreboard.previousRound": "Ronda anterior",
+    "scoreboard.nextRound": "Seguent ronda",
+    "scoreboard.currentRound": "Ronda actual: {round}",
+    "scoreboard.roundAdvanced": "Ha avancat la ronda actual",
+    "scoreboard.roundReturned": "Ha retrocedit la ronda actual",
+    "scoreboard.playerJoinedNotice": "S'ha unit a la sala",
+    "scoreboard.playerRejoinedNotice": "Ha recuperat el control del seu jugador",
+    "scoreboard.scoreUpdated": "Puntuacio modificada",
     "scoreboard.history": "Partides anteriors",
     "scoreboard.historyEyebrow": "Puntuacions desades",
     "scoreboard.previousTotal": "Total anterior",
@@ -1602,6 +1614,15 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.finishCurrent": "Finalizar partida actual",
     "scoreboard.finishAll": "Finalizarlas todas",
     "scoreboard.newGame": "Nueva partida",
+    "scoreboard.nextGame": "Siguiente partida",
+    "scoreboard.previousRound": "Ronda anterior",
+    "scoreboard.nextRound": "Siguiente ronda",
+    "scoreboard.currentRound": "Ronda actual: {round}",
+    "scoreboard.roundAdvanced": "Ha avanzado la ronda actual",
+    "scoreboard.roundReturned": "Ha retrocedido la ronda actual",
+    "scoreboard.playerJoinedNotice": "Se ha unido a la sala",
+    "scoreboard.playerRejoinedNotice": "Ha recuperado el control de su jugador",
+    "scoreboard.scoreUpdated": "Puntuacion modificada",
     "scoreboard.history": "Partidas anteriores",
     "scoreboard.historyEyebrow": "Puntuaciones guardadas",
     "scoreboard.previousTotal": "Total anterior",
@@ -1701,6 +1722,15 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.finishCurrent": "Finish current game",
     "scoreboard.finishAll": "Finish all games",
     "scoreboard.newGame": "New game",
+    "scoreboard.nextGame": "Next game",
+    "scoreboard.previousRound": "Previous round",
+    "scoreboard.nextRound": "Next round",
+    "scoreboard.currentRound": "Current round: {round}",
+    "scoreboard.roundAdvanced": "Moved current round forward",
+    "scoreboard.roundReturned": "Moved current round back",
+    "scoreboard.playerJoinedNotice": "Joined room",
+    "scoreboard.playerRejoinedNotice": "Reclaimed player control",
+    "scoreboard.scoreUpdated": "Score changed",
     "scoreboard.history": "Previous games",
     "scoreboard.historyEyebrow": "Saved scores",
     "scoreboard.previousTotal": "Previous total",
@@ -2293,6 +2323,8 @@ scoreboardShareButton?.addEventListener("click", shareScoreboardRoom);
 scoreboardHistoryButton?.addEventListener("click", showScoreboardHistory);
 scoreboardManagePlayersButton?.addEventListener("click", showScoreboardPlayersPopup);
 scoreboardAddRoundButton?.addEventListener("click", addScoreboardRound);
+scoreboardPreviousRoundButton?.addEventListener("click", () => changeScoreboardCurrentRound("previous"));
+scoreboardNextRoundButton?.addEventListener("click", () => changeScoreboardCurrentRound("next"));
 scoreboardSortOrderButton?.addEventListener("click", toggleScoreboardSortOrder);
 scoreboardResetButton?.addEventListener("click", () => showScoreboardPopup(scoreboardConfirmPopup));
 scoreboardFinishButton?.addEventListener("click", finishScoreboardGame);
@@ -2318,7 +2350,8 @@ scoreboardConfirmClose?.addEventListener("click", () => hideScoreboardPopup(scor
 scoreboardCancelResetButton?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardConfirmResetButton?.addEventListener("click", resetScoreboardScores);
 scoreboardPodiumClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardPodiumPopup));
-scoreboardNewGameButton?.addEventListener("click", startNewScoreboardGame);
+scoreboardNewGameButton?.addEventListener("click", restartScoreboardGame);
+scoreboardNextGameButton?.addEventListener("click", startNewScoreboardGame);
 scoreboardFinishPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardFinishPopup));
 scoreboardFinishCurrentButton?.addEventListener("click", () => finishScoreboard("finish"));
 scoreboardFinishAllButton?.addEventListener("click", () => finishScoreboard("finish-all"));
@@ -5216,11 +5249,22 @@ function renderScoreboardRoom(room = scoreboardRoom) {
     ? "scoreboard.hostMode"
     : scoreboardSession.role === "player" && room.playersCanEdit ? "scoreboard.playerEditMode"
       : scoreboardSession.role === "player" ? "scoreboard.playerMode" : "scoreboard.spectatorMode";
-  scoreboardModeLabel.textContent = `${t(roleKey, { order })} · ${t("scoreboard.game", { game: room.gameNumber || 1 })}`;
+  const currentRoundLabel = room.playersCanEdit ? ` · ${t("scoreboard.currentRound", { round: Number(room.currentRound || 0) + 1 })}` : "";
+  scoreboardModeLabel.textContent = `${t(roleKey, { order })} · ${t("scoreboard.game", { game: room.gameNumber || 1 })}${currentRoundLabel}`;
   const hostCanControl = scoreboardSession.isHost && room.status !== "completed";
   document.querySelectorAll(".scoreboard-host-control").forEach((button) => { button.hidden = !hostCanControl; });
   if (scoreboardFinishButton) scoreboardFinishButton.hidden = !hostCanControl || (room.status === "finished" && !(room.games || []).length);
   if (scoreboardNewGameButton) scoreboardNewGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
+  if (scoreboardNextGameButton) scoreboardNextGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
+  const showRoundControls = hostCanControl && room.playersCanEdit && room.status === "active";
+  if (scoreboardPreviousRoundButton) {
+    scoreboardPreviousRoundButton.hidden = !showRoundControls;
+    scoreboardPreviousRoundButton.disabled = Number(room.currentRound || 0) <= 0;
+  }
+  if (scoreboardNextRoundButton) {
+    scoreboardNextRoundButton.hidden = !showRoundControls;
+    scoreboardNextRoundButton.disabled = Number(room.currentRound || 0) >= Number(room.roundCount || 1) - 1;
+  }
   if (scoreboardHistoryButton) scoreboardHistoryButton.hidden = !(room.games || []).length;
   if (scoreboardSortOrderButton) scoreboardSortOrderButton.textContent = `\u2195 ${t("scoreboard.orderButton", { order })}`;
   if (["finished", "completed"].includes(room.status)) {
@@ -5242,11 +5286,14 @@ function renderScoreboardTable(room) {
   for (let roundIndex = 0; roundIndex < room.roundCount; roundIndex += 1) {
     const cell = document.createElement("th");
     cell.scope = "col";
+    const isCurrentRound = Boolean(room.playersCanEdit && roundIndex === Number(room.currentRound || 0));
+    cell.classList.toggle("is-current-round", isCurrentRound);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "scoreboard-round-header-button";
     button.dataset.roundIndex = String(roundIndex);
     button.disabled = !scoreboardSession.isHost || room.status === "completed";
+    if (isCurrentRound) button.setAttribute("aria-current", "true");
     const label = document.createElement("span");
     label.textContent = t("scoreboard.round");
     const number = document.createElement("strong");
@@ -5285,13 +5332,14 @@ function renderScoreboardTable(room) {
     row.append(playerCell);
     for (let roundIndex = 0; roundIndex < room.roundCount; roundIndex += 1) {
       const scoreCell = document.createElement("td");
+      scoreCell.classList.toggle("is-current-round", Boolean(room.playersCanEdit && roundIndex === Number(room.currentRound || 0)));
       const button = document.createElement("button");
       const value = player.scores?.[roundIndex] ?? null;
       button.type = "button";
       button.className = `scoreboard-score-cell-button${value === null ? " is-blank" : ""}`;
       button.dataset.playerId = player.id;
       button.dataset.roundIndex = String(roundIndex);
-      button.disabled = !canEditScoreboardPlayer(player.id, room);
+      button.disabled = !canEditScoreboardPlayer(player.id, room, roundIndex);
       if (value !== null) button.textContent = formatScoreboardNumber(value);
       button.setAttribute("aria-label", `${player.name}, ${t("scoreboard.round")} ${roundIndex + 1}: ${value === null ? t("scoreboard.blankScore") : value}`);
       scoreCell.append(button);
@@ -5329,7 +5377,7 @@ function formatScoreboardNumber(value) {
 
 function handleScoreboardTableClick(event) {
   const scoreButton = event.target.closest(".scoreboard-score-cell-button");
-  if (scoreButton && canEditScoreboardPlayer(scoreButton.dataset.playerId)) {
+  if (scoreButton && canEditScoreboardPlayer(scoreButton.dataset.playerId, scoreboardRoom, Number(scoreButton.dataset.roundIndex))) {
     showScoreboardCellPopup(scoreButton.dataset.playerId, Number(scoreButton.dataset.roundIndex));
     return;
   }
@@ -5343,9 +5391,15 @@ function handleScoreboardTableClick(event) {
   if (roundButton) showScoreboardRoundPopup(Number(roundButton.dataset.roundIndex));
 }
 
-function canEditScoreboardPlayer(playerId, room = scoreboardRoom) {
+function canEditScoreboardPlayer(playerId, room = scoreboardRoom, roundIndex = -1) {
   if (!scoreboardSession || !room || room.status === "completed") return false;
-  return scoreboardSession.isHost || Boolean(room.playersCanEdit && scoreboardSession.role === "player" && scoreboardSession.playerId === playerId);
+  return scoreboardSession.isHost || Boolean(
+    room.playersCanEdit
+    && room.status === "active"
+    && scoreboardSession.role === "player"
+    && scoreboardSession.playerId === playerId
+    && roundIndex === Number(room.currentRound || 0)
+  );
 }
 
 function showScoreboardPlayersPopup() {
@@ -5564,6 +5618,14 @@ async function addScoreboardRound() {
   }
 }
 
+async function changeScoreboardCurrentRound(direction) {
+  try {
+    await scoreboardAction("current-round", { direction });
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
 async function deleteScoreboardRound() {
   if (!scoreboardRoom || scoreboardRoom.roundCount <= 1 || scoreboardEditingRoundIndex < 0) return;
   const round = scoreboardEditingRoundIndex + 1;
@@ -5638,6 +5700,16 @@ async function finishScoreboard(action) {
 async function startNewScoreboardGame() {
   try {
     await scoreboardAction("new-game", {});
+    scoreboardShownResultId = "";
+    hideScoreboardPopup(scoreboardPodiumPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
+}
+
+async function restartScoreboardGame() {
+  try {
+    await scoreboardAction("reset", {});
     scoreboardShownResultId = "";
     hideScoreboardPopup(scoreboardPodiumPopup);
   } catch (error) {
@@ -5739,6 +5811,11 @@ function showScoreboardHistory() {
     entry.total += Number(player.total || 0);
     players.set(player.id, entry);
   }));
+  (scoreboardRoom?.players || []).forEach((player) => {
+    const entry = players.get(player.id) || { id: player.id, name: player.name, totals: new Map(), total: 0, position: players.size + 1 };
+    entry.name = player.name;
+    players.set(player.id, entry);
+  });
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
   [t("scoreboard.players"), ...games.map((game) => t("scoreboard.game", { game: game.number })), t("scoreboard.previousTotal")].forEach((text) => {
@@ -5758,7 +5835,7 @@ function showScoreboardHistory() {
     row.append(name);
     games.forEach((game) => {
       const cell = document.createElement("td");
-      cell.textContent = player.totals.has(game.number) ? formatScoreboardNumber(player.totals.get(game.number)) : "—";
+      cell.textContent = formatScoreboardNumber(player.totals.get(game.number) || 0);
       row.append(cell);
     });
     const total = document.createElement("td");
@@ -5774,47 +5851,81 @@ function announceScoreboardScoreEvents(room) {
   const unseen = (room.scoreEvents || []).filter((event) => event?.id && !scoreboardKnownScoreEventIds.has(event.id));
   unseen.forEach((event) => scoreboardKnownScoreEventIds.add(event.id));
   if (!unseen.length) return;
-  let container = document.querySelector(".scoreboard-score-notifications");
+  let container = document.querySelector(".scoreboard-activity-notifications");
   if (!container) {
     container = document.createElement("div");
-    container.className = "multiplayer-score-notifications scoreboard-score-notifications";
+    container.className = "scoreboard-activity-notifications";
     container.setAttribute("aria-live", "assertive");
     document.body.append(container);
   }
   unseen.forEach((event) => {
+    const eventType = event.type || "score";
+    if (eventType === "round") {
+      addScoreboardActivityNotification(container, {
+        type: "round",
+        icon: event.direction === "previous" ? "\u2190" : "\u2192",
+        title: event.actorName,
+        detail: t(event.direction === "previous" ? "scoreboard.roundReturned" : "scoreboard.roundAdvanced"),
+        badge: t("scoreboard.currentRound", { round: Number(event.roundIndex) + 1 })
+      });
+      playOtherPlayerCorrectSound(1);
+      return;
+    }
+    if (eventType === "join") {
+      addScoreboardActivityNotification(container, {
+        type: "join",
+        icon: "\u263a",
+        title: event.playerName || event.actorName,
+        detail: t(event.rejoined ? "scoreboard.playerRejoinedNotice" : "scoreboard.playerJoinedNotice"),
+        badge: t("scoreboard.game", { game: event.gameNumber || room.gameNumber || 1 })
+      });
+      playOtherPlayerCorrectSound(1);
+      return;
+    }
     const changes = event.changes || [];
     changes.slice(0, 8).forEach((change) => {
-      const notification = document.createElement("article");
-      notification.className = "multiplayer-score-notification scoreboard-score-notification";
-      const icon = document.createElement("span");
-      icon.textContent = "✎";
-      const label = document.createElement("strong");
-      label.textContent = `${event.actorName}: ${change.playerName}`;
-      const score = document.createElement("b");
       const before = change.previousValue === null ? "—" : formatScoreboardNumber(change.previousValue);
       const after = change.value === null ? "—" : formatScoreboardNumber(change.value);
-      score.textContent = `${t("scoreboard.round")} ${Number(change.roundIndex) + 1}: ${before} → ${after}`;
-      notification.append(icon, label, score);
-      container.append(notification);
-      window.setTimeout(() => notification.remove(), 4200);
+      addScoreboardActivityNotification(container, {
+        type: "score",
+        icon: "✎",
+        title: `${event.actorName} · ${change.playerName}`,
+        detail: t("scoreboard.scoreUpdated"),
+        badge: `${t("scoreboard.round")} ${Number(change.roundIndex) + 1}: ${before} → ${after}`
+      });
     });
     const hiddenChangeCount = Math.max(0, Number(event.changeCount || changes.length) - Math.min(8, changes.length));
     if (hiddenChangeCount) {
-      const summary = document.createElement("article");
-      summary.className = "multiplayer-score-notification scoreboard-score-notification";
-      const icon = document.createElement("span");
-      icon.textContent = "+";
-      const label = document.createElement("strong");
-      label.textContent = event.actorName;
-      const score = document.createElement("b");
-      score.textContent = t("scoreboard.moreChanges", { count: hiddenChangeCount });
-      summary.append(icon, label, score);
-      container.append(summary);
-      window.setTimeout(() => summary.remove(), 4200);
+      addScoreboardActivityNotification(container, {
+        type: "score",
+        icon: "+",
+        title: event.actorName,
+        detail: t("scoreboard.scoreUpdated"),
+        badge: t("scoreboard.moreChanges", { count: hiddenChangeCount })
+      });
     }
     playOtherPlayerCorrectSound(Math.max(1, Math.min(3, Number(event.changeCount || changes.length))));
   });
   window.setTimeout(() => { if (!container.childElementCount) container.remove(); }, 4500);
+}
+
+function addScoreboardActivityNotification(container, { type, icon, title, detail, badge }) {
+  const notification = document.createElement("article");
+  notification.className = `scoreboard-activity-notification is-${type}`;
+  const iconElement = document.createElement("span");
+  iconElement.className = "scoreboard-activity-icon";
+  iconElement.textContent = icon;
+  const copy = document.createElement("div");
+  const titleElement = document.createElement("strong");
+  titleElement.textContent = title;
+  const detailElement = document.createElement("small");
+  detailElement.textContent = detail;
+  copy.append(titleElement, detailElement);
+  const badgeElement = document.createElement("b");
+  badgeElement.textContent = badge;
+  notification.append(iconElement, copy, badgeElement);
+  container.append(notification);
+  window.setTimeout(() => notification.remove(), 4200);
 }
 
 function showScoreboardPopup(popup) {
@@ -6039,7 +6150,9 @@ function applyScoreboardLanguage() {
     ["#scoreboardCreateButton", "scoreboard.create"], ["#scoreboardRefreshRoomsButton", "scoreboard.refresh"],
     ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardManagePlayersButton", "scoreboard.players"],
     ["#scoreboardHistoryButton", "scoreboard.history"],
-    ["#scoreboardAddRoundButton", "scoreboard.addRound"], ["#scoreboardResetButton", "scoreboard.reset"],
+    ["#scoreboardAddRoundButton", "scoreboard.addRound"],
+    ["#scoreboardPreviousRoundButton", "scoreboard.previousRound"], ["#scoreboardNextRoundButton", "scoreboard.nextRound"],
+    ["#scoreboardResetButton", "scoreboard.reset"],
     ["#scoreboardFinishButton", "scoreboard.finish"], ["#scoreboardLeaveButton", "scoreboard.leave"],
     ["#scoreboardJoinPopupClose", "common.close"],
     ["#scoreboardJoinNicknameButton", "scoreboard.joinNickname"], ["#scoreboardPlayersPopupClose", "common.close"],
@@ -6053,6 +6166,7 @@ function applyScoreboardLanguage() {
     ["#scoreboardConfirmClose", "common.close"],
     ["#scoreboardCancelResetButton", "scoreboard.cancel"], ["#scoreboardConfirmResetButton", "scoreboard.reset"],
     ["#scoreboardPodiumClose", "common.close"], ["#scoreboardNewGameButton", "scoreboard.newGame"],
+    ["#scoreboardNextGameButton", "scoreboard.nextGame"],
     ["#scoreboardFinishPopupClose", "common.close"], ["#scoreboardFinishCurrentButton", "scoreboard.finishCurrent"],
     ["#scoreboardFinishAllButton", "scoreboard.finishAll"], ["#scoreboardHistoryClose", "common.close"]
   ];
