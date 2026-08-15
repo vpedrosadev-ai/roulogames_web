@@ -11060,7 +11060,9 @@ body.scoreboard-active .title-bar {
 }
 
 .scoreboard-form input,
-.scoreboard-popup-card input {
+.scoreboard-form select,
+.scoreboard-popup-card input,
+.scoreboard-popup-card select {
   width: 100%;
   min-height: 46px;
   padding: 9px 12px;
@@ -11072,7 +11074,9 @@ body.scoreboard-active .title-bar {
 }
 
 .scoreboard-form input:focus,
-.scoreboard-popup-card input:focus {
+.scoreboard-form select:focus,
+.scoreboard-popup-card input:focus,
+.scoreboard-popup-card select:focus {
   outline: 3px solid rgba(39, 93, 159, 0.17);
   border-color: var(--scoreboard-blue, #275d9f);
 }
@@ -11248,6 +11252,59 @@ body.scoreboard-active .title-bar {
 .scoreboard-round-navigation > button { width: 100%; }
 .scoreboard-settings-actions { display: grid; gap: 9px; }
 .scoreboard-settings-actions > button { width: 100%; min-height: 46px; }
+
+.scoreboard-log-card { width: min(780px, 100%); }
+.scoreboard-log-list { display: grid; gap: 9px; }
+.scoreboard-log-empty { padding: 28px; border: 2px dashed #c8d4df; border-radius: 14px; color: #687589; text-align: center; font-weight: 850; }
+.scoreboard-log-entry {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 10px 13px;
+  padding: 12px;
+  border: 1px solid #d0dae3;
+  border-left: 5px solid var(--scoreboard-blue, #275d9f);
+  border-radius: 13px;
+  background: #fff;
+}
+.scoreboard-log-entry time { color: var(--scoreboard-blue-dark, #173963); font-size: 0.72rem; font-weight: 950; font-variant-numeric: tabular-nums; }
+.scoreboard-log-entry > div { display: grid; min-width: 0; gap: 4px; }
+.scoreboard-log-entry strong { font-size: 0.86rem; }
+.scoreboard-log-entry small { color: #687589; font-size: 0.72rem; font-weight: 750; }
+.scoreboard-log-entry ul { display: grid; gap: 3px; margin: 2px 0 0; padding-left: 18px; color: #3f4b60; font-size: 0.72rem; font-weight: 800; }
+.scoreboard-log-entry.is-join { border-left-color: #1f7a6d; }
+.scoreboard-log-entry.is-round,
+.scoreboard-log-entry.is-round-added,
+.scoreboard-log-entry.is-round-deleted { border-left-color: var(--scoreboard-gold, #f6b72f); }
+.scoreboard-log-entry.is-game-restarted,
+.scoreboard-log-entry.is-next-game,
+.scoreboard-log-entry.is-game-finished,
+.scoreboard-log-entry.is-session-finished { border-left-color: #8a4eb4; }
+
+.scoreboard-traitors-round-section,
+.scoreboard-player-role-history-section { display: grid; gap: 11px; padding: 13px; border: 1px solid rgba(39, 93, 159, 0.24); border-radius: 14px; background: #f6f9fc; }
+.scoreboard-traitors-round-section[hidden],
+.scoreboard-player-role-history-section[hidden] { display: none; }
+.scoreboard-traitors-round-section > header h3,
+.scoreboard-player-role-history-section h3 { margin: 2px 0 0; color: var(--scoreboard-blue-dark, #173963); font-size: 1rem; }
+.scoreboard-winner-options { display: flex; flex-wrap: wrap; gap: 7px 14px; }
+.scoreboard-winner-options label { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 0.75rem; }
+.scoreboard-winner-options input { width: 18px; min-height: 18px; }
+.scoreboard-round-role-list,
+.scoreboard-player-role-history { display: grid; gap: 7px; }
+.scoreboard-round-role-option { display: grid; grid-template-columns: minmax(0, 1fr) minmax(145px, 0.65fr); gap: 9px; align-items: center; margin: 0; padding: 8px 10px; border: 1px solid #d4dde5; border-radius: 10px; background: #fff; }
+.scoreboard-round-role-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
+.scoreboard-round-role-option select { min-height: 38px; font-size: 0.76rem; }
+.scoreboard-role-history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid #d4dde5; border-radius: 10px; background: #fff; }
+.scoreboard-role-history-item strong { font-size: 0.76rem; }
+.scoreboard-role-chip,
+.scoreboard-outcome-chip { padding: 4px 7px; border-radius: 999px; font-size: 0.63rem; font-weight: 950; }
+.scoreboard-role-chip.is-crew { color: #164d75; background: #d9efff; }
+.scoreboard-role-chip.is-traitor { color: #7a1f2d; background: #ffe0e5; }
+.scoreboard-outcome-chip.is-win { color: #176344; background: #d9f4e7; }
+.scoreboard-outcome-chip.is-loss { color: #8a2932; background: #ffe2e4; }
+.scoreboard-role-history-empty { padding: 14px; color: #687589; text-align: center; font-size: 0.74rem; font-weight: 800; }
+.scoreboard-traitor-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 7px; margin-top: 5px; color: inherit; font-size: 0.62rem; font-weight: 850; }
+.scoreboard-final-list .scoreboard-traitor-stats { grid-column: 2 / -1; justify-content: flex-start; margin: 0; color: #687589; }
 .scoreboard-host-control[hidden],
 .scoreboard-player-count-field[hidden],
 .scoreboard-nickname-form > label[hidden],
@@ -11461,6 +11518,7 @@ body.scoreboard-active .title-bar {
 }
 
 .scoreboard-table.is-readonly button { cursor: default; }
+.scoreboard-table.is-readonly .scoreboard-player-cell-button:not(:disabled) { cursor: pointer; }
 .scoreboard-table.is-readonly button:hover,
 .scoreboard-table.is-readonly button:focus-visible { box-shadow: none; transform: none; }
 
@@ -11822,7 +11880,9 @@ body.scoreboard-active .title-bar {
   .scoreboard-popup-card { padding: 16px; border-radius: 16px; }
 
   .scoreboard-form input,
-  .scoreboard-popup-card input { font-size: 16px !important; }
+  .scoreboard-form select,
+  .scoreboard-popup-card input,
+  .scoreboard-popup-card select { font-size: 16px !important; }
 
   .scoreboard-form > header,
   .scoreboard-join-panel > header,
@@ -11867,6 +11927,10 @@ body.scoreboard-active .title-bar {
   .scoreboard-activity-notification { grid-template-columns: 40px minmax(0, 1fr); }
   .scoreboard-activity-notification b { grid-column: 2; justify-self: start; white-space: normal; }
   .scoreboard-podium-actions { grid-template-columns: 1fr; }
+  .scoreboard-log-entry { grid-template-columns: 1fr; gap: 5px; }
+  .scoreboard-round-role-option { grid-template-columns: 1fr; }
+  .scoreboard-role-history-item { grid-template-columns: 1fr auto; }
+  .scoreboard-role-history-item strong { grid-column: 1 / -1; }
 }
 
 @media (max-width: 760px) and (orientation: portrait) {

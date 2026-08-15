@@ -312,6 +312,7 @@ const scoreboardCreateForm = document.querySelector("#scoreboardCreateForm");
 const scoreboardCreateRoomName = document.querySelector("#scoreboardCreateRoomName");
 const scoreboardCreateHostName = document.querySelector("#scoreboardCreateHostName");
 const scoreboardCreateRounds = document.querySelector("#scoreboardCreateRounds");
+const scoreboardCreateGameType = document.querySelector("#scoreboardCreateGameType");
 const scoreboardCreatePassword = document.querySelector("#scoreboardCreatePassword");
 const scoreboardPlayersCanEdit = document.querySelector("#scoreboardPlayersCanEdit");
 const scoreboardJoinPanel = document.querySelector("#scoreboardJoinPanel");
@@ -341,6 +342,10 @@ const scoreboardTableBody = document.querySelector("#scoreboardTableBody");
 const scoreboardEmptyState = document.querySelector("#scoreboardEmptyState");
 const scoreboardSettingsPopup = document.querySelector("#scoreboardSettingsPopup");
 const scoreboardSettingsClose = document.querySelector("#scoreboardSettingsClose");
+const scoreboardLogButton = document.querySelector("#scoreboardLogButton");
+const scoreboardLogPopup = document.querySelector("#scoreboardLogPopup");
+const scoreboardLogClose = document.querySelector("#scoreboardLogClose");
+const scoreboardLogList = document.querySelector("#scoreboardLogList");
 const scoreboardJoinPopup = document.querySelector("#scoreboardJoinPopup");
 const scoreboardJoinPopupTitle = document.querySelector("#scoreboardJoinPopupTitle");
 const scoreboardJoinPopupClose = document.querySelector("#scoreboardJoinPopupClose");
@@ -362,6 +367,8 @@ const scoreboardCellForm = document.querySelector("#scoreboardCellForm");
 const scoreboardCellPopupTitle = document.querySelector("#scoreboardCellPopupTitle");
 const scoreboardCellPopupClose = document.querySelector("#scoreboardCellPopupClose");
 const scoreboardCellScore = document.querySelector("#scoreboardCellScore");
+const scoreboardCellRoleField = document.querySelector("#scoreboardCellRoleField");
+const scoreboardCellRole = document.querySelector("#scoreboardCellRole");
 const scoreboardClearCellButton = document.querySelector("#scoreboardClearCellButton");
 const scoreboardPlayerPopup = document.querySelector("#scoreboardPlayerPopup");
 const scoreboardPlayerForm = document.querySelector("#scoreboardPlayerForm");
@@ -369,13 +376,22 @@ const scoreboardPlayerPopupTitle = document.querySelector("#scoreboardPlayerPopu
 const scoreboardPlayerPopupClose = document.querySelector("#scoreboardPlayerPopupClose");
 const scoreboardPlayerNickname = document.querySelector("#scoreboardPlayerNickname");
 const scoreboardPlayerScores = document.querySelector("#scoreboardPlayerScores");
+const scoreboardPlayerRoleHistorySection = document.querySelector("#scoreboardPlayerRoleHistorySection");
+const scoreboardPlayerRoleHistory = document.querySelector("#scoreboardPlayerRoleHistory");
 const scoreboardDeletePlayerButton = document.querySelector("#scoreboardDeletePlayerButton");
+const scoreboardPlayerDetailsPopup = document.querySelector("#scoreboardPlayerDetailsPopup");
+const scoreboardPlayerDetailsTitle = document.querySelector("#scoreboardPlayerDetailsTitle");
+const scoreboardPlayerDetailsClose = document.querySelector("#scoreboardPlayerDetailsClose");
+const scoreboardPlayerDetailsRoles = document.querySelector("#scoreboardPlayerDetailsRoles");
 const scoreboardRoundPopup = document.querySelector("#scoreboardRoundPopup");
 const scoreboardRoundForm = document.querySelector("#scoreboardRoundForm");
 const scoreboardRoundPopupTitle = document.querySelector("#scoreboardRoundPopupTitle");
 const scoreboardRoundPopupClose = document.querySelector("#scoreboardRoundPopupClose");
 const scoreboardRoundAmount = document.querySelector("#scoreboardRoundAmount");
 const scoreboardRoundPlayerList = document.querySelector("#scoreboardRoundPlayerList");
+const scoreboardTraitorsRoundSection = document.querySelector("#scoreboardTraitorsRoundSection");
+const scoreboardRoundRoleList = document.querySelector("#scoreboardRoundRoleList");
+const scoreboardSaveRoundRolesButton = document.querySelector("#scoreboardSaveRoundRolesButton");
 const scoreboardSelectAllPlayers = document.querySelector("#scoreboardSelectAllPlayers");
 const scoreboardClearPlayerSelection = document.querySelector("#scoreboardClearPlayerSelection");
 const scoreboardDeleteRoundButton = document.querySelector("#scoreboardDeleteRoundButton");
@@ -1497,6 +1513,49 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.room": "Sala",
     "scoreboard.settings": "Configuracio",
     "scoreboard.configureRoom": "Configura la sala",
+    "scoreboard.gameType": "Joc (opcional)",
+    "scoreboard.gameTypeNone": "Cap",
+    "scoreboard.traitorsAboard": "Traidors a Bord",
+    "scoreboard.log": "LOG",
+    "scoreboard.logEyebrow": "Activitat de la sala",
+    "scoreboard.logLoading": "Carregant activitat...",
+    "scoreboard.logEmpty": "Encara no hi ha activitat registrada.",
+    "scoreboard.cellRole": "Rol en aquesta ronda",
+    "scoreboard.roleHistory": "Historial de rols",
+    "scoreboard.noRoleHistory": "Aquest jugador encara no te rols definits.",
+    "scoreboard.roleUnknown": "Sense definir",
+    "scoreboard.crew": "Tripulant",
+    "scoreboard.traitor": "Traidor",
+    "scoreboard.crewPlural": "Tripulants",
+    "scoreboard.traitorsPlural": "Traidors",
+    "scoreboard.winner": "Guanyador",
+    "scoreboard.won": "Victoria",
+    "scoreboard.lost": "Derrota",
+    "scoreboard.roundRoles": "Rols i bandol guanyador",
+    "scoreboard.saveRoles": "Desa rols",
+    "scoreboard.crewCount": "Tripulant x{count}",
+    "scoreboard.traitorCount": "Traidor x{count}",
+    "scoreboard.winCount": "Victories {count}",
+    "scoreboard.lossCount": "Derrotes {count}",
+    "scoreboard.system": "Sistema",
+    "scoreboard.logScores": "{actor} ha canviat {count} puntuacions",
+    "scoreboard.logRoundBack": "{actor} ha retrocedit la ronda",
+    "scoreboard.logRoundForward": "{actor} ha avancat la ronda",
+    "scoreboard.logPlayerJoined": "{player} s'ha unit a la sala",
+    "scoreboard.logPlayerRejoined": "{player} ha recuperat el seu jugador",
+    "scoreboard.logRoundAdded": "{actor} ha afegit una ronda",
+    "scoreboard.logRoundDeleted": "{actor} ha eliminat una ronda",
+    "scoreboard.logGameRestarted": "{actor} ha iniciat una partida nova",
+    "scoreboard.logNextGame": "{actor} ha passat a la partida {game}",
+    "scoreboard.logGameFinished": "{actor} ha finalitzat la partida",
+    "scoreboard.logSessionFinished": "{actor} ha finalitzat totes les partides",
+    "scoreboard.logPlayerRole": "{actor} ha canviat el seu rol",
+    "scoreboard.logRoundRoles": "{actor} ha definit els rols de la ronda",
+    "scoreboard.logPlayersUpdated": "{actor} ha actualitzat els jugadors",
+    "scoreboard.logPlayerRenamed": "{actor} ha canviat un sobrenom",
+    "scoreboard.logPlayerRemoved": "{actor} ha eliminat {player}",
+    "scoreboard.logSortOrder": "{actor} ha canviat l'ordre",
+    "scoreboard.logActivity": "Activitat de {actor}",
     "scoreboard.players": "Jugadors",
     "scoreboard.rounds": "rondes",
     "scoreboard.protected": "Privada",
@@ -1607,6 +1666,49 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.room": "Sala",
     "scoreboard.settings": "Ajustes",
     "scoreboard.configureRoom": "Configurar sala",
+    "scoreboard.gameType": "Juego (opcional)",
+    "scoreboard.gameTypeNone": "Ninguno",
+    "scoreboard.traitorsAboard": "Traidores a Bordo",
+    "scoreboard.log": "LOG",
+    "scoreboard.logEyebrow": "Actividad de la sala",
+    "scoreboard.logLoading": "Cargando actividad...",
+    "scoreboard.logEmpty": "Todavia no hay actividad registrada.",
+    "scoreboard.cellRole": "Rol en esta ronda",
+    "scoreboard.roleHistory": "Historial de roles",
+    "scoreboard.noRoleHistory": "Este jugador todavia no tiene roles definidos.",
+    "scoreboard.roleUnknown": "Sin definir",
+    "scoreboard.crew": "Tripulante",
+    "scoreboard.traitor": "Traidor",
+    "scoreboard.crewPlural": "Tripulantes",
+    "scoreboard.traitorsPlural": "Traidores",
+    "scoreboard.winner": "Ganador",
+    "scoreboard.won": "Victoria",
+    "scoreboard.lost": "Derrota",
+    "scoreboard.roundRoles": "Roles y bando ganador",
+    "scoreboard.saveRoles": "Guardar roles",
+    "scoreboard.crewCount": "Tripulante x{count}",
+    "scoreboard.traitorCount": "Traidor x{count}",
+    "scoreboard.winCount": "Victorias {count}",
+    "scoreboard.lossCount": "Derrotas {count}",
+    "scoreboard.system": "Sistema",
+    "scoreboard.logScores": "{actor} cambio {count} puntuaciones",
+    "scoreboard.logRoundBack": "{actor} retrocedio la ronda",
+    "scoreboard.logRoundForward": "{actor} avanzo la ronda",
+    "scoreboard.logPlayerJoined": "{player} se unio a la sala",
+    "scoreboard.logPlayerRejoined": "{player} recupero su jugador",
+    "scoreboard.logRoundAdded": "{actor} anadio una ronda",
+    "scoreboard.logRoundDeleted": "{actor} elimino una ronda",
+    "scoreboard.logGameRestarted": "{actor} inicio una partida nueva",
+    "scoreboard.logNextGame": "{actor} paso a la partida {game}",
+    "scoreboard.logGameFinished": "{actor} finalizo la partida",
+    "scoreboard.logSessionFinished": "{actor} finalizo todas las partidas",
+    "scoreboard.logPlayerRole": "{actor} cambio su rol",
+    "scoreboard.logRoundRoles": "{actor} definio los roles de la ronda",
+    "scoreboard.logPlayersUpdated": "{actor} actualizo los jugadores",
+    "scoreboard.logPlayerRenamed": "{actor} cambio un apodo",
+    "scoreboard.logPlayerRemoved": "{actor} elimino a {player}",
+    "scoreboard.logSortOrder": "{actor} cambio el orden",
+    "scoreboard.logActivity": "Actividad de {actor}",
     "scoreboard.players": "Jugadores",
     "scoreboard.rounds": "rondas",
     "scoreboard.protected": "Privada",
@@ -1717,6 +1819,49 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.room": "Room",
     "scoreboard.settings": "Settings",
     "scoreboard.configureRoom": "Configure room",
+    "scoreboard.gameType": "Game (optional)",
+    "scoreboard.gameTypeNone": "None",
+    "scoreboard.traitorsAboard": "Traitors Aboard",
+    "scoreboard.log": "LOG",
+    "scoreboard.logEyebrow": "Room activity",
+    "scoreboard.logLoading": "Loading activity...",
+    "scoreboard.logEmpty": "No activity recorded yet.",
+    "scoreboard.cellRole": "Role this round",
+    "scoreboard.roleHistory": "Role history",
+    "scoreboard.noRoleHistory": "No roles defined for this player yet.",
+    "scoreboard.roleUnknown": "Not defined",
+    "scoreboard.crew": "Crewmate",
+    "scoreboard.traitor": "Traitor",
+    "scoreboard.crewPlural": "Crewmates",
+    "scoreboard.traitorsPlural": "Traitors",
+    "scoreboard.winner": "Winner",
+    "scoreboard.won": "Win",
+    "scoreboard.lost": "Loss",
+    "scoreboard.roundRoles": "Roles and winning side",
+    "scoreboard.saveRoles": "Save roles",
+    "scoreboard.crewCount": "Crewmate x{count}",
+    "scoreboard.traitorCount": "Traitor x{count}",
+    "scoreboard.winCount": "Wins {count}",
+    "scoreboard.lossCount": "Losses {count}",
+    "scoreboard.system": "System",
+    "scoreboard.logScores": "{actor} changed {count} scores",
+    "scoreboard.logRoundBack": "{actor} moved round back",
+    "scoreboard.logRoundForward": "{actor} moved round forward",
+    "scoreboard.logPlayerJoined": "{player} joined room",
+    "scoreboard.logPlayerRejoined": "{player} reclaimed their player",
+    "scoreboard.logRoundAdded": "{actor} added a round",
+    "scoreboard.logRoundDeleted": "{actor} deleted a round",
+    "scoreboard.logGameRestarted": "{actor} started a fresh game",
+    "scoreboard.logNextGame": "{actor} moved to game {game}",
+    "scoreboard.logGameFinished": "{actor} finished game",
+    "scoreboard.logSessionFinished": "{actor} finished all games",
+    "scoreboard.logPlayerRole": "{actor} changed their role",
+    "scoreboard.logRoundRoles": "{actor} set round roles",
+    "scoreboard.logPlayersUpdated": "{actor} updated players",
+    "scoreboard.logPlayerRenamed": "{actor} renamed a player",
+    "scoreboard.logPlayerRemoved": "{actor} removed {player}",
+    "scoreboard.logSortOrder": "{actor} changed score order",
+    "scoreboard.logActivity": "Activity by {actor}",
     "scoreboard.players": "Players",
     "scoreboard.rounds": "rounds",
     "scoreboard.protected": "Private",
@@ -2333,6 +2478,8 @@ scoreboardShareButton?.addEventListener("click", shareScoreboardRoom);
 scoreboardHistoryButton?.addEventListener("click", showScoreboardHistory);
 scoreboardSettingsButton?.addEventListener("click", () => showScoreboardPopup(scoreboardSettingsPopup));
 scoreboardSettingsClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardSettingsPopup));
+scoreboardLogButton?.addEventListener("click", showScoreboardLog);
+scoreboardLogClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardLogPopup));
 scoreboardManagePlayersButton?.addEventListener("click", showScoreboardPlayersPopup);
 scoreboardAddRoundButton?.addEventListener("click", addScoreboardRound);
 scoreboardPreviousRoundButton?.addEventListener("click", () => changeScoreboardCurrentRound("previous"));
@@ -2351,6 +2498,7 @@ scoreboardCellPopupClose?.addEventListener("click", () => hideScoreboardPopup(sc
 scoreboardCellForm?.addEventListener("submit", saveScoreboardCell);
 scoreboardClearCellButton?.addEventListener("click", clearScoreboardCell);
 scoreboardPlayerPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardPlayerPopup));
+scoreboardPlayerDetailsClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardPlayerDetailsPopup));
 scoreboardPlayerForm?.addEventListener("submit", saveScoreboardPlayer);
 scoreboardDeletePlayerButton?.addEventListener("click", deleteScoreboardPlayer);
 scoreboardRoundPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardRoundPopup));
@@ -2358,6 +2506,7 @@ scoreboardRoundForm?.addEventListener("submit", applyScoreboardRoundScore);
 scoreboardSelectAllPlayers?.addEventListener("click", () => setScoreboardRoundSelection(true));
 scoreboardClearPlayerSelection?.addEventListener("click", () => setScoreboardRoundSelection(false));
 scoreboardDeleteRoundButton?.addEventListener("click", deleteScoreboardRound);
+scoreboardSaveRoundRolesButton?.addEventListener("click", saveScoreboardRoundRoles);
 scoreboardConfirmClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardCancelResetButton?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardConfirmResetButton?.addEventListener("click", resetScoreboardScores);
@@ -2368,7 +2517,7 @@ scoreboardFinishPopupClose?.addEventListener("click", () => hideScoreboardPopup(
 scoreboardFinishCurrentButton?.addEventListener("click", () => finishScoreboard("finish"));
 scoreboardFinishAllButton?.addEventListener("click", () => finishScoreboard("finish-all"));
 scoreboardHistoryClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardHistoryPopup));
-[scoreboardSettingsPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
+[scoreboardSettingsPopup, scoreboardLogPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardPlayerDetailsPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
   .filter(Boolean)
   .forEach((popup) => popup.addEventListener("click", (event) => {
     if (event.target === popup) hideScoreboardPopup(popup);
@@ -5085,6 +5234,7 @@ async function createScoreboardRoom(event) {
   const roomName = scoreboardCreateRoomName.value.trim();
   const hostName = scoreboardCreateHostName.value.trim();
   const roundCount = Math.max(1, Math.min(80, Math.floor(Number(scoreboardCreateRounds.value) || 1)));
+  const gameType = scoreboardCreateGameType?.value === "traitors-aboard" ? "traitors-aboard" : "";
   const sortOrder = scoreboardCreateForm.querySelector("[name='scoreboardSortOrder']:checked")?.value === "asc" ? "asc" : "desc";
   const password = scoreboardCreatePassword.value;
   const playersCanEdit = Boolean(scoreboardPlayersCanEdit?.checked);
@@ -5092,7 +5242,7 @@ async function createScoreboardRoom(event) {
     const response = await fetch("/api/scoreboard/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName, hostName, roundCount, sortOrder, password, playersCanEdit })
+      body: JSON.stringify({ roomName, hostName, roundCount, sortOrder, password, playersCanEdit, gameType })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || t("scoreboard.create"));
@@ -5143,7 +5293,8 @@ function renderScoreboardRoomList(rooms) {
     const name = document.createElement("strong");
     name.textContent = room.roomName;
     const meta = document.createElement("small");
-    meta.textContent = `${room.playerCount} ${t("scoreboard.players")} · ${room.roundCount} ${t("scoreboard.rounds")} · ${room.sortOrder === "asc" ? t("scoreboard.lowFirst") : t("scoreboard.highFirst")}`;
+    const gameLabel = room.gameType === "traitors-aboard" ? ` · ${t("scoreboard.traitorsAboard")}` : "";
+    meta.textContent = `${room.playerCount} ${t("scoreboard.players")} · ${room.roundCount} ${t("scoreboard.rounds")} · ${room.sortOrder === "asc" ? t("scoreboard.lowFirst") : t("scoreboard.highFirst")}${gameLabel}`;
     const access = document.createElement("span");
     access.textContent = room.passwordRequired ? t("scoreboard.protected") : t("scoreboard.open");
     button.append(name, meta, access);
@@ -5262,9 +5413,11 @@ function renderScoreboardRoom(room = scoreboardRoom) {
     : scoreboardSession.role === "player" && room.playersCanEdit ? "scoreboard.playerEditMode"
       : scoreboardSession.role === "player" ? "scoreboard.playerMode" : "scoreboard.spectatorMode";
   const currentRoundLabel = room.playersCanEdit ? ` · ${t("scoreboard.currentRound", { round: Number(room.currentRound || 0) + 1 })}` : "";
-  scoreboardModeLabel.textContent = `${t(roleKey, { order })} · ${t("scoreboard.game", { game: room.gameNumber || 1 })}${currentRoundLabel}`;
+  const gameTypeLabel = room.gameType === "traitors-aboard" ? ` · ${t("scoreboard.traitorsAboard")}` : "";
+  scoreboardModeLabel.textContent = `${t(roleKey, { order })} · ${t("scoreboard.game", { game: room.gameNumber || 1 })}${gameTypeLabel}${currentRoundLabel}`;
   const hostCanControl = scoreboardSession.isHost && room.status !== "completed";
   document.querySelectorAll(".scoreboard-host-control").forEach((button) => { button.hidden = !hostCanControl; });
+  if (scoreboardSettingsButton) scoreboardSettingsButton.hidden = !scoreboardSession.isHost;
   if (scoreboardFinishButton) scoreboardFinishButton.hidden = !hostCanControl || (room.status === "finished" && !(room.games || []).length);
   if (scoreboardNewGameButton) scoreboardNewGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
   if (scoreboardNextGameButton) scoreboardNextGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
@@ -5323,7 +5476,8 @@ function renderScoreboardTable(room) {
     playerButton.type = "button";
     playerButton.className = "scoreboard-player-cell-button";
     playerButton.dataset.playerId = player.id;
-    playerButton.disabled = !scoreboardSession.isHost || room.status === "completed";
+    const canViewRoleHistory = room.gameType === "traitors-aboard";
+    playerButton.disabled = !(scoreboardSession.isHost && room.status !== "completed") && !canViewRoleHistory;
     const identity = document.createElement("span");
     identity.className = "scoreboard-player-identity";
     const name = document.createElement("strong");
@@ -5392,12 +5546,13 @@ function handleScoreboardTableClick(event) {
     showScoreboardCellPopup(scoreButton.dataset.playerId, Number(scoreButton.dataset.roundIndex));
     return;
   }
-  if (!scoreboardSession?.isHost) return;
   const playerButton = event.target.closest(".scoreboard-player-cell-button");
   if (playerButton) {
-    showScoreboardPlayerPopup(playerButton.dataset.playerId);
+    if (scoreboardSession?.isHost && scoreboardRoom?.status !== "completed") showScoreboardPlayerPopup(playerButton.dataset.playerId);
+    else if (scoreboardRoom?.gameType === "traitors-aboard") showScoreboardPlayerDetailsPopup(playerButton.dataset.playerId);
     return;
   }
+  if (!scoreboardSession?.isHost) return;
   const roundButton = event.target.closest(".scoreboard-round-header-button");
   if (roundButton) showScoreboardRoundPopup(Number(roundButton.dataset.roundIndex));
 }
@@ -5500,6 +5655,9 @@ function showScoreboardCellPopup(playerId, roundIndex) {
   scoreboardCellPopupTitle.textContent = `${player.name} · ${t("scoreboard.round")} ${roundIndex + 1}`;
   scoreboardCellScore.value = player.scores?.[roundIndex] ?? "";
   scoreboardCellScore.setCustomValidity("");
+  const supportsRoles = scoreboardRoom?.gameType === "traitors-aboard";
+  scoreboardCellRoleField.hidden = !supportsRoles;
+  if (supportsRoles) scoreboardCellRole.value = getScoreboardRoundMeta(scoreboardRoom, roundIndex).roles[playerId] || "";
   showScoreboardPopup(scoreboardCellPopup);
   focusScoreboardInput(scoreboardCellScore, true);
 }
@@ -5519,6 +5677,20 @@ async function clearScoreboardCell() {
 
 async function updateScoreboardCell(value) {
   try {
+    const desiredRole = scoreboardCellRoleField.hidden ? "" : scoreboardCellRole.value;
+    const previousRole = scoreboardEditingCell ? getScoreboardRoundMeta(scoreboardRoom, scoreboardEditingCell.roundIndex).roles[scoreboardEditingCell.playerId] || "" : "";
+    const roleChanged = !scoreboardCellRoleField.hidden && desiredRole !== previousRole;
+    if (roleChanged) {
+      if (scoreboardSession?.isHost) {
+        const roundMeta = getScoreboardRoundMeta(scoreboardRoom, scoreboardEditingCell.roundIndex);
+        const assignments = Object.entries({ ...roundMeta.roles, [scoreboardEditingCell.playerId]: desiredRole })
+          .filter(([, role]) => role)
+          .map(([playerId, role]) => ({ playerId, role }));
+        await scoreboardAction("round-meta", { roundIndex: scoreboardEditingCell.roundIndex, winner: roundMeta.winner, assignments });
+      } else {
+        await scoreboardPlayerAction("player-role", { roundIndex: scoreboardEditingCell.roundIndex, role: desiredRole });
+      }
+    }
     if (scoreboardSession?.isHost) {
       await scoreboardAction("cell", { ...scoreboardEditingCell, value });
     } else {
@@ -5528,6 +5700,14 @@ async function updateScoreboardCell(value) {
   } catch (error) {
     scoreboardGameMessage.textContent = error.message;
   }
+}
+
+function getScoreboardRoundMeta(room, roundIndex) {
+  const source = room?.roundRoles?.[roundIndex];
+  return {
+    winner: source?.winner === "crew" || source?.winner === "traitors" ? source.winner : "",
+    roles: source?.roles && typeof source.roles === "object" ? source.roles : {}
+  };
 }
 
 function showScoreboardPlayerPopup(playerId) {
@@ -5551,8 +5731,62 @@ function showScoreboardPlayerPopup(playerId) {
     label.append(number, input);
     return label;
   }));
+  const supportsRoles = scoreboardRoom.gameType === "traitors-aboard";
+  scoreboardPlayerRoleHistorySection.hidden = !supportsRoles;
+  if (supportsRoles) renderScoreboardPlayerRoleHistory(scoreboardPlayerRoleHistory, playerId);
   showScoreboardPopup(scoreboardPlayerPopup);
   focusScoreboardInput(scoreboardPlayerNickname);
+}
+
+function showScoreboardPlayerDetailsPopup(playerId) {
+  const player = scoreboardRoom?.players?.find((item) => item.id === playerId);
+  if (!player || scoreboardRoom?.gameType !== "traitors-aboard") return;
+  scoreboardPlayerDetailsTitle.textContent = player.name;
+  renderScoreboardPlayerRoleHistory(scoreboardPlayerDetailsRoles, playerId);
+  showScoreboardPopup(scoreboardPlayerDetailsPopup);
+}
+
+function getScoreboardPlayerRoleHistory(room, playerId) {
+  if (!room || room.gameType !== "traitors-aboard") return [];
+  const games = [
+    ...(room.games || []).map((game) => ({ number: game.number, roundRoles: game.roundRoles || [] })),
+    { number: room.gameNumber || 1, roundRoles: room.roundRoles || [] }
+  ];
+  return games.flatMap((game) => (game.roundRoles || []).flatMap((roundMeta, roundIndex) => {
+    const role = roundMeta?.roles?.[playerId];
+    if (role !== "crew" && role !== "traitor") return [];
+    const winner = roundMeta?.winner === "crew" || roundMeta?.winner === "traitors" ? roundMeta.winner : "";
+    const won = winner ? (role === "crew" && winner === "crew") || (role === "traitor" && winner === "traitors") : null;
+    return [{ gameNumber: Number(game.number || 1), roundIndex, role, winner, won }];
+  }));
+}
+
+function renderScoreboardPlayerRoleHistory(container, playerId) {
+  const entries = getScoreboardPlayerRoleHistory(scoreboardRoom, playerId);
+  if (!entries.length) {
+    const empty = document.createElement("div");
+    empty.className = "scoreboard-role-history-empty";
+    empty.textContent = t("scoreboard.noRoleHistory");
+    container.replaceChildren(empty);
+    return;
+  }
+  container.replaceChildren(...entries.map((entry) => {
+    const row = document.createElement("article");
+    row.className = "scoreboard-role-history-item";
+    const round = document.createElement("strong");
+    round.textContent = `${t("scoreboard.game", { game: entry.gameNumber })} · ${t("scoreboard.round")} ${entry.roundIndex + 1}`;
+    const role = document.createElement("span");
+    role.className = `scoreboard-role-chip is-${entry.role}`;
+    role.textContent = t(entry.role === "crew" ? "scoreboard.crew" : "scoreboard.traitor");
+    row.append(round, role);
+    if (entry.won !== null) {
+      const outcome = document.createElement("span");
+      outcome.className = `scoreboard-outcome-chip is-${entry.won ? "win" : "loss"}`;
+      outcome.textContent = t(entry.won ? "scoreboard.won" : "scoreboard.lost");
+      row.append(outcome);
+    }
+    return row;
+  }));
 }
 
 async function saveScoreboardPlayer(event) {
@@ -5596,8 +5830,50 @@ function showScoreboardRoundPopup(roundIndex) {
     label.append(input, name);
     return label;
   }));
+  const supportsRoles = scoreboardRoom?.gameType === "traitors-aboard";
+  scoreboardTraitorsRoundSection.hidden = !supportsRoles;
+  if (supportsRoles) {
+    const roundMeta = getScoreboardRoundMeta(scoreboardRoom, roundIndex);
+    const winnerInput = scoreboardRoundForm.querySelector(`[name='scoreboardRoundWinner'][value='${roundMeta.winner}']`);
+    if (winnerInput) winnerInput.checked = true;
+    scoreboardRoundRoleList.replaceChildren(...sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).map((player) => createScoreboardRoundRoleOption(player, roundMeta.roles[player.id] || "")));
+  } else {
+    scoreboardRoundRoleList.replaceChildren();
+  }
   showScoreboardPopup(scoreboardRoundPopup);
   focusScoreboardInput(scoreboardRoundAmount, true);
+}
+
+function createScoreboardRoundRoleOption(player, selectedRole) {
+  const label = document.createElement("label");
+  label.className = "scoreboard-round-role-option";
+  const name = document.createElement("strong");
+  name.textContent = player.name;
+  const select = document.createElement("select");
+  select.dataset.playerId = player.id;
+  [["", t("scoreboard.roleUnknown")], ["crew", t("scoreboard.crew")], ["traitor", t("scoreboard.traitor")]].forEach(([value, text]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    select.append(option);
+  });
+  select.value = selectedRole;
+  label.append(name, select);
+  return label;
+}
+
+async function saveScoreboardRoundRoles() {
+  if (!scoreboardSession?.isHost || scoreboardEditingRoundIndex < 0) return;
+  const winner = scoreboardRoundForm.querySelector("[name='scoreboardRoundWinner']:checked")?.value || "";
+  const assignments = Array.from(scoreboardRoundRoleList.querySelectorAll("select"))
+    .filter((select) => select.value)
+    .map((select) => ({ playerId: select.dataset.playerId, role: select.value }));
+  try {
+    await scoreboardAction("round-meta", { roundIndex: scoreboardEditingRoundIndex, winner, assignments });
+    hideScoreboardPopup(scoreboardRoundPopup);
+  } catch (error) {
+    scoreboardGameMessage.textContent = error.message;
+  }
 }
 
 function setScoreboardRoundSelection(selected) {
@@ -5780,6 +6056,8 @@ function showScoreboardPodium(room) {
     const score = document.createElement("b");
     score.textContent = t("scoreboard.points", { score: formatScoreboardNumber(scoreboardPlayerTotal(player)) });
     place.append(name, score);
+    const roleStats = createScoreboardTraitorStats(room, player.id, isOverall);
+    if (roleStats) place.append(roleStats);
     return place;
   }));
   scoreboardFinalList.replaceChildren(...rankedPlayers.slice(3).map(({ player, rank }) => {
@@ -5791,11 +6069,37 @@ function showScoreboardPodium(room) {
     const score = document.createElement("b");
     score.textContent = t("scoreboard.points", { score: formatScoreboardNumber(scoreboardPlayerTotal(player)) });
     row.append(rankLabel, name, score);
+    const roleStats = createScoreboardTraitorStats(room, player.id, isOverall);
+    if (roleStats) row.append(roleStats);
     return row;
   }));
   scoreboardShownResultId = room.resultId;
   showScoreboardPopup(scoreboardPodiumPopup);
   playMultiplayerPodiumFanfare();
+}
+
+function createScoreboardTraitorStats(room, playerId, isOverall) {
+  if (room.gameType !== "traitors-aboard") return null;
+  const entries = getScoreboardPlayerRoleHistory(room, playerId).filter((entry) => isOverall || entry.gameNumber === Number(room.gameNumber || 1));
+  const stats = {
+    crew: entries.filter((entry) => entry.role === "crew").length,
+    traitor: entries.filter((entry) => entry.role === "traitor").length,
+    wins: entries.filter((entry) => entry.won === true).length,
+    losses: entries.filter((entry) => entry.won === false).length
+  };
+  const container = document.createElement("small");
+  container.className = "scoreboard-traitor-stats";
+  [
+    t("scoreboard.crewCount", { count: stats.crew }),
+    t("scoreboard.traitorCount", { count: stats.traitor }),
+    t("scoreboard.winCount", { count: stats.wins }),
+    t("scoreboard.lossCount", { count: stats.losses })
+  ].forEach((text) => {
+    const item = document.createElement("span");
+    item.textContent = text;
+    container.append(item);
+  });
+  return container;
 }
 
 function aggregateScoreboardPlayers(room) {
@@ -5856,6 +6160,92 @@ function showScoreboardHistory() {
   });
   scoreboardHistoryTable.replaceChildren(head, body);
   showScoreboardPopup(scoreboardHistoryPopup);
+}
+
+async function showScoreboardLog() {
+  if (!scoreboardSession?.isHost) return;
+  const loading = document.createElement("div");
+  loading.className = "scoreboard-log-empty";
+  loading.textContent = t("scoreboard.logLoading");
+  scoreboardLogList.replaceChildren(loading);
+  showScoreboardPopup(scoreboardLogPopup);
+  try {
+    const response = await fetch(`/api/scoreboard/rooms/${encodeURIComponent(scoreboardSession.roomName)}/log`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hostId: scoreboardSession.hostId, token: scoreboardSession.token })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || t("scoreboard.log"));
+    renderScoreboardLog(payload.events || []);
+  } catch (error) {
+    loading.textContent = error.message;
+  }
+}
+
+function renderScoreboardLog(events) {
+  const ordered = [...events].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+  if (!ordered.length) {
+    const empty = document.createElement("div");
+    empty.className = "scoreboard-log-empty";
+    empty.textContent = t("scoreboard.logEmpty");
+    scoreboardLogList.replaceChildren(empty);
+    return;
+  }
+  scoreboardLogList.replaceChildren(...ordered.map((event) => {
+    const description = describeScoreboardLogEvent(event);
+    const entry = document.createElement("article");
+    entry.className = `scoreboard-log-entry is-${event.type || "activity"}`;
+    const time = document.createElement("time");
+    time.dateTime = new Date(Number(event.createdAt || 0)).toISOString();
+    time.textContent = new Date(Number(event.createdAt || 0)).toLocaleTimeString(currentLanguage, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    const content = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = description.title;
+    const detail = document.createElement("small");
+    detail.textContent = `${t("scoreboard.game", { game: event.gameNumber || 1 })}${description.detail ? ` · ${description.detail}` : ""}`;
+    content.append(title, detail);
+    if (description.items?.length) {
+      const list = document.createElement("ul");
+      description.items.forEach((text) => {
+        const item = document.createElement("li");
+        item.textContent = text;
+        list.append(item);
+      });
+      content.append(list);
+    }
+    entry.append(time, content);
+    return entry;
+  }));
+}
+
+function describeScoreboardLogEvent(event) {
+  const actor = event.actorName || t("scoreboard.system");
+  const round = `${t("scoreboard.round")} ${Number(event.roundIndex || 0) + 1}`;
+  if (event.type === "score") return {
+    title: t("scoreboard.logScores", { actor, count: Number(event.changeCount || event.changes?.length || 0) }),
+    detail: "",
+    items: (event.changes || []).map((change) => `${change.playerName} · ${t("scoreboard.round")} ${Number(change.roundIndex) + 1}: ${change.previousValue === null ? "—" : formatScoreboardNumber(change.previousValue)} → ${change.value === null ? "—" : formatScoreboardNumber(change.value)}`)
+  };
+  if (event.type === "round") return { title: t(event.direction === "previous" ? "scoreboard.logRoundBack" : "scoreboard.logRoundForward", { actor }), detail: round };
+  if (event.type === "join") return { title: t(event.rejoined ? "scoreboard.logPlayerRejoined" : "scoreboard.logPlayerJoined", { player: event.playerName || actor }), detail: "" };
+  if (event.type === "round-added") return { title: t("scoreboard.logRoundAdded", { actor }), detail: round };
+  if (event.type === "round-deleted") return { title: t("scoreboard.logRoundDeleted", { actor }), detail: round };
+  if (event.type === "game-restarted") return { title: t("scoreboard.logGameRestarted", { actor }), detail: "" };
+  if (event.type === "next-game") return { title: t("scoreboard.logNextGame", { actor, game: event.nextGameNumber || Number(event.gameNumber || 1) + 1 }), detail: "" };
+  if (event.type === "game-finished") return { title: t("scoreboard.logGameFinished", { actor }), detail: "" };
+  if (event.type === "session-finished") return { title: t("scoreboard.logSessionFinished", { actor }), detail: "" };
+  if (event.type === "player-role") return { title: t("scoreboard.logPlayerRole", { actor }), detail: round, items: [`${event.playerName}: ${event.role ? t(event.role === "crew" ? "scoreboard.crew" : "scoreboard.traitor") : t("scoreboard.roleUnknown")}`] };
+  if (event.type === "round-roles") return {
+    title: t("scoreboard.logRoundRoles", { actor }),
+    detail: `${round} · ${t("scoreboard.winner")}: ${event.winner ? t(event.winner === "crew" ? "scoreboard.crewPlural" : "scoreboard.traitorsPlural") : t("scoreboard.roleUnknown")}`,
+    items: (event.assignments || []).map((assignment) => `${assignment.playerName}: ${t(assignment.role === "crew" ? "scoreboard.crew" : "scoreboard.traitor")}`)
+  };
+  if (event.type === "players-updated") return { title: t("scoreboard.logPlayersUpdated", { actor }), detail: "", items: (event.players || []).map((player) => player.name) };
+  if (event.type === "player-renamed") return { title: t("scoreboard.logPlayerRenamed", { actor }), detail: `${event.previousName} → ${event.playerName}` };
+  if (event.type === "player-removed") return { title: t("scoreboard.logPlayerRemoved", { actor, player: event.playerName }), detail: "" };
+  if (event.type === "sort-order") return { title: t("scoreboard.logSortOrder", { actor }), detail: event.sortOrder === "asc" ? t("scoreboard.lowFirst") : t("scoreboard.highFirst") };
+  return { title: t("scoreboard.logActivity", { actor }), detail: "" };
 }
 
 function announceScoreboardScoreEvents(room) {
@@ -5955,13 +6345,13 @@ function showScoreboardPopup(popup) {
 
 function hideScoreboardPopup(popup) {
   if (popup) popup.hidden = true;
-  if (![scoreboardSettingsPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup].some((item) => item && !item.hidden)) {
+  if (![scoreboardSettingsPopup, scoreboardLogPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardPlayerDetailsPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup].some((item) => item && !item.hidden)) {
     document.body.classList.remove("songs-popup-open");
   }
 }
 
 function closeScoreboardPopups(except = null) {
-  [scoreboardSettingsPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
+  [scoreboardSettingsPopup, scoreboardLogPopup, scoreboardJoinPopup, scoreboardPlayersPopup, scoreboardCellPopup, scoreboardPlayerPopup, scoreboardPlayerDetailsPopup, scoreboardRoundPopup, scoreboardConfirmPopup, scoreboardPodiumPopup, scoreboardFinishPopup, scoreboardHistoryPopup]
     .filter((popup) => popup && popup !== except)
     .forEach((popup) => { popup.hidden = true; });
   if (!except) document.body.classList.remove("songs-popup-open");
@@ -6143,19 +6533,25 @@ function applyScoreboardLanguage() {
     ["#scoreboardSubtitle", "scoreboard.subtitle"], ["#scoreboardCreateTitle", "scoreboard.create"],
     ["#scoreboardRoomNameLabel", "scoreboard.roomName"], ["#scoreboardHostNameLabel", "scoreboard.hostName"],
     ["#scoreboardRoundsLabel", "scoreboard.roundCount"], ["#scoreboardOrderLabel", "scoreboard.sortOrder"],
+    ["#scoreboardGameTypeLabel", "scoreboard.gameType"], ["#scoreboardGameTypeNone", "scoreboard.gameTypeNone"],
     ["#scoreboardDescendingLabel", "scoreboard.highFirst"], ["#scoreboardAscendingLabel", "scoreboard.lowFirst"],
     ["#scoreboardPasswordLabel", "scoreboard.password"], ["#scoreboardPasswordHint", "scoreboard.passwordHint"],
     ["#scoreboardPlayersCanEditLabel", "scoreboard.playersCanEdit"], ["#scoreboardPlayersCanEditHint", "scoreboard.playersCanEditHint"],
     ["#scoreboardJoinTitle", "scoreboard.join"], ["#scoreboardRoomKicker", "scoreboard.room"],
     ["#scoreboardSettingsEyebrow", "scoreboard.configureRoom"], ["#scoreboardSettingsTitle", "scoreboard.settings"],
+    ["#scoreboardLogEyebrow", "scoreboard.logEyebrow"], ["#scoreboardLogTitle", "scoreboard.log"],
     ["#scoreboardEmptyTitle", "scoreboard.noPlayers"], ["#scoreboardEmptyHint", "scoreboard.noPlayersHint"],
     ["#scoreboardJoinPopupEyebrow", "scoreboard.enterRoom"], ["#scoreboardSpectateTitle", "scoreboard.spectate"],
     ["#scoreboardSpectateHint", "scoreboard.spectateHint"], ["#scoreboardJoinNicknameLabel", "scoreboard.joinNickname"],
     ["#scoreboardJoinPasswordLabel", "scoreboard.roomPassword"], ["#scoreboardPlayersPopupTitle", "scoreboard.players"],
     ["#scoreboardPlayerCountLabel", "scoreboard.playerCount"], ["#scoreboardCellPopupEyebrow", "scoreboard.editScore"],
-    ["#scoreboardCellScoreLabel", "scoreboard.score"], ["#scoreboardPlayerPopupEyebrow", "scoreboard.editPlayer"],
+    ["#scoreboardCellScoreLabel", "scoreboard.score"], ["#scoreboardCellRoleLabel", "scoreboard.cellRole"],
+    ["#scoreboardCellRole option[value='']", "scoreboard.roleUnknown"], ["#scoreboardCellRole option[value='crew']", "scoreboard.crew"], ["#scoreboardCellRole option[value='traitor']", "scoreboard.traitor"],
+    ["#scoreboardPlayerPopupEyebrow", "scoreboard.editPlayer"], ["#scoreboardPlayerRoleHistoryTitle", "scoreboard.roleHistory"], ["#scoreboardPlayerDetailsEyebrow", "scoreboard.traitorsAboard"],
     ["#scoreboardPlayerNicknameLabel", "scoreboard.nickname"], ["#scoreboardRoundPopupEyebrow", "scoreboard.multiScore"],
     ["#scoreboardRoundAmountLabel", "scoreboard.amountToAdd"], ["#scoreboardRoundPlayersLabel", "scoreboard.selectPlayers"],
+    ["#scoreboardTraitorsRoundEyebrow", "scoreboard.traitorsAboard"], ["#scoreboardTraitorsRoundTitle", "scoreboard.roundRoles"], ["#scoreboardRoundWinnerLabel", "scoreboard.winner"],
+    ["#scoreboardWinnerUnknown", "scoreboard.roleUnknown"], ["#scoreboardWinnerCrew", "scoreboard.crewPlural"], ["#scoreboardWinnerTraitors", "scoreboard.traitorsPlural"],
     ["#scoreboardConfirmTitle", "scoreboard.resetTitle"], ["#scoreboardConfirmText", "scoreboard.resetText"],
     ["#scoreboardFinishPopupTitle", "scoreboard.finish"], ["#scoreboardFinishPopupText", "scoreboard.finishChoice"],
     ["#scoreboardHistoryEyebrow", "scoreboard.historyEyebrow"], ["#scoreboardHistoryTitle", "scoreboard.history"]
@@ -6168,7 +6564,8 @@ function applyScoreboardLanguage() {
     [".nav-link[data-view-target='scoreboardView']", "scoreboard.title"],
     ["#scoreboardCreateButton", "scoreboard.create"], ["#scoreboardRefreshRoomsButton", "scoreboard.refresh"],
     ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardSettingsButton", "scoreboard.settings"],
-    ["#scoreboardSettingsClose", "common.close"], ["#scoreboardManagePlayersButton", "scoreboard.players"],
+    ["#scoreboardSettingsClose", "common.close"], ["#scoreboardLogButton", "scoreboard.log"], ["#scoreboardLogClose", "common.close"],
+    ["#scoreboardManagePlayersButton", "scoreboard.players"],
     ["#scoreboardHistoryButton", "scoreboard.history"],
     ["#scoreboardAddRoundButton", "scoreboard.addRound"],
     ["#scoreboardPreviousRoundButton", "scoreboard.previousRound"], ["#scoreboardNextRoundButton", "scoreboard.nextRound"],
@@ -6180,9 +6577,11 @@ function applyScoreboardLanguage() {
     ["#scoreboardCellPopupClose", "common.close"],
     ["#scoreboardClearCellButton", "scoreboard.makeBlank"], ["#scoreboardSaveCellButton", "scoreboard.save"],
     ["#scoreboardPlayerPopupClose", "common.close"], ["#scoreboardDeletePlayerButton", "scoreboard.kick"],
+    ["#scoreboardPlayerDetailsClose", "common.close"],
     ["#scoreboardSavePlayerButton", "scoreboard.saveChanges"], ["#scoreboardRoundPopupClose", "common.close"],
     ["#scoreboardSelectAllPlayers", "scoreboard.all"], ["#scoreboardClearPlayerSelection", "scoreboard.none"],
     ["#scoreboardDeleteRoundButton", "scoreboard.deleteRound"], ["#scoreboardApplyRoundButton", "scoreboard.applyScore"],
+    ["#scoreboardSaveRoundRolesButton", "scoreboard.saveRoles"],
     ["#scoreboardConfirmClose", "common.close"],
     ["#scoreboardCancelResetButton", "scoreboard.cancel"], ["#scoreboardConfirmResetButton", "scoreboard.reset"],
     ["#scoreboardPodiumClose", "common.close"], ["#scoreboardNewGameButton", "scoreboard.newGame"],

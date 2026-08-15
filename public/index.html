@@ -583,6 +583,13 @@
                 </fieldset>
               </div>
               <label>
+                <span id="scoreboardGameTypeLabel">Juego <small>(opcional)</small></span>
+                <select id="scoreboardCreateGameType">
+                  <option id="scoreboardGameTypeNone" value="">Ninguno</option>
+                  <option value="traitors-aboard">Traidores a Bordo</option>
+                </select>
+              </label>
+              <label>
                 <span id="scoreboardPasswordLabel">Contrasena para jugadores <small>(opcional)</small></span>
                 <input id="scoreboardCreatePassword" type="password" maxlength="40" autocomplete="new-password" placeholder="Sin contrasena">
                 <small id="scoreboardPasswordHint">Espectadores siempre pueden entrar sin contrasena.</small>
@@ -658,10 +665,24 @@
               <button type="button" id="scoreboardSettingsClose" class="secondary compact-button">Cerrar</button>
             </header>
             <div class="scoreboard-settings-actions">
+              <button type="button" id="scoreboardLogButton" class="secondary"><span aria-hidden="true">&#128203;</span> LOG</button>
               <button type="button" id="scoreboardManagePlayersButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#128101;</span> Jugadores</button>
               <button type="button" id="scoreboardSortOrderButton" class="secondary scoreboard-host-control" hidden></button>
               <button type="button" id="scoreboardResetButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">&#8635;</span> Vaciar tabla</button>
             </div>
+          </div>
+        </section>
+
+        <section id="scoreboardLogPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardLogTitle">
+          <div class="scoreboard-popup-card scoreboard-log-card">
+            <header>
+              <div>
+                <span id="scoreboardLogEyebrow">Actividad de la sala</span>
+                <h2 id="scoreboardLogTitle">LOG</h2>
+              </div>
+              <button type="button" id="scoreboardLogClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <div id="scoreboardLogList" class="scoreboard-log-list" aria-live="polite"></div>
           </div>
         </section>
 
@@ -726,6 +747,14 @@
               <span id="scoreboardCellScoreLabel">Puntuacion</span>
               <input id="scoreboardCellScore" type="text" inputmode="text" autocomplete="off" placeholder="En blanco = 0">
             </label>
+            <label id="scoreboardCellRoleField" hidden>
+              <span id="scoreboardCellRoleLabel">Rol en esta ronda</span>
+              <select id="scoreboardCellRole">
+                <option value="">Sin definir</option>
+                <option value="crew">Tripulante</option>
+                <option value="traitor">Traidor</option>
+              </select>
+            </label>
             <div class="scoreboard-popup-actions">
               <button type="button" id="scoreboardClearCellButton" class="secondary">Dejar en blanco</button>
               <button type="submit" id="scoreboardSaveCellButton">Guardar</button>
@@ -747,11 +776,28 @@
               <input id="scoreboardPlayerNickname" maxlength="24" required autocomplete="off">
             </label>
             <div id="scoreboardPlayerScores" class="scoreboard-player-scores"></div>
+            <section id="scoreboardPlayerRoleHistorySection" class="scoreboard-player-role-history-section" hidden>
+              <h3 id="scoreboardPlayerRoleHistoryTitle">Historial de roles</h3>
+              <div id="scoreboardPlayerRoleHistory" class="scoreboard-player-role-history"></div>
+            </section>
             <div class="scoreboard-popup-actions">
               <button type="button" id="scoreboardDeletePlayerButton" class="danger">Expulsar jugador</button>
               <button type="submit" id="scoreboardSavePlayerButton">Guardar cambios</button>
             </div>
           </form>
+        </section>
+
+        <section id="scoreboardPlayerDetailsPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardPlayerDetailsTitle">
+          <div class="scoreboard-popup-card scoreboard-small-popup-card">
+            <header>
+              <div>
+                <span id="scoreboardPlayerDetailsEyebrow">Traidores a Bordo</span>
+                <h2 id="scoreboardPlayerDetailsTitle"></h2>
+              </div>
+              <button type="button" id="scoreboardPlayerDetailsClose" class="secondary compact-button">Cerrar</button>
+            </header>
+            <div id="scoreboardPlayerDetailsRoles" class="scoreboard-player-role-history"></div>
+          </div>
         </section>
 
         <section id="scoreboardRoundPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardRoundPopupTitle">
@@ -775,6 +821,22 @@
               </div>
               <div id="scoreboardRoundPlayerList" class="scoreboard-round-player-list"></div>
             </fieldset>
+            <section id="scoreboardTraitorsRoundSection" class="scoreboard-traitors-round-section" hidden>
+              <header>
+                <span id="scoreboardTraitorsRoundEyebrow">Traidores a Bordo</span>
+                <h3 id="scoreboardTraitorsRoundTitle">Roles y bando ganador</h3>
+              </header>
+              <fieldset>
+                <legend id="scoreboardRoundWinnerLabel">Bando ganador</legend>
+                <div class="scoreboard-winner-options">
+                  <label><input type="radio" name="scoreboardRoundWinner" value="" checked> <span id="scoreboardWinnerUnknown">Sin definir</span></label>
+                  <label><input type="radio" name="scoreboardRoundWinner" value="crew"> <span id="scoreboardWinnerCrew">Tripulantes</span></label>
+                  <label><input type="radio" name="scoreboardRoundWinner" value="traitors"> <span id="scoreboardWinnerTraitors">Traidores</span></label>
+                </div>
+              </fieldset>
+              <div id="scoreboardRoundRoleList" class="scoreboard-round-role-list"></div>
+              <button type="button" id="scoreboardSaveRoundRolesButton" class="secondary">Guardar roles</button>
+            </section>
             <div class="scoreboard-popup-actions">
               <button type="button" id="scoreboardDeleteRoundButton" class="danger">Eliminar ronda</button>
               <button type="submit" id="scoreboardApplyRoundButton">Sumar puntuacion</button>
