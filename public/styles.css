@@ -11304,8 +11304,14 @@ body.scoreboard-active .title-bar {
 .scoreboard-round-winner-summary,
 .scoreboard-round-role-summary-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid #d4dde5; border-radius: 10px; background: #fff; }
 .scoreboard-round-winner-summary { border-color: rgba(246, 183, 47, 0.55); background: #fffaf0; }
+.scoreboard-round-role-summary-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
+.scoreboard-round-role-summary-item.is-win,
+.scoreboard-role-history-item.is-win { border-color: #b8dfc5; background: #e3f5e9; }
+.scoreboard-round-role-summary-item.is-loss,
+.scoreboard-role-history-item.is-loss { border-color: #efc4c8; background: #fbe7e9; }
 .scoreboard-round-winner-summary strong,
 .scoreboard-round-role-summary-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; }
+.scoreboard-round-role-points { color: #4f5e70; font-size: 0.66rem; font-weight: 900; white-space: nowrap; }
 .scoreboard-side-chip { padding: 4px 8px; border-radius: 999px; font-size: 0.63rem; font-weight: 950; }
 .scoreboard-side-chip.is-crew { color: #164d75; background: #d9efff; }
 .scoreboard-side-chip.is-traitor { color: #7a1f2d; background: #ffe0e5; }
@@ -11320,7 +11326,8 @@ body.scoreboard-active .title-bar {
 .scoreboard-role-history-item .scoreboard-role-chip,
 .scoreboard-role-history-item .scoreboard-outcome-chip { width: fit-content; max-width: 100%; justify-self: start; white-space: nowrap; }
 .scoreboard-role-chip.is-crew { color: #164d75; background: #d9efff; }
-.scoreboard-role-chip.is-traitor { color: #7a1f2d; background: #ffe0e5; }
+.scoreboard-role-chip.is-traitor { color: #59307f; background: #eadcff; }
+.scoreboard-role-chip.is-unknown { color: #59677a; background: #e9edf2; }
 .scoreboard-outcome-chip.is-win { color: #176344; background: #d9f4e7; }
 .scoreboard-outcome-chip.is-loss { color: #8a2932; background: #ffe2e4; }
 .scoreboard-role-history-empty { padding: 14px; color: #687589; text-align: center; font-size: 0.74rem; font-weight: 800; }
@@ -11545,12 +11552,16 @@ body.scoreboard-active .title-bar {
 }
 
 .scoreboard-table tbody td .scoreboard-score-cell-button.is-round-win,
-.scoreboard-table tbody tr:nth-child(even) td .scoreboard-score-cell-button.is-round-win {
+.scoreboard-table tbody td.is-current-round .scoreboard-score-cell-button.is-round-win,
+.scoreboard-table tbody tr:nth-child(even) td .scoreboard-score-cell-button.is-round-win,
+.scoreboard-table tbody tr:nth-child(even) td.is-current-round .scoreboard-score-cell-button.is-round-win {
   background: #e3f5e9;
 }
 
 .scoreboard-table tbody td .scoreboard-score-cell-button.is-round-loss,
-.scoreboard-table tbody tr:nth-child(even) td .scoreboard-score-cell-button.is-round-loss {
+.scoreboard-table tbody td.is-current-round .scoreboard-score-cell-button.is-round-loss,
+.scoreboard-table tbody tr:nth-child(even) td .scoreboard-score-cell-button.is-round-loss,
+.scoreboard-table tbody tr:nth-child(even) td.is-current-round .scoreboard-score-cell-button.is-round-loss {
   background: #fbe7e9;
 }
 

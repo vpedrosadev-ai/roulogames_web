@@ -813,7 +813,7 @@
             <div id="scoreboardRoundScoreControls" class="scoreboard-round-score-controls">
               <label>
                 <span id="scoreboardRoundAmountLabel">Puntuacion que se sumara</span>
-                <input id="scoreboardRoundAmount" type="text" inputmode="text" autocomplete="off" required value="0">
+                <input id="scoreboardRoundAmount" type="text" inputmode="text" autocomplete="off" placeholder="Sin puntuacion">
               </label>
               <div id="scoreboardBulkRoleControls" class="scoreboard-bulk-role-controls" hidden>
                 <span id="scoreboardBulkRoleLabel">Aplicar rol a los jugadores seleccionados</span>
@@ -845,11 +845,10 @@
                 </div>
               </fieldset>
               <div id="scoreboardRoundRoleSummary" class="scoreboard-round-role-summary"></div>
-              <button type="button" id="scoreboardSaveRoundWinnerButton" class="secondary">Guardar bando ganador</button>
             </section>
             <div id="scoreboardRoundEditActions" class="scoreboard-popup-actions">
               <button type="button" id="scoreboardDeleteRoundButton" class="danger">Eliminar ronda</button>
-              <button type="submit" id="scoreboardApplyRoundButton">Sumar puntuacion</button>
+              <button type="submit" id="scoreboardApplyRoundButton">Guardar</button>
             </div>
           </form>
         </section>

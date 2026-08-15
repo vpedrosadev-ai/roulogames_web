@@ -398,7 +398,6 @@ const scoreboardRoundPlayerList = document.querySelector("#scoreboardRoundPlayer
 const scoreboardTraitorsRoundSection = document.querySelector("#scoreboardTraitorsRoundSection");
 const scoreboardRoundWinnerFieldset = document.querySelector("#scoreboardRoundWinnerFieldset");
 const scoreboardRoundRoleSummary = document.querySelector("#scoreboardRoundRoleSummary");
-const scoreboardSaveRoundWinnerButton = document.querySelector("#scoreboardSaveRoundWinnerButton");
 const scoreboardSelectAllPlayers = document.querySelector("#scoreboardSelectAllPlayers");
 const scoreboardClearPlayerSelection = document.querySelector("#scoreboardClearPlayerSelection");
 const scoreboardDeleteRoundButton = document.querySelector("#scoreboardDeleteRoundButton");
@@ -2533,7 +2532,6 @@ scoreboardBulkTraitorButton?.addEventListener("click", () => toggleScoreboardBul
 scoreboardSelectAllPlayers?.addEventListener("click", () => setScoreboardRoundSelection(true));
 scoreboardClearPlayerSelection?.addEventListener("click", () => setScoreboardRoundSelection(false));
 scoreboardDeleteRoundButton?.addEventListener("click", deleteScoreboardRound);
-scoreboardSaveRoundWinnerButton?.addEventListener("click", saveScoreboardRoundWinner);
 scoreboardConfirmClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardCancelResetButton?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardConfirmResetButton?.addEventListener("click", resetScoreboardScores);
@@ -5811,6 +5809,7 @@ function renderScoreboardPlayerRoleHistory(container, playerId) {
   container.replaceChildren(...entries.map((entry) => {
     const row = document.createElement("article");
     row.className = "scoreboard-role-history-item";
+    if (entry.won !== null) row.classList.add(entry.won ? "is-win" : "is-loss");
     const round = document.createElement("strong");
     round.textContent = `${t("scoreboard.game", { game: entry.gameNumber })} · ${t("scoreboard.round")} ${entry.roundIndex + 1}`;
     const role = document.createElement("span");
@@ -5860,7 +5859,7 @@ function showScoreboardRoundPopup(roundIndex) {
   toggleScoreboardBulkRole("");
   scoreboardRoundPopupTitle.textContent = `${t("scoreboard.round")} ${roundIndex + 1}`;
   document.querySelector("#scoreboardRoundPopupEyebrow").textContent = t(canEdit ? "scoreboard.multiScore" : "scoreboard.roundDetails");
-  scoreboardRoundAmount.value = "0";
+  scoreboardRoundAmount.value = "";
   scoreboardRoundAmount.setCustomValidity("");
   scoreboardDeleteRoundButton.disabled = Number(scoreboardRoom?.roundCount || 0) <= 1;
   scoreboardRoundScoreControls.hidden = !canEdit;
@@ -5884,8 +5883,7 @@ function showScoreboardRoundPopup(roundIndex) {
     const winnerInput = scoreboardRoundForm.querySelector(`[name='scoreboardRoundWinner'][value='${roundMeta.winner}']`);
     if (winnerInput) winnerInput.checked = true;
     scoreboardRoundWinnerFieldset.hidden = !canEdit;
-    scoreboardSaveRoundWinnerButton.hidden = !canEdit;
-    renderScoreboardRoundRoleSummary(roundMeta);
+    renderScoreboardRoundRoleSummary(roundMeta, roundIndex);
   } else {
     scoreboardRoundRoleSummary.replaceChildren();
   }
@@ -5893,7 +5891,7 @@ function showScoreboardRoundPopup(roundIndex) {
   if (canEdit) focusScoreboardInput(scoreboardRoundAmount, true);
 }
 
-function renderScoreboardRoundRoleSummary(roundMeta) {
+function renderScoreboardRoundRoleSummary(roundMeta, roundIndex) {
   const winner = document.createElement("article");
   winner.className = "scoreboard-round-winner-summary";
   const winnerTitle = document.createElement("strong");
@@ -5904,25 +5902,28 @@ function renderScoreboardRoundRoleSummary(roundMeta) {
     ? t("scoreboard.crewPlural")
     : roundMeta.winner === "traitors" ? t("scoreboard.traitorsPlural") : t("scoreboard.roleUnknown");
   winner.append(winnerTitle, winnerChip);
-  const roleRows = sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).flatMap((player) => {
+  const roleRows = sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).map((player) => {
     const role = roundMeta.roles[player.id];
-    if (role !== "crew" && role !== "traitor") return [];
+    const hasRole = role === "crew" || role === "traitor";
+    const hasOutcome = hasRole && Boolean(roundMeta.winner);
+    const won = hasOutcome && (
+      (role === "crew" && roundMeta.winner === "crew")
+      || (role === "traitor" && roundMeta.winner === "traitors")
+    );
     const row = document.createElement("article");
     row.className = "scoreboard-round-role-summary-item";
+    if (hasOutcome) row.classList.add(won ? "is-win" : "is-loss");
     const name = document.createElement("strong");
     name.textContent = player.name;
+    const points = document.createElement("small");
+    points.className = "scoreboard-round-role-points";
+    points.textContent = t("scoreboard.points", { score: formatScoreboardNumber(player.scores?.[roundIndex] ?? 0) });
     const roleChip = document.createElement("span");
-    roleChip.className = `scoreboard-role-chip is-${role}`;
-    roleChip.textContent = t(role === "crew" ? "scoreboard.crew" : "scoreboard.impostor");
-    row.append(name, roleChip);
-    return [row];
+    roleChip.className = `scoreboard-role-chip ${hasRole ? `is-${role}` : "is-unknown"}`;
+    roleChip.textContent = t(hasRole ? (role === "crew" ? "scoreboard.crew" : "scoreboard.impostor") : "scoreboard.roleUnknown");
+    row.append(name, points, roleChip);
+    return row;
   });
-  if (!roleRows.length) {
-    const empty = document.createElement("div");
-    empty.className = "scoreboard-role-history-empty";
-    empty.textContent = t("scoreboard.noRoundRoles");
-    roleRows.push(empty);
-  }
   scoreboardRoundRoleSummary.replaceChildren(winner, ...roleRows);
 }
 
@@ -5936,19 +5937,6 @@ function toggleScoreboardBulkRole(role) {
   });
 }
 
-async function saveScoreboardRoundWinner() {
-  if (!scoreboardSession?.isHost || scoreboardEditingRoundIndex < 0) return;
-  const winner = scoreboardRoundForm.querySelector("[name='scoreboardRoundWinner']:checked")?.value || "";
-  const roundMeta = getScoreboardRoundMeta(scoreboardRoom, scoreboardEditingRoundIndex);
-  const assignments = Object.entries(roundMeta.roles).map(([playerId, role]) => ({ playerId, role }));
-  try {
-    await scoreboardAction("round-meta", { roundIndex: scoreboardEditingRoundIndex, winner, assignments });
-    hideScoreboardPopup(scoreboardRoundPopup);
-  } catch (error) {
-    scoreboardGameMessage.textContent = error.message;
-  }
-}
-
 function setScoreboardRoundSelection(selected) {
   scoreboardRoundPlayerList.querySelectorAll("input[type='checkbox']").forEach((input) => { input.checked = selected; });
 }
@@ -5956,17 +5944,21 @@ function setScoreboardRoundSelection(selected) {
 async function applyScoreboardRoundScore(event) {
   event.preventDefault();
   if (!scoreboardSession?.isHost) return;
-  const amount = parseScoreboardInput(scoreboardRoundAmount, false);
-  if (amount === undefined) return;
+  const hasAmount = scoreboardRoundAmount.value.trim() !== "";
+  const amount = hasAmount ? parseScoreboardInput(scoreboardRoundAmount, false) : null;
+  if (hasAmount && amount === undefined) return;
   const playerIds = Array.from(scoreboardRoundPlayerList.querySelectorAll("input:checked")).map((input) => input.value);
-  if (!playerIds.length) {
+  const supportsRoles = scoreboardRoom?.gameType === "traitors-aboard";
+  const role = supportsRoles ? scoreboardBulkRole : "";
+  if ((hasAmount || role) && !playerIds.length) {
     scoreboardGameMessage.textContent = t("scoreboard.selectOne");
     return;
   }
   try {
-    const values = { roundIndex: scoreboardEditingRoundIndex, amount, playerIds };
-    if (scoreboardRoom?.gameType === "traitors-aboard") {
-      values.role = scoreboardBulkRole;
+    const values = { roundIndex: scoreboardEditingRoundIndex, playerIds };
+    if (hasAmount) values.amount = amount;
+    if (supportsRoles) {
+      values.role = role;
       values.winner = scoreboardRoundForm.querySelector("[name='scoreboardRoundWinner']:checked")?.value || "";
     }
     await scoreboardAction("round-score", values);
@@ -6661,8 +6653,7 @@ function applyScoreboardLanguage() {
     ["#scoreboardSavePlayerButton", "scoreboard.saveChanges"], ["#scoreboardRoundPopupClose", "common.close"],
     ["#scoreboardSelectAllPlayers", "scoreboard.all"], ["#scoreboardClearPlayerSelection", "scoreboard.none"],
     ["#scoreboardBulkCrewButton", "scoreboard.crew"], ["#scoreboardBulkTraitorButton", "scoreboard.impostor"],
-    ["#scoreboardDeleteRoundButton", "scoreboard.deleteRound"], ["#scoreboardApplyRoundButton", "scoreboard.applyScore"],
-    ["#scoreboardSaveRoundWinnerButton", "scoreboard.saveWinner"],
+    ["#scoreboardDeleteRoundButton", "scoreboard.deleteRound"], ["#scoreboardApplyRoundButton", "scoreboard.save"],
     ["#scoreboardConfirmClose", "common.close"],
     ["#scoreboardCancelResetButton", "scoreboard.cancel"], ["#scoreboardConfirmResetButton", "scoreboard.reset"],
     ["#scoreboardPodiumClose", "common.close"], ["#scoreboardNewGameButton", "scoreboard.newGame"],
