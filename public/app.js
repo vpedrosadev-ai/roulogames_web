@@ -5529,8 +5529,16 @@ function renderScoreboardTable(room) {
       scoreCell.classList.toggle("is-current-round", Boolean(room.playersCanEdit && roundIndex === Number(room.currentRound || 0)));
       const button = document.createElement("button");
       const value = player.scores?.[roundIndex] ?? null;
+      const roundMeta = getScoreboardRoundMeta(room, roundIndex);
+      const playerRole = roundMeta.roles[player.id];
+      const hasOutcome = (playerRole === "crew" || playerRole === "traitor") && Boolean(roundMeta.winner);
+      const wonRound = hasOutcome && (
+        (playerRole === "crew" && roundMeta.winner === "crew")
+        || (playerRole === "traitor" && roundMeta.winner === "traitors")
+      );
       button.type = "button";
       button.className = `scoreboard-score-cell-button${value === null ? " is-blank" : ""}`;
+      if (hasOutcome) button.classList.add(wonRound ? "is-round-win" : "is-round-loss");
       button.dataset.playerId = player.id;
       button.dataset.roundIndex = String(roundIndex);
       button.disabled = !canEditScoreboardPlayer(player.id, room, roundIndex);
@@ -6161,12 +6169,13 @@ function createScoreboardTraitorStats(room, playerId, isOverall) {
   const container = document.createElement("small");
   container.className = "scoreboard-traitor-stats";
   [
-    t("scoreboard.crewCount", { count: stats.crew }),
-    t("scoreboard.traitorCount", { count: stats.traitor }),
-    t("scoreboard.winCount", { count: stats.wins }),
-    t("scoreboard.lossCount", { count: stats.losses })
-  ].forEach((text) => {
+    { text: t("scoreboard.crewCount", { count: stats.crew }), className: "scoreboard-role-chip is-crew" },
+    { text: t("scoreboard.traitorCount", { count: stats.traitor }), className: "scoreboard-role-chip is-traitor" },
+    { text: t("scoreboard.winCount", { count: stats.wins }), className: "" },
+    { text: t("scoreboard.lossCount", { count: stats.losses }), className: "" }
+  ].forEach(({ text, className }) => {
     const item = document.createElement("span");
+    if (className) item.className = className;
     item.textContent = text;
     container.append(item);
   });
