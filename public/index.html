@@ -631,6 +631,7 @@
               <div class="scoreboard-command-actions">
                 <button type="button" id="scoreboardShareButton" class="secondary"><span aria-hidden="true">&#128279;</span> Copiar enlace</button>
                 <button type="button" id="scoreboardHistoryButton" class="secondary" hidden><span aria-hidden="true">&#128202;</span> Partidas anteriores</button>
+                <button type="button" id="scoreboardViewerLogButton" class="secondary" hidden><span aria-hidden="true">&#128203;</span> LOG</button>
                 <button type="button" id="scoreboardAddRoundButton" class="secondary scoreboard-host-control" hidden><span aria-hidden="true">+</span> Anadir ronda</button>
                 <div id="scoreboardRoundNavigation" class="scoreboard-round-navigation scoreboard-host-control" hidden>
                   <button type="button" id="scoreboardPreviousRoundButton" class="secondary"><span aria-hidden="true">&#8592;</span> Ronda anterior</button>
@@ -673,7 +674,7 @@
           </div>
         </section>
 
-        <section id="scoreboardLogPopup" class="scoreboard-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardLogTitle">
+        <section id="scoreboardLogPopup" class="scoreboard-popup scoreboard-log-popup" hidden aria-modal="true" role="dialog" aria-labelledby="scoreboardLogTitle">
           <div class="scoreboard-popup-card scoreboard-log-card">
             <header>
               <div>
@@ -809,11 +810,20 @@
               </div>
               <button type="button" id="scoreboardRoundPopupClose" class="secondary compact-button">Cerrar</button>
             </header>
-            <label>
-              <span id="scoreboardRoundAmountLabel">Puntuacion que se sumara</span>
-              <input id="scoreboardRoundAmount" type="text" inputmode="text" autocomplete="off" required value="0">
-            </label>
-            <fieldset>
+            <div id="scoreboardRoundScoreControls" class="scoreboard-round-score-controls">
+              <label>
+                <span id="scoreboardRoundAmountLabel">Puntuacion que se sumara</span>
+                <input id="scoreboardRoundAmount" type="text" inputmode="text" autocomplete="off" required value="0">
+              </label>
+              <div id="scoreboardBulkRoleControls" class="scoreboard-bulk-role-controls" hidden>
+                <span id="scoreboardBulkRoleLabel">Aplicar rol a los jugadores seleccionados</span>
+                <div class="scoreboard-bulk-role-buttons">
+                  <button type="button" id="scoreboardBulkCrewButton" class="secondary scoreboard-role-toggle is-crew" aria-pressed="false">Tripulante</button>
+                  <button type="button" id="scoreboardBulkTraitorButton" class="secondary scoreboard-role-toggle is-traitor" aria-pressed="false">Impostor</button>
+                </div>
+              </div>
+            </div>
+            <fieldset id="scoreboardRoundSelectionFieldset">
               <legend id="scoreboardRoundPlayersLabel">Selecciona jugadores</legend>
               <div class="scoreboard-round-select-actions">
                 <button type="button" id="scoreboardSelectAllPlayers" class="secondary compact-button">Todos</button>
@@ -826,7 +836,7 @@
                 <span id="scoreboardTraitorsRoundEyebrow">Traidores a Bordo</span>
                 <h3 id="scoreboardTraitorsRoundTitle">Roles y bando ganador</h3>
               </header>
-              <fieldset>
+              <fieldset id="scoreboardRoundWinnerFieldset">
                 <legend id="scoreboardRoundWinnerLabel">Bando ganador</legend>
                 <div class="scoreboard-winner-options">
                   <label><input type="radio" name="scoreboardRoundWinner" value="" checked> <span id="scoreboardWinnerUnknown">Sin definir</span></label>
@@ -834,10 +844,10 @@
                   <label><input type="radio" name="scoreboardRoundWinner" value="traitors"> <span id="scoreboardWinnerTraitors">Traidores</span></label>
                 </div>
               </fieldset>
-              <div id="scoreboardRoundRoleList" class="scoreboard-round-role-list"></div>
-              <button type="button" id="scoreboardSaveRoundRolesButton" class="secondary">Guardar roles</button>
+              <div id="scoreboardRoundRoleSummary" class="scoreboard-round-role-summary"></div>
+              <button type="button" id="scoreboardSaveRoundWinnerButton" class="secondary">Guardar bando ganador</button>
             </section>
-            <div class="scoreboard-popup-actions">
+            <div id="scoreboardRoundEditActions" class="scoreboard-popup-actions">
               <button type="button" id="scoreboardDeleteRoundButton" class="danger">Eliminar ronda</button>
               <button type="submit" id="scoreboardApplyRoundButton">Sumar puntuacion</button>
             </div>

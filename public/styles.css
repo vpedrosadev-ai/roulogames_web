@@ -11286,11 +11286,30 @@ body.scoreboard-active .title-bar {
 .scoreboard-player-role-history-section[hidden] { display: none; }
 .scoreboard-traitors-round-section > header h3,
 .scoreboard-player-role-history-section h3 { margin: 2px 0 0; color: var(--scoreboard-blue-dark, #173963); font-size: 1rem; }
+.scoreboard-round-score-controls { display: grid; gap: 10px; }
+.scoreboard-bulk-role-controls { display: grid; gap: 7px; }
+.scoreboard-bulk-role-controls > span { color: #4b5b70; font-size: 0.72rem; font-weight: 850; }
+.scoreboard-bulk-role-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.scoreboard-role-toggle { border-width: 2px; }
+.scoreboard-role-toggle.is-crew { color: #164d75; border-color: #79bce6; background: #d9efff; }
+.scoreboard-role-toggle.is-traitor { color: #7a1f2d; border-color: #e799a5; background: #ffe0e5; }
+.scoreboard-role-toggle.is-crew.is-selected { color: #fff; border-color: #164d75; background: #2778ad; box-shadow: 0 0 0 3px rgba(39, 120, 173, 0.2); }
+.scoreboard-role-toggle.is-traitor.is-selected { color: #fff; border-color: #7a1f2d; background: #a93749; box-shadow: 0 0 0 3px rgba(169, 55, 73, 0.2); }
 .scoreboard-winner-options { display: flex; flex-wrap: wrap; gap: 7px 14px; }
 .scoreboard-winner-options label { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 0.75rem; }
 .scoreboard-winner-options input { width: 18px; min-height: 18px; }
 .scoreboard-round-role-list,
 .scoreboard-player-role-history { display: grid; gap: 7px; }
+.scoreboard-round-role-summary { display: grid; gap: 7px; }
+.scoreboard-round-winner-summary,
+.scoreboard-round-role-summary-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid #d4dde5; border-radius: 10px; background: #fff; }
+.scoreboard-round-winner-summary { border-color: rgba(246, 183, 47, 0.55); background: #fffaf0; }
+.scoreboard-round-winner-summary strong,
+.scoreboard-round-role-summary-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; }
+.scoreboard-side-chip { padding: 4px 8px; border-radius: 999px; font-size: 0.63rem; font-weight: 950; }
+.scoreboard-side-chip.is-crew { color: #164d75; background: #d9efff; }
+.scoreboard-side-chip.is-traitor { color: #7a1f2d; background: #ffe0e5; }
+.scoreboard-side-chip.is-unknown { color: #59677a; background: #e9edf2; }
 .scoreboard-round-role-option { display: grid; grid-template-columns: minmax(0, 1fr) minmax(145px, 0.65fr); gap: 9px; align-items: center; margin: 0; padding: 8px 10px; border: 1px solid #d4dde5; border-radius: 10px; background: #fff; }
 .scoreboard-round-role-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
 .scoreboard-round-role-option select { min-height: 38px; font-size: 0.76rem; }
@@ -11306,8 +11325,14 @@ body.scoreboard-active .title-bar {
 .scoreboard-traitor-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 7px; margin-top: 5px; color: inherit; font-size: 0.62rem; font-weight: 850; }
 .scoreboard-final-list .scoreboard-traitor-stats { grid-column: 2 / -1; justify-content: flex-start; margin: 0; color: #687589; }
 .scoreboard-host-control[hidden],
+.scoreboard-round-score-controls[hidden],
+.scoreboard-bulk-role-controls[hidden],
+.scoreboard-round-popup-card fieldset[hidden],
+.scoreboard-round-popup-card .scoreboard-popup-actions[hidden],
+.scoreboard-round-popup-card button[hidden],
 .scoreboard-player-count-field[hidden],
 .scoreboard-nickname-form > label[hidden],
+#scoreboardViewerLogButton[hidden],
 #scoreboardHistoryButton[hidden] { display: none !important; }
 
 .scoreboard-view button,
@@ -11934,12 +11959,14 @@ body.scoreboard-active .title-bar {
 }
 
 @media (max-width: 760px) and (orientation: portrait) {
-  .scoreboard-podium-popup {
+  .scoreboard-podium-popup,
+  .scoreboard-log-popup {
     place-items: start center;
     padding-top: calc(var(--title-bar-height, 72px) + max(12px, env(safe-area-inset-top, 0px)));
   }
 
-  .scoreboard-podium-popup .scoreboard-podium-card {
+  .scoreboard-podium-popup .scoreboard-podium-card,
+  .scoreboard-log-popup .scoreboard-log-card {
     max-height: calc(100dvh - var(--title-bar-height, 72px) - max(24px, env(safe-area-inset-top, 0px)) - max(14px, env(safe-area-inset-bottom, 0px)));
     margin: 0 auto auto;
   }

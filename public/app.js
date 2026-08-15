@@ -324,6 +324,7 @@ const scoreboardGame = document.querySelector("#scoreboardGame");
 const scoreboardRoomLabel = document.querySelector("#scoreboardRoomLabel");
 const scoreboardModeLabel = document.querySelector("#scoreboardModeLabel");
 const scoreboardShareButton = document.querySelector("#scoreboardShareButton");
+const scoreboardViewerLogButton = document.querySelector("#scoreboardViewerLogButton");
 const scoreboardHistoryButton = document.querySelector("#scoreboardHistoryButton");
 const scoreboardSettingsButton = document.querySelector("#scoreboardSettingsButton");
 const scoreboardManagePlayersButton = document.querySelector("#scoreboardManagePlayersButton");
@@ -387,14 +388,21 @@ const scoreboardRoundPopup = document.querySelector("#scoreboardRoundPopup");
 const scoreboardRoundForm = document.querySelector("#scoreboardRoundForm");
 const scoreboardRoundPopupTitle = document.querySelector("#scoreboardRoundPopupTitle");
 const scoreboardRoundPopupClose = document.querySelector("#scoreboardRoundPopupClose");
+const scoreboardRoundScoreControls = document.querySelector("#scoreboardRoundScoreControls");
 const scoreboardRoundAmount = document.querySelector("#scoreboardRoundAmount");
+const scoreboardBulkRoleControls = document.querySelector("#scoreboardBulkRoleControls");
+const scoreboardBulkCrewButton = document.querySelector("#scoreboardBulkCrewButton");
+const scoreboardBulkTraitorButton = document.querySelector("#scoreboardBulkTraitorButton");
+const scoreboardRoundSelectionFieldset = document.querySelector("#scoreboardRoundSelectionFieldset");
 const scoreboardRoundPlayerList = document.querySelector("#scoreboardRoundPlayerList");
 const scoreboardTraitorsRoundSection = document.querySelector("#scoreboardTraitorsRoundSection");
-const scoreboardRoundRoleList = document.querySelector("#scoreboardRoundRoleList");
-const scoreboardSaveRoundRolesButton = document.querySelector("#scoreboardSaveRoundRolesButton");
+const scoreboardRoundWinnerFieldset = document.querySelector("#scoreboardRoundWinnerFieldset");
+const scoreboardRoundRoleSummary = document.querySelector("#scoreboardRoundRoleSummary");
+const scoreboardSaveRoundWinnerButton = document.querySelector("#scoreboardSaveRoundWinnerButton");
 const scoreboardSelectAllPlayers = document.querySelector("#scoreboardSelectAllPlayers");
 const scoreboardClearPlayerSelection = document.querySelector("#scoreboardClearPlayerSelection");
 const scoreboardDeleteRoundButton = document.querySelector("#scoreboardDeleteRoundButton");
+const scoreboardRoundEditActions = document.querySelector("#scoreboardRoundEditActions");
 const scoreboardConfirmPopup = document.querySelector("#scoreboardConfirmPopup");
 const scoreboardConfirmClose = document.querySelector("#scoreboardConfirmClose");
 const scoreboardCancelResetButton = document.querySelector("#scoreboardCancelResetButton");
@@ -1526,6 +1534,7 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.roleUnknown": "Sense definir",
     "scoreboard.crew": "Tripulant",
     "scoreboard.traitor": "Traidor",
+    "scoreboard.impostor": "Impostor",
     "scoreboard.crewPlural": "Tripulants",
     "scoreboard.traitorsPlural": "Traidors",
     "scoreboard.winner": "Guanyador",
@@ -1533,8 +1542,12 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.lost": "Derrota",
     "scoreboard.roundRoles": "Rols i bandol guanyador",
     "scoreboard.saveRoles": "Desa rols",
+    "scoreboard.roundDetails": "Detalls de la ronda",
+    "scoreboard.noRoundRoles": "Encara no hi ha rols definits en aquesta ronda.",
+    "scoreboard.bulkRole": "Aplica un rol als jugadors seleccionats",
+    "scoreboard.saveWinner": "Desa el bandol guanyador",
     "scoreboard.crewCount": "Tripulant x{count}",
-    "scoreboard.traitorCount": "Traidor x{count}",
+    "scoreboard.traitorCount": "Impostor x{count}",
     "scoreboard.winCount": "Victories {count}",
     "scoreboard.lossCount": "Derrotes {count}",
     "scoreboard.system": "Sistema",
@@ -1679,6 +1692,7 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.roleUnknown": "Sin definir",
     "scoreboard.crew": "Tripulante",
     "scoreboard.traitor": "Traidor",
+    "scoreboard.impostor": "Impostor",
     "scoreboard.crewPlural": "Tripulantes",
     "scoreboard.traitorsPlural": "Traidores",
     "scoreboard.winner": "Ganador",
@@ -1686,8 +1700,12 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.lost": "Derrota",
     "scoreboard.roundRoles": "Roles y bando ganador",
     "scoreboard.saveRoles": "Guardar roles",
+    "scoreboard.roundDetails": "Detalles de la ronda",
+    "scoreboard.noRoundRoles": "Todavia no hay roles definidos en esta ronda.",
+    "scoreboard.bulkRole": "Aplicar rol a los jugadores seleccionados",
+    "scoreboard.saveWinner": "Guardar bando ganador",
     "scoreboard.crewCount": "Tripulante x{count}",
-    "scoreboard.traitorCount": "Traidor x{count}",
+    "scoreboard.traitorCount": "Impostor x{count}",
     "scoreboard.winCount": "Victorias {count}",
     "scoreboard.lossCount": "Derrotas {count}",
     "scoreboard.system": "Sistema",
@@ -1832,6 +1850,7 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.roleUnknown": "Not defined",
     "scoreboard.crew": "Crewmate",
     "scoreboard.traitor": "Traitor",
+    "scoreboard.impostor": "Impostor",
     "scoreboard.crewPlural": "Crewmates",
     "scoreboard.traitorsPlural": "Traitors",
     "scoreboard.winner": "Winner",
@@ -1839,8 +1858,12 @@ const SCOREBOARD_TRANSLATIONS = {
     "scoreboard.lost": "Loss",
     "scoreboard.roundRoles": "Roles and winning side",
     "scoreboard.saveRoles": "Save roles",
+    "scoreboard.roundDetails": "Round details",
+    "scoreboard.noRoundRoles": "No roles are defined for this round yet.",
+    "scoreboard.bulkRole": "Apply role to selected players",
+    "scoreboard.saveWinner": "Save winning side",
     "scoreboard.crewCount": "Crewmate x{count}",
-    "scoreboard.traitorCount": "Traitor x{count}",
+    "scoreboard.traitorCount": "Impostor x{count}",
     "scoreboard.winCount": "Wins {count}",
     "scoreboard.lossCount": "Losses {count}",
     "scoreboard.system": "System",
@@ -2239,6 +2262,7 @@ let scoreboardAvailableRooms = [];
 let scoreboardEditingCell = null;
 let scoreboardEditingPlayerId = "";
 let scoreboardEditingRoundIndex = -1;
+let scoreboardBulkRole = "";
 let scoreboardShownResultId = "";
 let scoreboardKnownScoreEventIds = new Set();
 let gameCompleteFlybyPending = false;
@@ -2475,6 +2499,7 @@ scoreboardJoinPopupClose?.addEventListener("click", () => hideScoreboardPopup(sc
 scoreboardSpectateButton?.addEventListener("click", joinScoreboardAsSpectator);
 scoreboardNicknameJoinForm?.addEventListener("submit", joinScoreboardWithNickname);
 scoreboardShareButton?.addEventListener("click", shareScoreboardRoom);
+scoreboardViewerLogButton?.addEventListener("click", showScoreboardLog);
 scoreboardHistoryButton?.addEventListener("click", showScoreboardHistory);
 scoreboardSettingsButton?.addEventListener("click", () => showScoreboardPopup(scoreboardSettingsPopup));
 scoreboardSettingsClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardSettingsPopup));
@@ -2503,10 +2528,12 @@ scoreboardPlayerForm?.addEventListener("submit", saveScoreboardPlayer);
 scoreboardDeletePlayerButton?.addEventListener("click", deleteScoreboardPlayer);
 scoreboardRoundPopupClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardRoundPopup));
 scoreboardRoundForm?.addEventListener("submit", applyScoreboardRoundScore);
+scoreboardBulkCrewButton?.addEventListener("click", () => toggleScoreboardBulkRole("crew"));
+scoreboardBulkTraitorButton?.addEventListener("click", () => toggleScoreboardBulkRole("traitor"));
 scoreboardSelectAllPlayers?.addEventListener("click", () => setScoreboardRoundSelection(true));
 scoreboardClearPlayerSelection?.addEventListener("click", () => setScoreboardRoundSelection(false));
 scoreboardDeleteRoundButton?.addEventListener("click", deleteScoreboardRound);
-scoreboardSaveRoundRolesButton?.addEventListener("click", saveScoreboardRoundRoles);
+scoreboardSaveRoundWinnerButton?.addEventListener("click", saveScoreboardRoundWinner);
 scoreboardConfirmClose?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardCancelResetButton?.addEventListener("click", () => hideScoreboardPopup(scoreboardConfirmPopup));
 scoreboardConfirmResetButton?.addEventListener("click", resetScoreboardScores);
@@ -5418,6 +5445,7 @@ function renderScoreboardRoom(room = scoreboardRoom) {
   const hostCanControl = scoreboardSession.isHost && room.status !== "completed";
   document.querySelectorAll(".scoreboard-host-control").forEach((button) => { button.hidden = !hostCanControl; });
   if (scoreboardSettingsButton) scoreboardSettingsButton.hidden = !scoreboardSession.isHost;
+  if (scoreboardViewerLogButton) scoreboardViewerLogButton.hidden = scoreboardSession.isHost;
   if (scoreboardFinishButton) scoreboardFinishButton.hidden = !hostCanControl || (room.status === "finished" && !(room.games || []).length);
   if (scoreboardNewGameButton) scoreboardNewGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
   if (scoreboardNextGameButton) scoreboardNextGameButton.hidden = !hostCanControl || room.status !== "finished" || room.resultScope === "all";
@@ -5456,7 +5484,8 @@ function renderScoreboardTable(room) {
     button.type = "button";
     button.className = "scoreboard-round-header-button";
     button.dataset.roundIndex = String(roundIndex);
-    button.disabled = !scoreboardSession.isHost || room.status === "completed";
+    const canOpenRound = (scoreboardSession.isHost && room.status !== "completed") || room.gameType === "traitors-aboard";
+    button.disabled = !canOpenRound;
     if (isCurrentRound) button.setAttribute("aria-current", "true");
     const label = document.createElement("span");
     label.textContent = t("scoreboard.round");
@@ -5552,9 +5581,10 @@ function handleScoreboardTableClick(event) {
     else if (scoreboardRoom?.gameType === "traitors-aboard") showScoreboardPlayerDetailsPopup(playerButton.dataset.playerId);
     return;
   }
-  if (!scoreboardSession?.isHost) return;
   const roundButton = event.target.closest(".scoreboard-round-header-button");
-  if (roundButton) showScoreboardRoundPopup(Number(roundButton.dataset.roundIndex));
+  if (roundButton && (scoreboardSession?.isHost || scoreboardRoom?.gameType === "traitors-aboard")) {
+    showScoreboardRoundPopup(Number(roundButton.dataset.roundIndex));
+  }
 }
 
 function canEditScoreboardPlayer(playerId, room = scoreboardRoom, roundIndex = -1) {
@@ -5777,7 +5807,7 @@ function renderScoreboardPlayerRoleHistory(container, playerId) {
     round.textContent = `${t("scoreboard.game", { game: entry.gameNumber })} · ${t("scoreboard.round")} ${entry.roundIndex + 1}`;
     const role = document.createElement("span");
     role.className = `scoreboard-role-chip is-${entry.role}`;
-    role.textContent = t(entry.role === "crew" ? "scoreboard.crew" : "scoreboard.traitor");
+    role.textContent = t(entry.role === "crew" ? "scoreboard.crew" : "scoreboard.impostor");
     row.append(round, role);
     if (entry.won !== null) {
       const outcome = document.createElement("span");
@@ -5814,11 +5844,21 @@ async function deleteScoreboardPlayer() {
 }
 
 function showScoreboardRoundPopup(roundIndex) {
+  if (!scoreboardRoom || roundIndex < 0 || roundIndex >= Number(scoreboardRoom.roundCount || 0)) return;
+  const supportsRoles = scoreboardRoom.gameType === "traitors-aboard";
+  const canEdit = Boolean(scoreboardSession?.isHost && scoreboardRoom.status !== "completed");
+  if (!canEdit && !supportsRoles) return;
   scoreboardEditingRoundIndex = roundIndex;
+  toggleScoreboardBulkRole("");
   scoreboardRoundPopupTitle.textContent = `${t("scoreboard.round")} ${roundIndex + 1}`;
+  document.querySelector("#scoreboardRoundPopupEyebrow").textContent = t(canEdit ? "scoreboard.multiScore" : "scoreboard.roundDetails");
   scoreboardRoundAmount.value = "0";
   scoreboardRoundAmount.setCustomValidity("");
   scoreboardDeleteRoundButton.disabled = Number(scoreboardRoom?.roundCount || 0) <= 1;
+  scoreboardRoundScoreControls.hidden = !canEdit;
+  scoreboardRoundSelectionFieldset.hidden = !canEdit;
+  scoreboardRoundEditActions.hidden = !canEdit;
+  scoreboardBulkRoleControls.hidden = !canEdit || !supportsRoles;
   scoreboardRoundPlayerList.replaceChildren(...sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).map((player) => {
     const label = document.createElement("label");
     label.className = "scoreboard-round-player-option";
@@ -5830,44 +5870,69 @@ function showScoreboardRoundPopup(roundIndex) {
     label.append(input, name);
     return label;
   }));
-  const supportsRoles = scoreboardRoom?.gameType === "traitors-aboard";
   scoreboardTraitorsRoundSection.hidden = !supportsRoles;
   if (supportsRoles) {
     const roundMeta = getScoreboardRoundMeta(scoreboardRoom, roundIndex);
     const winnerInput = scoreboardRoundForm.querySelector(`[name='scoreboardRoundWinner'][value='${roundMeta.winner}']`);
     if (winnerInput) winnerInput.checked = true;
-    scoreboardRoundRoleList.replaceChildren(...sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).map((player) => createScoreboardRoundRoleOption(player, roundMeta.roles[player.id] || "")));
+    scoreboardRoundWinnerFieldset.hidden = !canEdit;
+    scoreboardSaveRoundWinnerButton.hidden = !canEdit;
+    renderScoreboardRoundRoleSummary(roundMeta);
   } else {
-    scoreboardRoundRoleList.replaceChildren();
+    scoreboardRoundRoleSummary.replaceChildren();
   }
   showScoreboardPopup(scoreboardRoundPopup);
-  focusScoreboardInput(scoreboardRoundAmount, true);
+  if (canEdit) focusScoreboardInput(scoreboardRoundAmount, true);
 }
 
-function createScoreboardRoundRoleOption(player, selectedRole) {
-  const label = document.createElement("label");
-  label.className = "scoreboard-round-role-option";
-  const name = document.createElement("strong");
-  name.textContent = player.name;
-  const select = document.createElement("select");
-  select.dataset.playerId = player.id;
-  [["", t("scoreboard.roleUnknown")], ["crew", t("scoreboard.crew")], ["traitor", t("scoreboard.traitor")]].forEach(([value, text]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = text;
-    select.append(option);
+function renderScoreboardRoundRoleSummary(roundMeta) {
+  const winner = document.createElement("article");
+  winner.className = "scoreboard-round-winner-summary";
+  const winnerTitle = document.createElement("strong");
+  winnerTitle.textContent = t("scoreboard.winner");
+  const winnerChip = document.createElement("span");
+  winnerChip.className = `scoreboard-side-chip ${roundMeta.winner === "crew" ? "is-crew" : roundMeta.winner === "traitors" ? "is-traitor" : "is-unknown"}`;
+  winnerChip.textContent = roundMeta.winner === "crew"
+    ? t("scoreboard.crewPlural")
+    : roundMeta.winner === "traitors" ? t("scoreboard.traitorsPlural") : t("scoreboard.roleUnknown");
+  winner.append(winnerTitle, winnerChip);
+  const roleRows = sortScoreboardPlayers(scoreboardRoom?.players || [], scoreboardRoom?.sortOrder).flatMap((player) => {
+    const role = roundMeta.roles[player.id];
+    if (role !== "crew" && role !== "traitor") return [];
+    const row = document.createElement("article");
+    row.className = "scoreboard-round-role-summary-item";
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+    const roleChip = document.createElement("span");
+    roleChip.className = `scoreboard-role-chip is-${role}`;
+    roleChip.textContent = t(role === "crew" ? "scoreboard.crew" : "scoreboard.impostor");
+    row.append(name, roleChip);
+    return [row];
   });
-  select.value = selectedRole;
-  label.append(name, select);
-  return label;
+  if (!roleRows.length) {
+    const empty = document.createElement("div");
+    empty.className = "scoreboard-role-history-empty";
+    empty.textContent = t("scoreboard.noRoundRoles");
+    roleRows.push(empty);
+  }
+  scoreboardRoundRoleSummary.replaceChildren(winner, ...roleRows);
 }
 
-async function saveScoreboardRoundRoles() {
+function toggleScoreboardBulkRole(role) {
+  scoreboardBulkRole = scoreboardBulkRole === role ? "" : role;
+  [[scoreboardBulkCrewButton, "crew"], [scoreboardBulkTraitorButton, "traitor"]].forEach(([button, value]) => {
+    if (!button) return;
+    const selected = scoreboardBulkRole === value;
+    button.setAttribute("aria-pressed", String(selected));
+    button.classList.toggle("is-selected", selected);
+  });
+}
+
+async function saveScoreboardRoundWinner() {
   if (!scoreboardSession?.isHost || scoreboardEditingRoundIndex < 0) return;
   const winner = scoreboardRoundForm.querySelector("[name='scoreboardRoundWinner']:checked")?.value || "";
-  const assignments = Array.from(scoreboardRoundRoleList.querySelectorAll("select"))
-    .filter((select) => select.value)
-    .map((select) => ({ playerId: select.dataset.playerId, role: select.value }));
+  const roundMeta = getScoreboardRoundMeta(scoreboardRoom, scoreboardEditingRoundIndex);
+  const assignments = Object.entries(roundMeta.roles).map(([playerId, role]) => ({ playerId, role }));
   try {
     await scoreboardAction("round-meta", { roundIndex: scoreboardEditingRoundIndex, winner, assignments });
     hideScoreboardPopup(scoreboardRoundPopup);
@@ -5882,6 +5947,7 @@ function setScoreboardRoundSelection(selected) {
 
 async function applyScoreboardRoundScore(event) {
   event.preventDefault();
+  if (!scoreboardSession?.isHost) return;
   const amount = parseScoreboardInput(scoreboardRoundAmount, false);
   if (amount === undefined) return;
   const playerIds = Array.from(scoreboardRoundPlayerList.querySelectorAll("input:checked")).map((input) => input.value);
@@ -5890,7 +5956,12 @@ async function applyScoreboardRoundScore(event) {
     return;
   }
   try {
-    await scoreboardAction("round-score", { roundIndex: scoreboardEditingRoundIndex, amount, playerIds });
+    const values = { roundIndex: scoreboardEditingRoundIndex, amount, playerIds };
+    if (scoreboardRoom?.gameType === "traitors-aboard") {
+      values.role = scoreboardBulkRole;
+      values.winner = scoreboardRoundForm.querySelector("[name='scoreboardRoundWinner']:checked")?.value || "";
+    }
+    await scoreboardAction("round-score", values);
     hideScoreboardPopup(scoreboardRoundPopup);
   } catch (error) {
     scoreboardGameMessage.textContent = error.message;
@@ -6163,7 +6234,7 @@ function showScoreboardHistory() {
 }
 
 async function showScoreboardLog() {
-  if (!scoreboardSession?.isHost) return;
+  if (!scoreboardSession) return;
   const loading = document.createElement("div");
   loading.className = "scoreboard-log-empty";
   loading.textContent = t("scoreboard.logLoading");
@@ -6173,7 +6244,7 @@ async function showScoreboardLog() {
     const response = await fetch(`/api/scoreboard/rooms/${encodeURIComponent(scoreboardSession.roomName)}/log`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hostId: scoreboardSession.hostId, token: scoreboardSession.token })
+      body: JSON.stringify(scoreboardSession.isHost ? { hostId: scoreboardSession.hostId, token: scoreboardSession.token } : {})
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || t("scoreboard.log"));
@@ -6235,11 +6306,11 @@ function describeScoreboardLogEvent(event) {
   if (event.type === "next-game") return { title: t("scoreboard.logNextGame", { actor, game: event.nextGameNumber || Number(event.gameNumber || 1) + 1 }), detail: "" };
   if (event.type === "game-finished") return { title: t("scoreboard.logGameFinished", { actor }), detail: "" };
   if (event.type === "session-finished") return { title: t("scoreboard.logSessionFinished", { actor }), detail: "" };
-  if (event.type === "player-role") return { title: t("scoreboard.logPlayerRole", { actor }), detail: round, items: [`${event.playerName}: ${event.role ? t(event.role === "crew" ? "scoreboard.crew" : "scoreboard.traitor") : t("scoreboard.roleUnknown")}`] };
+  if (event.type === "player-role") return { title: t("scoreboard.logPlayerRole", { actor }), detail: round, items: [`${event.playerName}: ${event.role ? t(event.role === "crew" ? "scoreboard.crew" : "scoreboard.impostor") : t("scoreboard.roleUnknown")}`] };
   if (event.type === "round-roles") return {
     title: t("scoreboard.logRoundRoles", { actor }),
     detail: `${round} · ${t("scoreboard.winner")}: ${event.winner ? t(event.winner === "crew" ? "scoreboard.crewPlural" : "scoreboard.traitorsPlural") : t("scoreboard.roleUnknown")}`,
-    items: (event.assignments || []).map((assignment) => `${assignment.playerName}: ${t(assignment.role === "crew" ? "scoreboard.crew" : "scoreboard.traitor")}`)
+    items: (event.assignments || []).map((assignment) => `${assignment.playerName}: ${t(assignment.role === "crew" ? "scoreboard.crew" : "scoreboard.impostor")}`)
   };
   if (event.type === "players-updated") return { title: t("scoreboard.logPlayersUpdated", { actor }), detail: "", items: (event.players || []).map((player) => player.name) };
   if (event.type === "player-renamed") return { title: t("scoreboard.logPlayerRenamed", { actor }), detail: `${event.previousName} → ${event.playerName}` };
@@ -6546,10 +6617,10 @@ function applyScoreboardLanguage() {
     ["#scoreboardJoinPasswordLabel", "scoreboard.roomPassword"], ["#scoreboardPlayersPopupTitle", "scoreboard.players"],
     ["#scoreboardPlayerCountLabel", "scoreboard.playerCount"], ["#scoreboardCellPopupEyebrow", "scoreboard.editScore"],
     ["#scoreboardCellScoreLabel", "scoreboard.score"], ["#scoreboardCellRoleLabel", "scoreboard.cellRole"],
-    ["#scoreboardCellRole option[value='']", "scoreboard.roleUnknown"], ["#scoreboardCellRole option[value='crew']", "scoreboard.crew"], ["#scoreboardCellRole option[value='traitor']", "scoreboard.traitor"],
+    ["#scoreboardCellRole option[value='']", "scoreboard.roleUnknown"], ["#scoreboardCellRole option[value='crew']", "scoreboard.crew"], ["#scoreboardCellRole option[value='traitor']", "scoreboard.impostor"],
     ["#scoreboardPlayerPopupEyebrow", "scoreboard.editPlayer"], ["#scoreboardPlayerRoleHistoryTitle", "scoreboard.roleHistory"], ["#scoreboardPlayerDetailsEyebrow", "scoreboard.traitorsAboard"],
     ["#scoreboardPlayerNicknameLabel", "scoreboard.nickname"], ["#scoreboardRoundPopupEyebrow", "scoreboard.multiScore"],
-    ["#scoreboardRoundAmountLabel", "scoreboard.amountToAdd"], ["#scoreboardRoundPlayersLabel", "scoreboard.selectPlayers"],
+    ["#scoreboardRoundAmountLabel", "scoreboard.amountToAdd"], ["#scoreboardBulkRoleLabel", "scoreboard.bulkRole"], ["#scoreboardRoundPlayersLabel", "scoreboard.selectPlayers"],
     ["#scoreboardTraitorsRoundEyebrow", "scoreboard.traitorsAboard"], ["#scoreboardTraitorsRoundTitle", "scoreboard.roundRoles"], ["#scoreboardRoundWinnerLabel", "scoreboard.winner"],
     ["#scoreboardWinnerUnknown", "scoreboard.roleUnknown"], ["#scoreboardWinnerCrew", "scoreboard.crewPlural"], ["#scoreboardWinnerTraitors", "scoreboard.traitorsPlural"],
     ["#scoreboardConfirmTitle", "scoreboard.resetTitle"], ["#scoreboardConfirmText", "scoreboard.resetText"],
@@ -6563,7 +6634,7 @@ function applyScoreboardLanguage() {
   const buttons = [
     [".nav-link[data-view-target='scoreboardView']", "scoreboard.title"],
     ["#scoreboardCreateButton", "scoreboard.create"], ["#scoreboardRefreshRoomsButton", "scoreboard.refresh"],
-    ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardSettingsButton", "scoreboard.settings"],
+    ["#scoreboardShareButton", "scoreboard.share"], ["#scoreboardViewerLogButton", "scoreboard.log"], ["#scoreboardSettingsButton", "scoreboard.settings"],
     ["#scoreboardSettingsClose", "common.close"], ["#scoreboardLogButton", "scoreboard.log"], ["#scoreboardLogClose", "common.close"],
     ["#scoreboardManagePlayersButton", "scoreboard.players"],
     ["#scoreboardHistoryButton", "scoreboard.history"],
@@ -6580,8 +6651,9 @@ function applyScoreboardLanguage() {
     ["#scoreboardPlayerDetailsClose", "common.close"],
     ["#scoreboardSavePlayerButton", "scoreboard.saveChanges"], ["#scoreboardRoundPopupClose", "common.close"],
     ["#scoreboardSelectAllPlayers", "scoreboard.all"], ["#scoreboardClearPlayerSelection", "scoreboard.none"],
+    ["#scoreboardBulkCrewButton", "scoreboard.crew"], ["#scoreboardBulkTraitorButton", "scoreboard.impostor"],
     ["#scoreboardDeleteRoundButton", "scoreboard.deleteRound"], ["#scoreboardApplyRoundButton", "scoreboard.applyScore"],
-    ["#scoreboardSaveRoundRolesButton", "scoreboard.saveRoles"],
+    ["#scoreboardSaveRoundWinnerButton", "scoreboard.saveWinner"],
     ["#scoreboardConfirmClose", "common.close"],
     ["#scoreboardCancelResetButton", "scoreboard.cancel"], ["#scoreboardConfirmResetButton", "scoreboard.reset"],
     ["#scoreboardPodiumClose", "common.close"], ["#scoreboardNewGameButton", "scoreboard.newGame"],

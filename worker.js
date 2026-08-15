@@ -1271,7 +1271,8 @@ async function handleScoreboardAction(request, roomName, action, env) {
   if (!room) return json({ error: "Room not found" }, 404);
   const body = await request.json().catch(() => ({}));
   if (action === "join") return joinScoreboardRoom(room, body, env);
-  if (room.status === "completed" && action !== "leave" && action !== "log") {
+  if (action === "log") return json({ events: [...getScoreboardActivityLog(room)].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0)) });
+  if (room.status === "completed" && action !== "leave") {
     return json({ error: "Scoreboard session is already complete" }, 409);
   }
   if (action === "player-cell") {
@@ -1309,8 +1310,6 @@ async function handleScoreboardAction(request, roomName, action, env) {
   }
   if (!authenticateScoreboardHost(room, body)) return json({ error: "Only room administrator can edit scoreboard" }, 403);
   room.lastHostSeen = Date.now();
-
-  if (action === "log") return json({ events: [...getScoreboardActivityLog(room)].sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0)) });
 
   if (action === "players") {
     const previousPlayers = room.players.map((player) => ({ id: player.id, name: player.name }));
@@ -1376,13 +1375,36 @@ async function handleScoreboardAction(request, roomName, action, env) {
   } else if (action === "round-score") {
     const roundIndex = normalizeScoreboardRoundIndex(body.roundIndex, room);
     const amount = normalizeScoreboardValue(body.amount, false);
+    const role = normalizeScoreboardRole(body.role);
+    const winner = normalizeScoreboardWinner(body.winner);
+    const hasRole = Boolean(body.role);
+    const hasWinner = Object.prototype.hasOwnProperty.call(body, "winner");
     const playerIds = new Set(Array.isArray(body.playerIds) ? body.playerIds.map(String) : []);
     if (roundIndex < 0 || amount === undefined || !playerIds.size) return json({ error: "Invalid multiple score update" }, 400);
+    if ((hasRole || hasWinner) && normalizeScoreboardGameType(room.gameType) !== "traitors-aboard") return json({ error: "Room game does not support roles" }, 409);
+    if ((hasRole && !role) || (body.winner && !winner)) return json({ error: "Invalid round roles" }, 400);
     const updates = room.players
       .filter((player) => playerIds.has(player.id))
       .map((player) => ({ player, value: normalizeScoreboardValue(Number(player.scores[roundIndex] || 0) + amount, false) }));
     if (!updates.length) return json({ error: "No selected players found" }, 404);
     if (updates.some((update) => update.value === undefined)) return json({ error: "Score is outside allowed range" }, 400);
+    if (hasRole || hasWinner) {
+      const playersById = new Map(room.players.map((player) => [player.id, player]));
+      room.roundRoles = normalizeScoreboardRoundRoles(room.roundRoles, room.roundCount, new Set(playersById.keys()));
+      const previous = room.roundRoles[roundIndex];
+      const roles = { ...previous.roles };
+      if (hasRole) updates.forEach(({ player }) => { roles[player.id] = role; });
+      const next = { winner: hasWinner ? winner : previous.winner, roles };
+      room.roundRoles[roundIndex] = next;
+      if (JSON.stringify(previous) !== JSON.stringify(next)) addScoreboardLogEvent(room, {
+        type: "round-roles",
+        actorId: room.hostId,
+        actorName: room.hostName,
+        roundIndex,
+        winner: next.winner,
+        assignments: Object.entries(roles).map(([playerId, playerRole]) => ({ playerId, playerName: playersById.get(playerId).name, role: playerRole }))
+      });
+    }
     const changes = updates.map((update) => ({ player: update.player, roundIndex, previousValue: update.player.scores[roundIndex], value: update.value }));
     updates.forEach((update) => { update.player.scores[roundIndex] = update.value; });
     addScoreboardScoreEvent(room, room.hostId, room.hostName, changes);
