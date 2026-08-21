@@ -1903,13 +1903,18 @@ const impostor_WORD_SETS = {
   ].map(([word, hint]) => ({ word, hint }))
 };
 
+const IMPOSTOR_TEST_IDENTITIES = [
+  { name: "Bot Brújula", emoji: "🧭" },
+  { name: "Bot Cometa", emoji: "☄️" }
+];
+
 async function createimpostorRoom(req, res) {
   const room = normalizeNewimpostorRoom(await readJson(req));
   if (!room) return sendJson(res, { error: "Invalid room, player, or impostor settings" }, 400);
   const existing = impostorRooms.get(room.key);
   if (existing && isimpostorHostConnected(existing)) return sendJson(res, { error: "Room name is already in use" }, 409);
   impostorRooms.set(room.key, room);
-  sendJson(res, impostorRoomResponse(room, room.players[0]), 201);
+  sendJson(res, impostorRoomResponse(room, room.players[0], room.players[0]), 201);
 }
 
 async function joinimpostorRoom(req, res, roomName) {
@@ -1920,12 +1925,14 @@ async function joinimpostorRoom(req, res, roomName) {
   if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
   const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
   if (existingPlayer) {
+    if (existingPlayer.isTestPlayer) return sendJson(res, { error: "Cannot join as a test bot" }, 409);
     existingPlayer.token = randomBytes(24).toString("hex");
     existingPlayer.emoji = identity.emoji;
     existingPlayer.lastSeen = Date.now();
     room.updatedAt = Date.now();
     return sendJson(res, impostorRoomResponse(room, existingPlayer), 200);
   }
+  if (room.testMode) return sendJson(res, { error: "Test rooms do not accept more players" }, 409);
   if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
   const player = createimpostorPlayer(identity, nextimpostorSeatNumber(room));
   room.players.push(player);
@@ -1937,37 +1944,43 @@ async function joinimpostorRoom(req, res, roomName) {
 function getimpostorRoom(res, roomName, searchParams) {
   const room = impostorRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
-  const player = touchimpostorRoom(room, searchParams.get("playerId"), searchParams.get("token"));
-  sendJson(res, impostorRoomResponse(room, player));
+  const sessionPlayer = touchimpostorRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  const viewPlayer = resolveImpostorTestViewPlayer(room, sessionPlayer, searchParams.get("viewPlayerId"), searchParams.get("autoFollow") === "1");
+  sendJson(res, impostorRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function startimpostorGame(req, res, roomName) {
   const room = impostorRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await readJson(req));
-  if (!player || player.id !== (room.hostId || room.players[0]?.id)) return sendJson(res, { error: "Only host can start" }, 403);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!isImpostorHost(room, player)) return sendJson(res, { error: "Only host can start" }, 403);
   if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
   if (room.players.length !== Number(room.config.playerLimit)) return sendJson(res, { error: "Wait for all players before starting" }, 409);
   assignimpostorRoles(room);
-  sendJson(res, impostorRoomResponse(room, player));
+  const viewPlayer = resolveImpostorTestViewPlayer(room, player, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, impostorRoomResponse(room, viewPlayer, player));
 }
 
 async function restartimpostorGame(req, res, roomName) {
   const room = impostorRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await readJson(req));
-  if (!player || player.id !== (room.hostId || room.players[0]?.id)) return sendJson(res, { error: "Only host can restart" }, 403);
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!isImpostorHost(room, player)) return sendJson(res, { error: "Only host can restart" }, 403);
   if (room.players.length < 3) return sendJson(res, { error: "Need at least 3 players" }, 409);
   assignimpostorRoles(room);
   room.updatedAt = Date.now();
-  sendJson(res, impostorRoomResponse(room, player));
+  const viewPlayer = resolveImpostorTestViewPlayer(room, player, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, impostorRoomResponse(room, viewPlayer, player));
 }
 
 async function voteimpostorPlayer(req, res, roomName) {
   const room = impostorRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const body = await readJson(req);
-  const player = authenticateMultiplayerPlayer(room, body);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveImpostorTestViewPlayer(room, sessionPlayer, body.asPlayerId);
   if (!player || player.eliminated || !["playing", "tiebreak"].includes(room.status)) return sendJson(res, { error: "Invalid vote" }, 400);
   const target = room.players.find((item) => item.id === body.targetPlayerId && !item.eliminated);
   if (!target || target.id === player.id) return sendJson(res, { error: "Invalid vote target" }, 400);
@@ -1976,14 +1989,16 @@ async function voteimpostorPlayer(req, res, roomName) {
   player.lastSeen = Date.now();
   resolveimpostorVotesIfReady(room);
   room.updatedAt = Date.now();
-  sendJson(res, impostorRoomResponse(room, player));
+  const viewPlayer = resolveImpostorTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, impostorRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function guessimpostorWord(req, res, roomName) {
   const room = impostorRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const body = await readJson(req);
-  const player = authenticateMultiplayerPlayer(room, body);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveImpostorTestViewPlayer(room, sessionPlayer, body.asPlayerId);
   if (!player || player.role !== "impostor" || player.eliminated || !["playing", "tiebreak"].includes(room.status)) {
     return sendJson(res, { error: "Only active impostors can guess" }, 400);
   }
@@ -2001,7 +2016,8 @@ async function guessimpostorWord(req, res, roomName) {
     checkimpostorWinState(room);
   }
   room.updatedAt = Date.now();
-  sendJson(res, impostorRoomResponse(room, player));
+  const viewPlayer = resolveImpostorTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, impostorRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function leaveimpostorRoom(req, res, roomName) {
@@ -2018,10 +2034,15 @@ function normalizeNewimpostorRoom(value) {
   const key = normalizeRoomKey(value?.roomName);
   const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
   const identity = normalizeimpostorIdentity(value);
-  const config = normalizeimpostorConfig(value?.config);
+  const testMode = Boolean(value?.testMode);
+  const config = normalizeimpostorConfig(testMode ? { ...(value?.config || {}), playerLimit: 3, impostorCount: 1 } : value?.config);
   if (!key || !roomName || !identity || !config) return null;
   const host = createimpostorPlayer(identity, 1);
-  return { key, roomName, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  const room = { key, roomName, testMode, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  if (testMode) {
+    IMPOSTOR_TEST_IDENTITIES.forEach((bot, index) => room.players.push(createimpostorPlayer({ ...bot, isTestPlayer: true }, index + 2)));
+  }
+  return room;
 }
 
 function normalizeimpostorConfig(value = {}) {
@@ -2177,12 +2198,28 @@ function isimpostorHostConnected(room) {
   return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
 }
 
-function impostorRoomResponse(room, privatePlayer = null) {
+function isImpostorHost(room, player) {
+  return Boolean(player && player.id === (room.hostId || room.players[0]?.id));
+}
+
+function resolveImpostorTestViewPlayer(room, sessionPlayer, requestedPlayerId = "", autoFollow = false) {
+  if (!room?.testMode || !isImpostorHost(room, sessionPlayer)) return sessionPlayer || null;
+  const requested = room.players.find((player) => player.id === String(requestedPlayerId || ""));
+  if (autoFollow && ["playing", "tiebreak"].includes(room.status)) {
+    const actor = getActiveimpostorPlayers(room).find((player) => !room.votes?.[player.id]);
+    if (actor) return actor;
+  }
+  return requested || sessionPlayer || null;
+}
+
+function impostorRoomResponse(room, privatePlayer = null, sessionPlayer = privatePlayer) {
   const now = Date.now();
   const activeCount = getActiveimpostorPlayers(room).length;
   const revealAll = room.status === "finished";
+  const revealAllRoles = revealAll || Boolean(room.testMode && isImpostorHost(room, sessionPlayer));
   return {
     roomName: room.roomName,
+    testMode: Boolean(room.testMode),
     config: room.config,
     roundIndex: room.roundIndex,
     eventId: room.eventId || "",
@@ -2193,6 +2230,11 @@ function impostorRoomResponse(room, privatePlayer = null) {
     startingPlayerName: room.players.find((player) => player.id === room.startingPlayerId)?.name || "",
     activeCount,
     votesCast: Object.keys(room.votes || {}).length,
+    liveVotes: ["playing", "tiebreak"].includes(room.status) ? Object.entries(room.votes || {}).map(([voterId, targetPlayerId]) => {
+      const voter = room.players.find((player) => player.id === voterId);
+      const target = room.players.find((player) => player.id === targetPlayerId);
+      return voter && target ? { voterId, voterName: voter.name, targetPlayerId, targetName: target.name } : null;
+    }).filter(Boolean) : [],
     tieCandidates: room.tieCandidates || [],
     players: room.players.map((player) => ({
       id: player.id,
@@ -2200,17 +2242,20 @@ function impostorRoomResponse(room, privatePlayer = null) {
       emoji: player.emoji,
       seatNumber: player.seatNumber,
       eliminated: Boolean(player.eliminated),
-      connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
+      connected: Boolean(player.isTestPlayer) || now - Number(player.lastSeen || room.createdAt) < 30_000,
+      isTestPlayer: Boolean(player.isTestPlayer),
       hasVoted: Boolean(room.votes?.[player.id]),
       starts: player.id === room.startingPlayerId,
-      role: revealAll || player.eliminated ? player.role : "",
+      role: revealAllRoles || player.eliminated ? player.role : "",
       word: revealAll ? room.word : "",
       won: revealAll ? Boolean(player.won) : undefined
     })).sort((a, b) => a.seatNumber - b.seatNumber),
     player: privatePlayer ? {
       id: privatePlayer.id,
-      token: privatePlayer.token,
-      isHost: privatePlayer.id === (room.hostId || room.players[0]?.id),
+      sessionPlayerId: sessionPlayer?.id || privatePlayer.id,
+      token: sessionPlayer?.token || privatePlayer.token,
+      isHost: isImpostorHost(room, sessionPlayer),
+      viewingAs: privatePlayer.id !== sessionPlayer?.id,
       role: privatePlayer.role,
       eliminated: Boolean(privatePlayer.eliminated),
       hasVoted: Boolean(room.votes?.[privatePlayer.id]),
@@ -2218,7 +2263,11 @@ function impostorRoomResponse(room, privatePlayer = null) {
       word: privatePlayer.role === "crew" || revealAll ? room.word : "",
       hint: privatePlayer.role === "impostor" && room.config?.impostorHint ? room.hint : "",
       won: revealAll ? Boolean(privatePlayer.won) : undefined
-    } : undefined
+    } : undefined,
+    test: room.testMode && isImpostorHost(room, sessionPlayer) ? {
+      enabled: true,
+      viewPlayerId: privatePlayer?.id || sessionPlayer?.id || ""
+    } : null
   };
 }
 
@@ -2704,13 +2753,20 @@ const RESISTANCE_RULES = {
   10: { spies: 4, teams: [3, 4, 4, 5, 5] }
 };
 
+const RESISTANCE_TEST_IDENTITIES = [
+  { name: "Bot Ámbar", emoji: "🟠" },
+  { name: "Bot Niebla", emoji: "🌫️" },
+  { name: "Bot Faro", emoji: "🔦" },
+  { name: "Bot Cuervo", emoji: "🐦" }
+];
+
 async function createResistanceRoom(req, res) {
   const room = normalizeNewResistanceRoom(await readJson(req));
   if (!room) return sendJson(res, { error: "Invalid room, player, or Resistance settings" }, 400);
   const existing = resistanceRooms.get(room.key);
   if (existing && isResistanceHostConnected(existing)) return sendJson(res, { error: "Room name is already in use" }, 409);
   resistanceRooms.set(room.key, room);
-  sendJson(res, resistanceRoomResponse(room, room.players[0]), 201);
+  sendJson(res, resistanceRoomResponse(room, room.players[0], room.players[0]), 201);
 }
 
 async function joinResistanceRoom(req, res, roomName) {
@@ -2720,12 +2776,14 @@ async function joinResistanceRoom(req, res, roomName) {
   if (!identity) return sendJson(res, { error: "Invalid player details" }, 400);
   const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
   if (existingPlayer) {
+    if (existingPlayer.isTestPlayer) return sendJson(res, { error: "Cannot join as a test bot" }, 409);
     existingPlayer.token = randomBytes(24).toString("hex");
     existingPlayer.emoji = identity.emoji;
     existingPlayer.lastSeen = Date.now();
     room.updatedAt = Date.now();
     return sendJson(res, resistanceRoomResponse(room, existingPlayer));
   }
+  if (room.testMode) return sendJson(res, { error: "Test rooms do not accept more players" }, 409);
   if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
   if (room.players.length >= Number(room.config.playerLimit)) return sendJson(res, { error: "Room is full" }, 409);
   const player = createResistancePlayer(identity, nextResistanceSeatNumber(room));
@@ -2738,29 +2796,34 @@ async function joinResistanceRoom(req, res, roomName) {
 function getResistanceRoom(res, roomName, searchParams) {
   const room = resistanceRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
-  const player = touchResistanceRoom(room, searchParams.get("playerId"), searchParams.get("token"));
-  sendJson(res, resistanceRoomResponse(room, player));
+  const sessionPlayer = touchResistanceRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  const viewPlayer = resolveResistanceTestViewPlayer(room, sessionPlayer, searchParams.get("viewPlayerId"), searchParams.get("autoFollow") === "1");
+  sendJson(res, resistanceRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function startResistanceGame(req, res, roomName) {
   const room = resistanceRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await readJson(req));
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
   if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only host can start" }, 403);
   if (room.status !== "lobby") return sendJson(res, { error: "Game already started" }, 409);
   if (room.players.length !== Number(room.config.playerLimit)) return sendJson(res, { error: "Wait for all players before starting" }, 409);
   assignResistanceRoles(room);
-  sendJson(res, resistanceRoomResponse(room, player));
+  const viewPlayer = resolveResistanceTestViewPlayer(room, player, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, resistanceRoomResponse(room, viewPlayer, player));
 }
 
 async function restartResistanceGame(req, res, roomName) {
   const room = resistanceRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await readJson(req));
+  const body = await readJson(req);
+  const player = authenticateMultiplayerPlayer(room, body);
   if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only host can restart" }, 403);
   assignResistanceRoles(room);
   room.updatedAt = Date.now();
-  sendJson(res, resistanceRoomResponse(room, player));
+  const viewPlayer = resolveResistanceTestViewPlayer(room, player, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, resistanceRoomResponse(room, viewPlayer, player));
 }
 
 async function kickResistancePlayer(req, res, roomName) {
@@ -2770,6 +2833,7 @@ async function kickResistancePlayer(req, res, roomName) {
   const player = authenticateMultiplayerPlayer(room, body);
   const hostId = room.hostId || room.players[0]?.id;
   if (!isResistanceHost(room, player)) return sendJson(res, { error: "Only host can kick players" }, 403);
+  if (room.testMode) return sendJson(res, { error: "Test bots cannot be kicked" }, 409);
   if (room.status !== "lobby") return sendJson(res, { error: "Players can only be kicked before the game starts" }, 409);
   const targetId = String(body.targetPlayerId || "");
   if (!targetId || targetId === hostId) return sendJson(res, { error: "Invalid player to kick" }, 400);
@@ -2784,7 +2848,8 @@ async function proposeResistanceTeam(req, res, roomName) {
   const room = resistanceRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const body = await readJson(req);
-  const player = authenticateMultiplayerPlayer(room, body);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveResistanceTestViewPlayer(room, sessionPlayer, body.asPlayerId);
   if (!player || room.status !== "team" || player.id !== getResistanceLeader(room)?.id) return sendJson(res, { error: "Only current leader can propose" }, 403);
   const teamIds = Array.isArray(body.teamIds) ? [...new Set(body.teamIds.map(String))] : [];
   const teamSize = getResistanceTeamSize(room);
@@ -2797,33 +2862,38 @@ async function proposeResistanceTeam(req, res, roomName) {
   setResistanceEvent(room, { type: "team-proposed", leaderName: player.name, teamNames: teamIds.map((id) => room.players.find((item) => item.id === id)?.name).filter(Boolean) });
   player.lastSeen = Date.now();
   room.updatedAt = Date.now();
-  sendJson(res, resistanceRoomResponse(room, player));
+  const viewPlayer = resolveResistanceTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, resistanceRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function voteResistanceTeam(req, res, roomName) {
   const room = resistanceRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const body = await readJson(req);
-  const player = authenticateMultiplayerPlayer(room, body);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveResistanceTestViewPlayer(room, sessionPlayer, body.asPlayerId);
   if (!player || room.status !== "voting") return sendJson(res, { error: "Invalid team vote" }, 400);
   room.teamVotes = { ...(room.teamVotes || {}), [player.id]: Boolean(body.approve) };
   player.lastSeen = Date.now();
   resolveResistanceTeamVotes(room);
   room.updatedAt = Date.now();
-  sendJson(res, resistanceRoomResponse(room, player));
+  const viewPlayer = resolveResistanceTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, resistanceRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function voteResistanceMission(req, res, roomName) {
   const room = resistanceRooms.get(normalizeRoomKey(roomName));
   if (!room) return sendJson(res, { error: "Room not found" }, 404);
   const body = await readJson(req);
-  const player = authenticateMultiplayerPlayer(room, body);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveResistanceTestViewPlayer(room, sessionPlayer, body.asPlayerId);
   if (!player || room.status !== "mission" || !room.currentTeam?.includes(player.id)) return sendJson(res, { error: "Only mission team can act" }, 400);
   room.missionVotes = { ...(room.missionVotes || {}), [player.id]: player.role === "spy" && Boolean(body.sabotage) };
   player.lastSeen = Date.now();
   resolveResistanceMissionVotes(room);
   room.updatedAt = Date.now();
-  sendJson(res, resistanceRoomResponse(room, player));
+  const viewPlayer = resolveResistanceTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  sendJson(res, resistanceRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
 async function leaveResistanceRoom(req, res, roomName) {
@@ -2840,10 +2910,14 @@ function normalizeNewResistanceRoom(value) {
   const key = normalizeRoomKey(value?.roomName);
   const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
   const identity = normalizeResistanceIdentity(value);
-  const playerLimit = Math.floor(Number(value?.config?.playerLimit || value?.playerLimit));
+  const testMode = Boolean(value?.testMode);
+  const playerLimit = testMode ? 5 : Math.floor(Number(value?.config?.playerLimit || value?.playerLimit));
   if (!key || !roomName || !identity || !RESISTANCE_RULES[playerLimit]) return null;
   const host = createResistancePlayer(identity, 1);
-  return { key, roomName, config: { playerLimit }, status: "lobby", hostId: host.id, leaderIndex: 0, missionIndex: 0, rejectCount: 0, currentTeam: [], teamVotes: {}, missionVotes: {}, missionResults: [], winner: "", eventId: "", lastEvent: null, players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  const players = testMode
+    ? [host, ...RESISTANCE_TEST_IDENTITIES.map((bot, index) => createResistancePlayer({ ...bot, isTestPlayer: true }, index + 2))]
+    : [host];
+  return { key, roomName, testMode, config: { playerLimit }, status: "lobby", hostId: host.id, leaderIndex: 0, missionIndex: 0, rejectCount: 0, currentTeam: [], teamVotes: {}, missionVotes: {}, missionResults: [], winner: "", eventId: "", lastEvent: null, players, createdAt: Date.now(), updatedAt: Date.now() };
 }
 
 function normalizeResistanceIdentity(value) {
@@ -2984,20 +3058,33 @@ function isResistanceHost(room, player) {
   return Boolean(player && player.id === (room.hostId || room.players[0]?.id));
 }
 
+function resolveResistanceTestViewPlayer(room, sessionPlayer, requestedPlayerId = "", autoFollow = false) {
+  if (!room?.testMode || !isResistanceHost(room, sessionPlayer)) return sessionPlayer || null;
+  const requested = room.players.find((player) => player.id === String(requestedPlayerId || ""));
+  if (autoFollow) {
+    if (room.status === "team") return getResistanceLeader(room) || requested || sessionPlayer;
+    if (room.status === "voting") return room.players.find((player) => room.teamVotes?.[player.id] === undefined) || requested || sessionPlayer;
+    if (room.status === "mission") return room.players.find((player) => room.currentTeam?.includes(player.id) && room.missionVotes?.[player.id] === undefined) || requested || sessionPlayer;
+  }
+  return requested || sessionPlayer || null;
+}
+
 function isResistanceHostConnected(room) {
   const host = room.players.find((player) => player.id === (room.hostId || room.players[0]?.id));
   return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
 }
 
-function resistanceRoomResponse(room, privatePlayer = null) {
+function resistanceRoomResponse(room, privatePlayer = null, sessionPlayer = privatePlayer) {
   const now = Date.now();
   const revealAll = room.status === "finished";
+  const revealAllRoles = revealAll || Boolean(room.testMode && isResistanceHost(room, sessionPlayer));
   const leader = getResistanceLeader(room);
   const spyNames = privatePlayer?.role === "spy" || revealAll
     ? room.players.filter((player) => player.role === "spy").map((player) => player.name)
     : [];
   return {
     roomName: room.roomName,
+    testMode: Boolean(room.testMode),
     config: room.config,
     status: room.status,
     eventId: room.eventId || "",
@@ -3013,24 +3100,35 @@ function resistanceRoomResponse(room, privatePlayer = null) {
     currentTeam: room.currentTeam || [],
     teamVotesCast: Object.keys(room.teamVotes || {}).length,
     missionVotesCast: Object.keys(room.missionVotes || {}).length,
+    teamVoteDetails: room.status === "voting" ? Object.entries(room.teamVotes || {}).map(([voterId, approve]) => {
+      const voter = room.players.find((player) => player.id === voterId);
+      return voter ? { voterId, voterName: voter.name, approve: Boolean(approve) } : null;
+    }).filter(Boolean) : [],
+    missionVoters: room.status === "mission" ? Object.keys(room.missionVotes || {}).map((voterId) => {
+      const voter = room.players.find((player) => player.id === voterId);
+      return voter ? { voterId, voterName: voter.name } : null;
+    }).filter(Boolean) : [],
     winner: room.winner || "",
     players: room.players.map((player) => ({
       id: player.id,
       name: player.name,
       emoji: player.emoji,
       seatNumber: player.seatNumber,
-      connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
+      connected: Boolean(player.isTestPlayer) || now - Number(player.lastSeen || room.createdAt) < 30_000,
+      isTestPlayer: Boolean(player.isTestPlayer),
       isLeader: player.id === leader?.id,
       onTeam: (room.currentTeam || []).includes(player.id),
       hasTeamVoted: room.teamVotes?.[player.id] !== undefined,
       hasMissionVoted: room.missionVotes?.[player.id] !== undefined,
-      role: revealAll ? player.role : "",
+      role: revealAllRoles ? player.role : "",
       won: revealAll ? Boolean(player.won) : undefined
     })).sort((a, b) => a.seatNumber - b.seatNumber),
     player: privatePlayer ? {
       id: privatePlayer.id,
-      token: privatePlayer.token,
-      isHost: isResistanceHost(room, privatePlayer),
+      sessionPlayerId: sessionPlayer?.id || privatePlayer.id,
+      token: sessionPlayer?.token || privatePlayer.token,
+      isHost: isResistanceHost(room, sessionPlayer),
+      viewingAs: privatePlayer.id !== sessionPlayer?.id,
       role: privatePlayer.role,
       spyNames,
       isLeader: privatePlayer.id === leader?.id,
@@ -3038,7 +3136,11 @@ function resistanceRoomResponse(room, privatePlayer = null) {
       hasTeamVoted: room.teamVotes?.[privatePlayer.id] !== undefined,
       hasMissionVoted: room.missionVotes?.[privatePlayer.id] !== undefined,
       won: revealAll ? Boolean(privatePlayer.won) : undefined
-    } : undefined
+    } : undefined,
+    test: room.testMode && isResistanceHost(room, sessionPlayer) ? {
+      enabled: true,
+      viewPlayerId: privatePlayer?.id || sessionPlayer?.id || ""
+    } : null
   };
 }
 

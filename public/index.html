@@ -230,6 +230,10 @@
                   <span>Hint for impostors</span>
                 </label>
               </div>
+              <label class="solo-test-create-toggle">
+                <input id="impostorCreateTestMode" type="checkbox">
+                <span><strong>Modo de prueba individual</strong><small>Añade 2 jugadores virtuales para completar el mínimo de 3. Podrás cambiar de punto de vista y realizar todas sus acciones.</small></span>
+              </label>
               <section class="impostor-wordset-section" aria-labelledby="impostorWordSetTitle">
                 <div class="section-heading">
                   <h3 id="impostorWordSetTitle">Lista de palabras</h3>
@@ -289,6 +293,10 @@
                   <strong id="impostorRound">0</strong>
                 </div>
                 <div id="impostorStartingPlayerChip" class="impostor-starting-player-chip" hidden></div>
+                <section id="impostorTestTools" class="solo-test-tools" hidden>
+                  <div><span>Modo de prueba individual</span><strong id="impostorTestViewLabel">Viendo como anfitrión</strong></div>
+                  <label><input id="impostorTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
+                </section>
                 <section id="impostorRoleCard" class="impostor-role-card" hidden>
                   <span id="impostorRoleLabel">Your role</span>
                   <strong id="impostorSecretWord">Waiting...</strong>
@@ -296,6 +304,7 @@
                   <button type="button" id="impostorGuessButton" class="secondary impostor-guess-button" hidden>Adivinar palabra</button>
                 </section>
                 <p id="impostorGameMessage" class="message"></p>
+                <button type="button" id="impostorStartButton" class="impostor-main-button">Iniciar partida</button>
                 <button type="button" id="impostorVoteButton" class="impostor-main-button">Vote</button>
               </section>
             </div>
@@ -352,6 +361,10 @@
                 <input id="resistanceCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
               </div>
               <label><span>Jugadores</span><input id="resistanceCreatePlayerLimit" type="number" min="5" max="10" step="1" inputmode="numeric" value="5"></label>
+              <label class="solo-test-create-toggle">
+                <input id="resistanceCreateTestMode" type="checkbox">
+                <span><strong>Modo de prueba individual</strong><small>Añade 4 agentes virtuales para completar el mínimo de 5. Podrás cambiar de punto de vista y realizar todas sus acciones.</small></span>
+              </label>
               <div class="resistance-form-actions">
                 <button type="button" class="secondary" data-resistance-back>Atras</button>
                 <button type="submit">Crear sala</button>
@@ -390,6 +403,10 @@
             <section class="resistance-table">
               <div id="resistancePlayers" class="resistance-players" aria-label="Jugadores"></div>
               <section class="resistance-action-panel">
+                <section id="resistanceTestTools" class="solo-test-tools" hidden>
+                  <div><span>Modo de prueba individual</span><strong id="resistanceTestViewLabel">Viendo como anfitrión</strong></div>
+                  <label><input id="resistanceTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
+                </section>
                 <section id="resistanceRoleCard" class="resistance-role-card" hidden>
                   <span id="resistanceRoleLabel">Tu rol</span>
                   <strong id="resistanceRoleName">Esperando...</strong>
@@ -469,9 +486,9 @@
             <div class="wolf-control-strip">
               <div class="wolf-room-chip"><span>Aldea</span><strong id="wolfRoomLabel"></strong></div>
               <div class="wolf-control-actions">
-                <button type="button" id="wolfShareButton" class="secondary"><span aria-hidden="true">&#128279;</span> Copiar enlace</button>
-                <button type="button" id="wolfRestartButton" class="secondary" hidden><span aria-hidden="true">&#8635;</span> Reiniciar</button>
-                <button type="button" id="wolfLeaveButton" class="secondary"><span aria-hidden="true">&#8592;</span> Salir</button>
+                <button type="button" id="wolfShareButton" class="secondary"><span class="button-icon" aria-hidden="true">&#128279;</span> Copiar enlace</button>
+                <button type="button" id="wolfRestartButton" class="secondary" hidden>Reiniciar</button>
+                <button type="button" id="wolfLeaveButton" class="secondary">Atr&aacute;s</button>
               </div>
             </div>
             <div class="wolf-table">
@@ -491,16 +508,6 @@
                 <div id="wolfCountdown" class="wolf-countdown" hidden><strong id="wolfCountdownValue">7</strong><span>segundos</span></div>
                 <h2 id="wolfNarratorTitle">Reúne a la aldea</h2>
                 <p id="wolfNarratorText">Comparte el enlace. La partida puede empezar cuando haya al menos 5 jugadores.</p>
-
-                <section id="wolfRoleCard" class="wolf-role-card" hidden>
-                  <svg id="wolfRoleIcon" aria-hidden="true"><use href="/images/wolf-icons.svg#villager"></use></svg>
-                  <div><span id="wolfRoleEyebrow">Tu rol secreto</span><strong id="wolfRoleName">Aldeano</strong><p id="wolfRoleHint"></p></div>
-                </section>
-
-                <section id="wolfKnowledge" class="wolf-knowledge" hidden>
-                  <h3>Descubrimientos de la Vidente</h3>
-                  <div id="wolfKnowledgeList"></div>
-                </section>
 
                 <section id="wolfRoleSetup" class="wolf-role-setup" hidden>
                   <header><div><span>Configuración del anfitrión</span><h3>Elegir roles</h3></div><button type="button" id="wolfRecommendRoles" class="secondary compact-button">Usar recomendados</button></header>
@@ -522,6 +529,16 @@
                 <section id="wolfVoteSummary" class="wolf-vote-summary" aria-live="polite" hidden></section>
                 <p id="wolfGameMessage" class="message"></p>
                 <button type="button" id="wolfPrimaryButton" class="wolf-primary-button" hidden>Continuar</button>
+
+                <section id="wolfRoleCard" class="wolf-role-card" hidden>
+                  <svg id="wolfRoleIcon" aria-hidden="true"><use href="/images/wolf-icons.svg#villager"></use></svg>
+                  <div><span id="wolfRoleEyebrow">Tu rol secreto</span><strong id="wolfRoleName">Aldeano</strong><p id="wolfRoleHint"></p></div>
+                </section>
+
+                <section id="wolfKnowledge" class="wolf-knowledge" hidden>
+                  <h3>Descubrimientos de la Vidente</h3>
+                  <div id="wolfKnowledgeList"></div>
+                </section>
               </main>
             </div>
           </section>

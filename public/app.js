@@ -171,6 +171,7 @@ const impostorCreatePlayerName = document.querySelector("#impostorCreatePlayerNa
 const impostorCreatePlayerLimit = document.querySelector("#impostorCreatePlayerLimit");
 const impostorCreateimpostorCount = document.querySelector("#impostorCreateimpostorCount");
 const impostorCreateHint = document.querySelector("#impostorCreateHint");
+const impostorCreateTestMode = document.querySelector("#impostorCreateTestMode");
 const impostorCreateWordSet = document.querySelector("#impostorCreateWordSet");
 const impostorWordSetCards = document.querySelector("#impostorWordSetCards");
 const impostorJoinForm = document.querySelector("#impostorJoinForm");
@@ -182,6 +183,9 @@ const impostorGame = document.querySelector("#impostorGame");
 const impostorRound = document.querySelector("#impostorRound");
 const impostorRoundLabel = document.querySelector("#impostorRoundLabel");
 const impostorStartingPlayerChip = document.querySelector("#impostorStartingPlayerChip");
+const impostorTestTools = document.querySelector("#impostorTestTools");
+const impostorTestViewLabel = document.querySelector("#impostorTestViewLabel");
+const impostorTestAutoFollow = document.querySelector("#impostorTestAutoFollow");
 const impostorRoomLabel = document.querySelector("#impostorRoomLabel");
 const impostorShareButton = document.querySelector("#impostorShareButton");
 const impostorRestartButton = document.querySelector("#impostorRestartButton");
@@ -218,6 +222,7 @@ const resistanceCreateRoomName = document.querySelector("#resistanceCreateRoomNa
 const resistanceCreateEmoji = document.querySelector("#resistanceCreateEmoji");
 const resistanceCreatePlayerName = document.querySelector("#resistanceCreatePlayerName");
 const resistanceCreatePlayerLimit = document.querySelector("#resistanceCreatePlayerLimit");
+const resistanceCreateTestMode = document.querySelector("#resistanceCreateTestMode");
 const resistanceJoinForm = document.querySelector("#resistanceJoinForm");
 const resistanceJoinRoomName = document.querySelector("#resistanceJoinRoomName");
 const resistanceJoinEmoji = document.querySelector("#resistanceJoinEmoji");
@@ -233,6 +238,9 @@ const resistanceMissionNumber = document.querySelector("#resistanceMissionNumber
 const resistanceTeamSize = document.querySelector("#resistanceTeamSize");
 const resistanceRejectCount = document.querySelector("#resistanceRejectCount");
 const resistancePlayers = document.querySelector("#resistancePlayers");
+const resistanceTestTools = document.querySelector("#resistanceTestTools");
+const resistanceTestViewLabel = document.querySelector("#resistanceTestViewLabel");
+const resistanceTestAutoFollow = document.querySelector("#resistanceTestAutoFollow");
 const resistanceRoleCard = document.querySelector("#resistanceRoleCard");
 const resistanceRoleLabel = document.querySelector("#resistanceRoleLabel");
 const resistanceRoleName = document.querySelector("#resistanceRoleName");
@@ -1295,6 +1303,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.out": "Fora",
     "impostor.inGame": "En joc",
     "impostor.voted": "Ha votat",
+    "impostor.votedFor": "Ha votat {name}",
+    "impostor.votedBy": "Votat per: {names}",
     "impostor.pendingVote": "Sense votar",
     "impostor.noVoteTargets": "No hi ha objectius de vot.",
     "impostor.voteAfterStart": "Les opcions de vot apareixen quan comenci.",
@@ -1402,6 +1412,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.out": "Fuera",
     "impostor.inGame": "En juego",
     "impostor.voted": "Ha votado",
+    "impostor.votedFor": "Ha votado a {name}",
+    "impostor.votedBy": "Votado por: {names}",
     "impostor.pendingVote": "Sin votar",
     "impostor.noVoteTargets": "No hay objetivos de voto.",
     "impostor.voteAfterStart": "Las opciones de voto aparecen cuando empiece.",
@@ -1509,6 +1521,8 @@ const IMPOSTOR_TRANSLATIONS = {
     "impostor.out": "Out",
     "impostor.inGame": "In game",
     "impostor.voted": "Voted",
+    "impostor.votedFor": "Voted for {name}",
+    "impostor.votedBy": "Voted by: {names}",
     "impostor.pendingVote": "Not voted",
     "impostor.noVoteTargets": "No vote targets.",
     "impostor.voteAfterStart": "Vote options appear after start.",
@@ -2294,6 +2308,8 @@ let impostorOrbitFrame = null;
 let impostorKnownPlayerIds = new Set();
 let impostorChipScaleFrame = null;
 let impostorChipResizeObserver = null;
+let impostorTestViewId = "";
+let impostorTestAutoFollowEnabled = true;
 let pendingMultiplayerKickTargetId = "";
 let pendingImpostorKickTargetId = "";
 let pendingResistanceKickTargetId = "";
@@ -2304,6 +2320,8 @@ let resistanceRoom = null;
 let resistancePollTimer = null;
 let resistanceShownEventId = "";
 let resistanceKnownPlayerIds = new Set();
+let resistanceTestViewId = "";
+let resistanceTestAutoFollowEnabled = true;
 let wolfSession = null;
 let wolfRoom = null;
 let wolfPollTimer = null;
@@ -2506,6 +2524,7 @@ impostorLeaveButton?.addEventListener("click", leaveimpostorToMenu);
 impostorStartButton?.addEventListener("click", startimpostorGame);
 impostorVoteButton?.addEventListener("click", showImpostorVotePopup);
 impostorCircle?.addEventListener("click", kickimpostorPlayer);
+impostorCircle?.addEventListener("keydown", handleImpostorPlayerKeydown);
 impostorVoteList?.addEventListener("click", voteimpostorPlayer);
 impostorEventMessage?.addEventListener("click", voteimpostorPlayer);
 impostorGuessButton?.addEventListener("click", showImpostorGuessPopup);
@@ -2513,6 +2532,8 @@ impostorGuessForm?.addEventListener("submit", guessimpostorWord);
 impostorCreatePlayerLimit?.addEventListener("input", syncimpostorConfigLimits);
 impostorCreatePlayerLimit?.addEventListener("blur", syncimpostorConfigLimits);
 impostorCreateimpostorCount?.addEventListener("input", syncimpostorConfigLimits);
+impostorCreateTestMode?.addEventListener("change", syncImpostorTestCreateMode);
+impostorTestAutoFollow?.addEventListener("change", toggleImpostorTestAutoFollow);
 impostorWordSetCards?.addEventListener("click", chooseimpostorWordSet);
 window.addEventListener("pagehide", () => releaseimpostorRoomIfHost({ useBeacon: true }));
 resistanceCreateForm?.addEventListener("submit", createResistanceRoom);
@@ -2525,6 +2546,9 @@ resistanceRestartButton?.addEventListener("click", restartResistanceGame);
 resistanceLeaveButton?.addEventListener("click", leaveResistanceToMenu);
 resistanceStartButton?.addEventListener("click", startResistanceGame);
 resistancePlayers?.addEventListener("click", kickResistancePlayer);
+resistancePlayers?.addEventListener("keydown", handleResistancePlayerKeydown);
+resistanceCreateTestMode?.addEventListener("change", syncResistanceTestCreateMode);
+resistanceTestAutoFollow?.addEventListener("change", toggleResistanceTestAutoFollow);
 resistanceTeamOptions?.addEventListener("change", syncResistanceTeamSelection);
 resistanceProposeButton?.addEventListener("click", proposeResistanceTeam);
 resistanceApproveButton?.addEventListener("click", () => voteResistanceTeam(true));
@@ -3091,6 +3115,12 @@ function readimpostorInteger(input) {
 
 function syncimpostorConfigLimits() {
   if (!impostorCreatePlayerLimit || !impostorCreateimpostorCount) return;
+  if (impostorCreateTestMode?.checked) {
+    impostorCreatePlayerLimit.value = "3";
+    impostorCreateimpostorCount.value = "1";
+  }
+  impostorCreatePlayerLimit.disabled = Boolean(impostorCreateTestMode?.checked);
+  impostorCreateimpostorCount.disabled = Boolean(impostorCreateTestMode?.checked);
   const playerLimit = readimpostorInteger(impostorCreatePlayerLimit);
   impostorCreatePlayerLimit.setCustomValidity("");
   impostorCreateimpostorCount.setCustomValidity("");
@@ -3108,6 +3138,10 @@ function syncimpostorConfigLimits() {
   const impostorCount = readimpostorInteger(impostorCreateimpostorCount);
   if (impostorCount !== null && impostorCount < 1) impostorCreateimpostorCount.setCustomValidity("Impostors must be 1 or more.");
   if (impostorCount !== null && impostorCount > maximpostors) impostorCreateimpostorCount.setCustomValidity(`Impostors must be between 1 and ${maximpostors} for ${playerLimit} players.`);
+}
+
+function syncImpostorTestCreateMode() {
+  syncimpostorConfigLimits();
 }
 
 function getimpostorCreateConfig() {
@@ -3188,6 +3222,7 @@ async function createimpostorRoom(event) {
         roomName,
         playerName,
         emoji: impostorCreateEmoji.value,
+        testMode: Boolean(impostorCreateTestMode?.checked),
         config: {
           playerLimit: configInput.playerLimit,
           impostorCount: configInput.impostorCount,
@@ -3238,6 +3273,8 @@ function enterimpostorRoom(payload) {
   impostorLastVotesCast = Number(payload.votesCast || 0);
   impostorOutcomeEventId = "";
   impostorKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+  impostorTestViewId = payload.test?.viewPlayerId || payload.player?.id || "";
+  impostorTestAutoFollowEnabled = true;
   impostorLobby.hidden = true;
   impostorGame.hidden = false;
   impostorLobbyTitle.hidden = true;
@@ -3268,6 +3305,10 @@ async function pollimpostorRoom() {
   if (!impostorSession) return;
   try {
     const params = new URLSearchParams({ playerId: impostorSession.playerId, token: impostorSession.token });
+    if (impostorRoom?.test?.enabled) {
+      params.set("viewPlayerId", impostorTestViewId);
+      params.set("autoFollow", impostorTestAutoFollowEnabled ? "1" : "0");
+    }
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}?${params}`);
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Room unavailable");
@@ -3307,7 +3348,7 @@ async function startimpostorGame() {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: impostorSession.playerId, token: impostorSession.token })
+      body: JSON.stringify(impostorTestActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Could not start game");
@@ -3331,7 +3372,7 @@ async function restartimpostorGame() {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/restart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: impostorSession.playerId, token: impostorSession.token })
+      body: JSON.stringify(impostorTestActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Could not restart game");
@@ -3351,6 +3392,11 @@ async function kickimpostorPlayer(event) {
   const button = event.target.closest("[data-kick-player-id]");
   if (!impostorSession?.isHost) return;
   const chip = event.target.closest(".impostor-chip[data-player-id]");
+  if (!button && chip && impostorRoom?.test?.enabled) {
+    event.preventDefault();
+    selectImpostorTestView(chip.dataset.playerId);
+    return;
+  }
   if (!button && (!chip || chip.dataset.playerId === impostorSession.playerId || impostorRoom?.status !== "lobby")) return;
   event.preventDefault();
   showImpostorKickPopup(button?.dataset.kickPlayerId || chip.dataset.playerId);
@@ -3440,11 +3486,7 @@ async function voteimpostorPlayer(event) {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerId: impostorSession.playerId,
-        token: impostorSession.token,
-        targetPlayerId: button.dataset.votePlayerId
-      })
+      body: JSON.stringify(impostorTestActionBody({ targetPlayerId: button.dataset.votePlayerId }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Could not vote");
@@ -3472,7 +3514,7 @@ async function guessimpostorWord(event) {
     const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/guess`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: impostorSession.playerId, token: impostorSession.token, guess })
+      body: JSON.stringify(impostorTestActionBody({ guess }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Could not guess");
@@ -3534,8 +3576,9 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
     window.setTimeout(() => impostorGame?.classList.remove("is-impostor-flashing"), impostor_ACTION_FLASH_MS);
   }
   if (impostorGameMessage) impostorGameMessage.textContent = getimpostorStatusMessage(room, currentPlayer);
+  renderImpostorTestTools(room, currentPlayer, players);
   renderimpostorRoleCard(room, currentPlayer);
-  renderimpostorPlayers(players, currentPlayer, status);
+  renderimpostorPlayers(players, currentPlayer, status, room.liveVotes || []);
   renderimpostorActions(room, currentPlayer);
   if (impostorStartButton) {
     const canStart = isHost && status === "lobby" && players.length === Number(config.playerLimit || 0);
@@ -3599,9 +3642,11 @@ function renderimpostorRoleCard(room, currentPlayer) {
   impostorHintText.textContent = currentPlayer.eliminated ? t("impostor.youAreOut") : currentPlayer.starts ? t("impostor.youStart") : "";
 }
 
-function renderimpostorPlayers(players, currentPlayer, status) {
-  const revealAll = status === "finished";
-  const canKick = impostorSession?.isHost && status === "lobby";
+function renderimpostorPlayers(players, currentPlayer, status, liveVotes = []) {
+  const revealAll = status === "finished" || Boolean(impostorRoom?.test?.enabled);
+  const canKick = impostorSession?.isHost && status === "lobby" && !impostorRoom?.test?.enabled;
+  const canSwitchView = Boolean(impostorRoom?.test?.enabled);
+  const voteByVoter = new Map(liveVotes.map((vote) => [vote.voterId, vote]));
   impostorCircle.replaceChildren(...players.map((player) => {
     const chip = document.createElement("article");
     chip.className = "impostor-chip";
@@ -3612,13 +3657,21 @@ function renderimpostorPlayers(players, currentPlayer, status) {
     if (player.eliminated && player.role) chip.classList.add(`is-expelled-${player.role}`);
     if (player.hasVoted) chip.classList.add("has-voted");
     if (player.starts) chip.classList.add("is-starting-player");
+    if (player.isTestPlayer) chip.classList.add("is-test-player");
+    if (canSwitchView) {
+      chip.tabIndex = 0;
+      chip.setAttribute("role", "button");
+      chip.setAttribute("aria-label", `Ver la partida como ${player.name}`);
+      chip.title = `Cambiar punto de vista a ${player.name}`;
+    }
     const roleText = player.starts && !player.eliminated && !revealAll
       ? t("impostor.startsBadge")
       : player.role && (revealAll || player.eliminated)
         ? `${t(`impostor.role.${player.role}`)}${player.word ? ` - ${player.word}` : ""}`
         : (player.eliminated ? t("impostor.out") : t("impostor.inGame"));
+    const liveVote = voteByVoter.get(player.id);
     const voteText = ["playing", "tiebreak"].includes(status) && !player.eliminated
-      ? (player.hasVoted ? t("impostor.voted") : t("impostor.pendingVote"))
+      ? (liveVote ? t("impostor.votedFor", { name: liveVote.targetName }) : t("impostor.pendingVote"))
       : "";
     chip.innerHTML = `<span></span><strong></strong><small></small><b></b>`;
     chip.querySelector("span").textContent = player.emoji;
@@ -3673,6 +3726,12 @@ function renderimpostorActions(room, currentPlayer) {
   const status = room.status || "lobby";
   const canVote = ["playing", "tiebreak"].includes(status) && currentPlayer && !currentPlayer.eliminated && !currentPlayer.hasVoted;
   const voteLabel = `${t("impostor.vote")} (${room.votesCast || 0}/${room.activeCount || 0})`;
+  const votersByTarget = new Map();
+  (room.liveVotes || []).forEach((vote) => {
+    const names = votersByTarget.get(vote.targetPlayerId) || [];
+    names.push(vote.voterName);
+    votersByTarget.set(vote.targetPlayerId, names);
+  });
   const tiedIds = new Set(room.tieCandidates || []);
   const candidates = (room.players || []).filter((player) => {
     if (player.id === currentPlayer?.id || player.eliminated) return false;
@@ -3683,9 +3742,12 @@ function renderimpostorActions(room, currentPlayer) {
     button.type = "button";
     button.dataset.votePlayerId = player.id;
     button.disabled = !canVote;
-    button.innerHTML = `<span></span><strong></strong>`;
+    button.innerHTML = `<span></span><strong></strong><small></small>`;
     button.querySelector("span").textContent = player.emoji;
     button.querySelector("strong").textContent = player.name;
+    const voterNames = votersByTarget.get(player.id) || [];
+    button.classList.toggle("has-visible-votes", voterNames.length > 0);
+    button.querySelector("small").textContent = voterNames.length ? t("impostor.votedBy", { names: voterNames.join(", ") }) : "";
     return button;
   }));
   if (!candidates.length) {
@@ -3695,7 +3757,7 @@ function renderimpostorActions(room, currentPlayer) {
   }
   if (impostorVoteButton) {
     impostorVoteButton.hidden = !["playing", "tiebreak"].includes(status);
-    impostorVoteButton.disabled = !canVote || !candidates.length;
+    impostorVoteButton.disabled = !currentPlayer || currentPlayer.eliminated || !candidates.length;
     setButtonLabel(impostorVoteButton, currentPlayer?.hasVoted ? `${t("impostor.voted")} (${room.votesCast || 0}/${room.activeCount || 0})` : voteLabel);
   }
   const canGuess = ["playing", "tiebreak"].includes(status) && currentPlayer?.role === "impostor" && !currentPlayer.eliminated;
@@ -3836,6 +3898,51 @@ function hideImpostorEventPopup() {
   if (!impostorEventPopup) return;
   impostorEventPopup.hidden = true;
   if (impostorVotePopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+}
+
+function renderImpostorTestTools(room, currentPlayer, players) {
+  if (!impostorTestTools) return;
+  const enabled = Boolean(room.test?.enabled);
+  impostorTestTools.hidden = !enabled;
+  if (!enabled) {
+    impostorTestViewId = currentPlayer?.id || "";
+    return;
+  }
+  impostorTestViewId = room.test.viewPlayerId || currentPlayer?.id || impostorTestViewId;
+  const viewed = players.find((player) => player.id === impostorTestViewId);
+  impostorTestViewLabel.textContent = `Viendo como ${viewed?.name || "anfitrión"}`;
+  impostorTestAutoFollow.checked = impostorTestAutoFollowEnabled;
+}
+
+function impostorTestActionBody(extra = {}) {
+  return {
+    playerId: impostorSession?.playerId,
+    token: impostorSession?.token,
+    asPlayerId: impostorRoom?.test?.enabled ? impostorTestViewId : "",
+    autoFollow: Boolean(impostorRoom?.test?.enabled && impostorTestAutoFollowEnabled),
+    ...extra
+  };
+}
+
+function selectImpostorTestView(playerId) {
+  if (!playerId || !impostorRoom?.test?.enabled) return;
+  impostorTestViewId = playerId;
+  impostorTestAutoFollowEnabled = false;
+  if (impostorTestAutoFollow) impostorTestAutoFollow.checked = false;
+  void pollimpostorRoom();
+}
+
+function handleImpostorPlayerKeydown(event) {
+  if (!impostorRoom?.test?.enabled || !["Enter", " "].includes(event.key)) return;
+  const chip = event.target.closest(".impostor-chip[data-player-id]");
+  if (!chip) return;
+  event.preventDefault();
+  selectImpostorTestView(chip.dataset.playerId);
+}
+
+function toggleImpostorTestAutoFollow() {
+  impostorTestAutoFollowEnabled = Boolean(impostorTestAutoFollow?.checked);
+  void pollimpostorRoom();
 }
 
 function dismissImpostorPopupOnClick(event, hidePopup) {
@@ -4041,6 +4148,8 @@ function leaveimpostorRoom() {
   impostorLastVotesCast = 0;
   impostorOutcomeEventId = "";
   impostorKnownPlayerIds = new Set();
+  impostorTestViewId = "";
+  impostorTestAutoFollowEnabled = true;
   closeAllImpostorPopups();
   if (impostorLobbyTitle) impostorLobbyTitle.hidden = false;
   if (impostorRoomHeader) impostorRoomHeader.hidden = true;
@@ -4760,6 +4869,12 @@ function showResistanceForm(mode) {
   if (mode === "join") resistanceJoinRoomName?.focus();
 }
 
+function syncResistanceTestCreateMode() {
+  if (!resistanceCreatePlayerLimit) return;
+  if (resistanceCreateTestMode?.checked) resistanceCreatePlayerLimit.value = "5";
+  resistanceCreatePlayerLimit.disabled = Boolean(resistanceCreateTestMode?.checked);
+}
+
 async function createResistanceRoom(event) {
   event.preventDefault();
   resistanceLobbyMessage.textContent = "";
@@ -4773,7 +4888,7 @@ async function createResistanceRoom(event) {
     const response = await fetch("/api/resistance/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName, playerName, emoji: resistanceCreateEmoji.value, config: { playerLimit } })
+      body: JSON.stringify({ roomName, playerName, emoji: resistanceCreateEmoji.value, testMode: Boolean(resistanceCreateTestMode?.checked), config: { playerLimit } })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
@@ -4809,6 +4924,8 @@ function enterResistanceRoom(payload) {
   resistanceSession = { roomName: payload.roomName, playerId: payload.player?.id, token: payload.player?.token, isHost: Boolean(payload.player?.isHost) };
   resistanceShownEventId = payload.eventId || "";
   resistanceKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+  resistanceTestViewId = payload.test?.viewPlayerId || payload.player?.id || "";
+  resistanceTestAutoFollowEnabled = true;
   resistanceLobby.hidden = true;
   resistanceGame.hidden = false;
   renderResistanceRoom(payload);
@@ -4824,6 +4941,10 @@ async function pollResistanceRoom() {
   if (!resistanceSession) return;
   try {
     const params = new URLSearchParams({ playerId: resistanceSession.playerId, token: resistanceSession.token });
+    if (resistanceRoom?.test?.enabled) {
+      params.set("viewPlayerId", resistanceTestViewId);
+      params.set("autoFollow", resistanceTestAutoFollowEnabled ? "1" : "0");
+    }
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}?${params}`);
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Sala no disponible");
@@ -4852,7 +4973,7 @@ async function startResistanceGame() {
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token })
+      body: JSON.stringify(resistanceTestActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo iniciar");
@@ -4873,7 +4994,7 @@ async function restartResistanceGame() {
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/restart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token })
+      body: JSON.stringify(resistanceTestActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo reiniciar");
@@ -4890,8 +5011,13 @@ async function restartResistanceGame() {
 async function kickResistancePlayer(event) {
   const button = event.target.closest("[data-resistance-kick-id]");
   if (!resistanceSession?.isHost) return;
+  const card = event.target.closest(".resistance-player-card[data-player-id]");
+  if (!button && card && resistanceRoom?.test?.enabled) {
+    event.preventDefault();
+    selectResistanceTestView(card.dataset.playerId);
+    return;
+  }
   if (!button) {
-    const card = event.target.closest(".resistance-player-card[data-player-id]");
     if (!card || card.dataset.playerId === resistanceSession.playerId || resistanceRoom?.status !== "lobby") return;
     event.preventDefault();
     showRoomKickPopup("resistance", card.dataset.playerId);
@@ -5024,7 +5150,7 @@ async function proposeResistanceTeam() {
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, teamIds })
+      body: JSON.stringify(resistanceTestActionBody({ teamIds }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo proponer equipo");
@@ -5045,7 +5171,7 @@ async function voteResistanceTeam(approve) {
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team-vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, approve })
+      body: JSON.stringify(resistanceTestActionBody({ approve }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo votar");
@@ -5064,7 +5190,7 @@ async function voteResistanceMission(sabotage) {
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/mission-vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, sabotage })
+      body: JSON.stringify(resistanceTestActionBody({ sabotage }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo ejecutar la mision");
@@ -5087,6 +5213,7 @@ function renderResistanceRoom(room = resistanceRoom) {
   resistanceRejectCount.textContent = `${room.rejectCount || 0}/5`;
   resistanceShareButton.hidden = !isHost;
   resistanceRestartButton.hidden = !isHost || room.status === "lobby";
+  renderResistanceTestTools(room, player, players);
   renderResistanceMissionTrack(room);
   renderResistancePlayers(players, player, room);
   renderResistanceRole(room, player);
@@ -5111,7 +5238,10 @@ function renderResistanceMissionTrack(room) {
 }
 
 function renderResistancePlayers(players, currentPlayer, room) {
-  const canKick = resistanceSession?.isHost && room.status === "lobby";
+  const canKick = resistanceSession?.isHost && room.status === "lobby" && !room.test?.enabled;
+  const canSwitchView = Boolean(room.test?.enabled);
+  const teamVoteByPlayer = new Map((room.teamVoteDetails || []).map((vote) => [vote.voterId, vote]));
+  const missionVoters = new Set((room.missionVoters || []).map((vote) => vote.voterId));
   resistancePlayers.replaceChildren(...players.map((item) => {
     const card = document.createElement("article");
     card.className = "resistance-player-card";
@@ -5120,14 +5250,72 @@ function renderResistancePlayers(players, currentPlayer, room) {
     if (item.isLeader) card.classList.add("is-leader");
     if (item.onTeam) card.classList.add("is-on-team");
     if (!item.connected) card.classList.add("is-disconnected");
-    const status = item.isLeader ? "Lider" : item.onTeam ? "Equipo" : room.status === "lobby" ? "En sala" : "Reserva";
+    if (item.isTestPlayer) card.classList.add("is-test-player");
+    if (canSwitchView) {
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Ver la partida como ${item.name}`);
+      card.title = `Cambiar punto de vista a ${item.name}`;
+    }
+    const teamVote = teamVoteByPlayer.get(item.id);
+    if (teamVote) card.classList.add(teamVote.approve ? "is-vote-approve" : "is-vote-reject");
+    const publicStatus = item.isLeader ? "Lider" : item.onTeam ? "Equipo" : room.status === "lobby" ? "En sala" : "Reserva";
+    const roleStatus = room.test?.enabled && item.role ? (item.role === "spy" ? "Espía" : "Resistencia") : "";
+    const status = [publicStatus, roleStatus].filter(Boolean).join(" · ");
     card.innerHTML = `<span></span><strong></strong><small></small><b></b>`;
     card.querySelector("span").textContent = item.emoji || "";
     card.querySelector("strong").textContent = item.name || "";
     card.querySelector("small").textContent = status;
-    card.querySelector("b").textContent = item.hasTeamVoted ? "Voto emitido" : item.hasMissionVoted ? "Accion enviada" : "";
+    card.querySelector("b").textContent = teamVote
+      ? (teamVote.approve ? "Aprobo el equipo" : "Rechazo el equipo")
+      : missionVoters.has(item.id) ? "Accion secreta enviada" : "";
     return card;
   }));
+}
+
+function renderResistanceTestTools(room, currentPlayer, players) {
+  if (!resistanceTestTools) return;
+  const enabled = Boolean(room.test?.enabled);
+  resistanceTestTools.hidden = !enabled;
+  if (!enabled) {
+    resistanceTestViewId = currentPlayer?.id || "";
+    return;
+  }
+  resistanceTestViewId = room.test.viewPlayerId || currentPlayer?.id || resistanceTestViewId;
+  const viewed = players.find((player) => player.id === resistanceTestViewId);
+  resistanceTestViewLabel.textContent = `Viendo como ${viewed?.name || "anfitrión"}`;
+  resistanceTestAutoFollow.checked = resistanceTestAutoFollowEnabled;
+}
+
+function resistanceTestActionBody(extra = {}) {
+  return {
+    playerId: resistanceSession?.playerId,
+    token: resistanceSession?.token,
+    asPlayerId: resistanceRoom?.test?.enabled ? resistanceTestViewId : "",
+    autoFollow: Boolean(resistanceRoom?.test?.enabled && resistanceTestAutoFollowEnabled),
+    ...extra
+  };
+}
+
+function selectResistanceTestView(playerId) {
+  if (!playerId || !resistanceRoom?.test?.enabled) return;
+  resistanceTestViewId = playerId;
+  resistanceTestAutoFollowEnabled = false;
+  if (resistanceTestAutoFollow) resistanceTestAutoFollow.checked = false;
+  void pollResistanceRoom();
+}
+
+function handleResistancePlayerKeydown(event) {
+  if (!resistanceRoom?.test?.enabled || !["Enter", " "].includes(event.key)) return;
+  const card = event.target.closest(".resistance-player-card[data-player-id]");
+  if (!card) return;
+  event.preventDefault();
+  selectResistanceTestView(card.dataset.playerId);
+}
+
+function toggleResistanceTestAutoFollow() {
+  resistanceTestAutoFollowEnabled = Boolean(resistanceTestAutoFollow?.checked);
+  void pollResistanceRoom();
 }
 
 function renderResistanceRole(room, player) {
@@ -5136,7 +5324,7 @@ function renderResistanceRole(room, player) {
   if (!showRole) return;
   const isSpy = player.role === "spy";
   resistanceRoleCard.classList.toggle("is-spy", isSpy);
-  resistanceRoleLabel.textContent = "Tu rol";
+  resistanceRoleLabel.textContent = player.viewingAs ? "Rol del agente seleccionado" : "Tu rol";
   resistanceRoleName.textContent = isSpy ? "Espia" : "Resistencia";
   resistanceRoleHint.textContent = isSpy ? `Otros espias: ${(player.spyNames || []).join(", ") || "solo tu"}` : "Aprueba buenos equipos y evita sabotajes.";
 }
@@ -5298,6 +5486,8 @@ function leaveResistanceRoom() {
   resistanceRoom = null;
   resistanceShownEventId = "";
   resistanceKnownPlayerIds = new Set();
+  resistanceTestViewId = "";
+  resistanceTestAutoFollowEnabled = true;
   hideResistanceRoundPopup();
 }
 
