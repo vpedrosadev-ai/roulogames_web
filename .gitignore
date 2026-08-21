@@ -6,3 +6,4 @@ storage/
 dist/
 *.log
 public/_worker.js
+public/wolf-engine.js

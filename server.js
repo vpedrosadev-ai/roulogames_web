@@ -5,6 +5,27 @@ import { spawn } from "node:child_process";
 import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  WolfGameError,
+  authenticateWolfPlayer,
+  completeWolfNarration,
+  createWolfRoom,
+  isWolfHostConnected,
+  kickWolfPlayer,
+  leaveWolfRoom,
+  normalizeWolfIdentity,
+  normalizeWolfRoomKey,
+  replaceOrJoinWolfPlayer,
+  resolveWolfTestViewPlayer,
+  restartWolfGame,
+  skipWolfPhase,
+  startWolfGame,
+  startWolfSequence,
+  submitWolfAction,
+  submitWolfVote,
+  touchWolfRoom,
+  wolfRoomResponse
+} from "./wolf-engine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -550,6 +571,7 @@ const activeAudioProcesses = new Map();
 const multiplayerRooms = new Map();
 const impostorRooms = new Map();
 const resistanceRooms = new Map();
+const wolfRooms = new Map();
 const masterWordRooms = new Map();
 const scoreboardRooms = new Map();
 let spotifyToken = null;
@@ -575,6 +597,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/multiplayer/rooms") return createMultiplayerRoom(req, res);
     if (req.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(req, res);
     if (req.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(req, res);
+    if (req.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomNode(req, res);
     if (req.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
@@ -636,6 +659,11 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && resistanceRestartMatch) return restartResistanceGame(req, res, resistanceRestartMatch[1]);
     const resistanceLeaveMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/leave$/);
     if (req.method === "POST" && resistanceLeaveMatch) return leaveResistanceRoom(req, res, resistanceLeaveMatch[1]);
+
+    const wolfRoomMatch = url.pathname.match(/^\/api\/wolf\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && wolfRoomMatch) return getWolfRoomNode(res, wolfRoomMatch[1], url.searchParams);
+    const wolfActionMatch = url.pathname.match(/^\/api\/wolf\/rooms\/([^/]+)\/(join|start|start-sequence|action|vote|kick|restart|skip-phase|test-skip|narration-complete|leave)$/);
+    if (req.method === "POST" && wolfActionMatch) return handleWolfRoomActionNode(req, res, wolfActionMatch[1], wolfActionMatch[2]);
 
     const masterWordRoomMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)$/);
     if (req.method === "GET" && masterWordRoomMatch) return getMasterWordRoom(res, masterWordRoomMatch[1], url.searchParams);
@@ -5180,7 +5208,9 @@ async function serveStatic(res, pathname) {
     const contentType = {
       ".html": "text/html; charset=utf-8",
       ".css": "text/css; charset=utf-8",
-      ".js": "text/javascript; charset=utf-8"
+      ".js": "text/javascript; charset=utf-8",
+      ".svg": "image/svg+xml; charset=utf-8",
+      ".wav": "audio/wav"
     }[ext] || "application/octet-stream";
 
     res.writeHead(200, { "Content-Type": contentType });
@@ -5379,4 +5409,60 @@ function decodeHtml(value) {
     .replaceAll("&#39;", "'")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">");
+}
+
+async function createWolfRoomNode(req, res) {
+  const room = createWolfRoom(await readJson(req));
+  if (!room) return sendJson(res, { error: "Los datos de la sala o del jugador no son válidos" }, 400);
+  const existing = wolfRooms.get(room.key);
+  if (existing && isWolfHostConnected(existing)) return sendJson(res, { error: "Ese nombre de sala ya está en uso" }, 409);
+  wolfRooms.set(room.key, room);
+  return sendJson(res, wolfRoomResponse(room, room.players[0]), 201);
+}
+
+function getWolfRoomNode(res, roomName, searchParams) {
+  const room = wolfRooms.get(normalizeWolfRoomKey(decodeWolfRoomPathName(roomName)));
+  if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+  const sessionPlayer = touchWolfRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  const viewPlayer = resolveWolfTestViewPlayer(room, sessionPlayer, searchParams.get("viewPlayerId"), searchParams.get("autoFollow") === "1");
+  return sendJson(res, wolfRoomResponse(room, viewPlayer, sessionPlayer));
+}
+
+async function handleWolfRoomActionNode(req, res, roomName, action) {
+  const room = wolfRooms.get(normalizeWolfRoomKey(decodeWolfRoomPathName(roomName)));
+  if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+  const body = await readJson(req);
+  try {
+    if (action === "join") {
+      const identity = normalizeWolfIdentity(body);
+      if (!identity) throw new WolfGameError("Los datos del jugador no son válidos");
+      const result = replaceOrJoinWolfPlayer(room, identity);
+      return sendJson(res, wolfRoomResponse(room, result.player), result.created ? 201 : 200);
+    }
+    const sessionPlayer = authenticateWolfPlayer(room, body);
+    if (!sessionPlayer) throw new WolfGameError("Sesión no válida o reemplazada", 401);
+    const actingPlayer = resolveWolfTestViewPlayer(room, sessionPlayer, body.asPlayerId, false);
+    if (action === "start") startWolfGame(room, sessionPlayer, body.roles);
+    else if (action === "start-sequence") startWolfSequence(room, sessionPlayer);
+    else if (action === "action") submitWolfAction(room, actingPlayer, body.targetPlayerId);
+    else if (action === "vote") submitWolfVote(room, actingPlayer, body.targetPlayerId);
+    else if (action === "kick") kickWolfPlayer(room, sessionPlayer, String(body.targetPlayerId || ""));
+    else if (action === "restart") restartWolfGame(room, sessionPlayer);
+    else if (action === "skip-phase" || action === "test-skip") skipWolfPhase(room, sessionPlayer);
+    else if (action === "narration-complete") completeWolfNarration(room, sessionPlayer, body.eventId);
+    else if (action === "leave") leaveWolfRoom(room, sessionPlayer);
+    const viewPlayer = resolveWolfTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+    return sendJson(res, action === "leave" ? { ok: true } : wolfRoomResponse(room, viewPlayer, sessionPlayer));
+  } catch (error) {
+    if (error instanceof WolfGameError) return sendJson(res, { error: error.message }, error.status);
+    throw error;
+  }
+}
+
+function decodeWolfRoomPathName(value) {
+  try {
+    return decodeURIComponent(String(value || ""));
+  } catch {
+    return String(value || "");
+  }
 }

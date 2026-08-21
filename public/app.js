@@ -253,6 +253,61 @@ const resistanceRoundPopup = document.querySelector("#resistanceRoundPopup");
 const resistanceRoundPopupTitle = document.querySelector("#resistanceRoundPopupTitle");
 const resistanceRoundPopupClose = document.querySelector("#resistanceRoundPopupClose");
 const resistanceRoundPopupBody = document.querySelector("#resistanceRoundPopupBody");
+const wolfLobby = document.querySelector("#wolfLobby");
+const wolfChoice = document.querySelector("#wolfChoice");
+const wolfChooseCreate = document.querySelector("#wolfChooseCreate");
+const wolfChooseJoin = document.querySelector("#wolfChooseJoin");
+const wolfCreateForm = document.querySelector("#wolfCreateForm");
+const wolfCreateRoomName = document.querySelector("#wolfCreateRoomName");
+const wolfCreatePlayerName = document.querySelector("#wolfCreatePlayerName");
+const wolfCreateTestMode = document.querySelector("#wolfCreateTestMode");
+const wolfJoinForm = document.querySelector("#wolfJoinForm");
+const wolfJoinRoomName = document.querySelector("#wolfJoinRoomName");
+const wolfJoinPlayerName = document.querySelector("#wolfJoinPlayerName");
+const wolfBackButtons = document.querySelectorAll("[data-wolf-back]");
+const wolfLobbyMessage = document.querySelector("#wolfLobbyMessage");
+const wolfGame = document.querySelector("#wolfGame");
+const wolfRoomLabel = document.querySelector("#wolfRoomLabel");
+const wolfShareButton = document.querySelector("#wolfShareButton");
+const wolfRestartButton = document.querySelector("#wolfRestartButton");
+const wolfLeaveButton = document.querySelector("#wolfLeaveButton");
+const wolfPlayerCount = document.querySelector("#wolfPlayerCount");
+const wolfPlayers = document.querySelector("#wolfPlayers");
+const wolfTestTools = document.querySelector("#wolfTestTools");
+const wolfTestViewControls = document.querySelector("#wolfTestViewControls");
+const wolfTestViewLabel = document.querySelector("#wolfTestViewLabel");
+const wolfTestAutoFollow = document.querySelector("#wolfTestAutoFollow");
+const wolfTestAutoFollowLabel = document.querySelector("#wolfTestAutoFollowLabel");
+const wolfTestSkipButton = document.querySelector("#wolfTestSkipButton");
+const wolfCycleLabel = document.querySelector("#wolfCycleLabel");
+const wolfPhaseLabel = document.querySelector("#wolfPhaseLabel");
+const wolfNarratorIcon = document.querySelector("#wolfNarratorIcon");
+const wolfCountdown = document.querySelector("#wolfCountdown");
+const wolfCountdownValue = document.querySelector("#wolfCountdownValue");
+const wolfNarratorTitle = document.querySelector("#wolfNarratorTitle");
+const wolfNarratorText = document.querySelector("#wolfNarratorText");
+const wolfRoleCard = document.querySelector("#wolfRoleCard");
+const wolfRoleIcon = document.querySelector("#wolfRoleIcon");
+const wolfRoleEyebrow = document.querySelector("#wolfRoleEyebrow");
+const wolfRoleName = document.querySelector("#wolfRoleName");
+const wolfRoleHint = document.querySelector("#wolfRoleHint");
+const wolfKnowledge = document.querySelector("#wolfKnowledge");
+const wolfKnowledgeList = document.querySelector("#wolfKnowledgeList");
+const wolfRoleSetup = document.querySelector("#wolfRoleSetup");
+const wolfRecommendRoles = document.querySelector("#wolfRecommendRoles");
+const wolfMinusWerewolf = document.querySelector("#wolfMinusWerewolf");
+const wolfPlusWerewolf = document.querySelector("#wolfPlusWerewolf");
+const wolfWerewolfCount = document.querySelector("#wolfWerewolfCount");
+const wolfUseSeer = document.querySelector("#wolfUseSeer");
+const wolfUseDoctor = document.querySelector("#wolfUseDoctor");
+const wolfUseHunter = document.querySelector("#wolfUseHunter");
+const wolfRoleSummary = document.querySelector("#wolfRoleSummary");
+const wolfCancelSetup = document.querySelector("#wolfCancelSetup");
+const wolfConfirmStart = document.querySelector("#wolfConfirmStart");
+const wolfActionList = document.querySelector("#wolfActionList");
+const wolfVoteSummary = document.querySelector("#wolfVoteSummary");
+const wolfGameMessage = document.querySelector("#wolfGameMessage");
+const wolfPrimaryButton = document.querySelector("#wolfPrimaryButton");
 const masterWordLobby = document.querySelector("#masterWordLobby");
 const masterWordChoice = document.querySelector("#masterWordChoice");
 const masterWordChooseCreate = document.querySelector("#masterWordChooseCreate");
@@ -434,6 +489,7 @@ const RUN_LENGTH = 10;
 const MULTIPLAYER_EMOJIS = ["🎧", "🎸", "🥭", "🔥", "⭐", "🚀", "👾", "🪩", "🎤", "🏆", "💿", "🕺"];
 const impostor_EMOJIS = ["🕵️", "🎭", "🧩", "🔎", "🎩", "😎", "🤓", "👻", "🤖", "🦄", "🌈", "⚡", "🍕", "🎲", "⭐", "🔥"];
 const RESISTANCE_EMOJIS = ["🕶️", "📡", "🧨", "🗝️", "🧭", "📻", "🛡️", "⚙️", "🧬", "🚧", "🕯️", "🗡️"];
+const WOLF_SESSION_STORAGE_KEY = "roulogames:wolf-session";
 const MASTER_WORD_EMOJIS = ["\uD83E\uDDE0", "\uD83D\uDCA1", "\uD83D\uDCDD", "\uD83D\uDD0E", "\uD83E\uDDE9", "\uD83D\uDCDA", "\u2728", "\uD83C\uDFAF", "\uD83C\uDF1F", "\uD83D\uDD14", "\uD83C\uDFA8", "\uD83D\uDE80"];
 const impostor_ALARM_MS = 2050;
 const impostor_ORBIT_MS = 4400;
@@ -2241,12 +2297,26 @@ let impostorChipResizeObserver = null;
 let pendingMultiplayerKickTargetId = "";
 let pendingImpostorKickTargetId = "";
 let pendingResistanceKickTargetId = "";
+let pendingWolfKickTargetId = "";
 let pendingMasterWordKickTargetId = "";
 let resistanceSession = null;
 let resistanceRoom = null;
 let resistancePollTimer = null;
 let resistanceShownEventId = "";
 let resistanceKnownPlayerIds = new Set();
+let wolfSession = null;
+let wolfRoom = null;
+let wolfPollTimer = null;
+let wolfCountdownTimer = null;
+let wolfShownEventId = "";
+let wolfSoundedPhaseKey = "";
+let wolfSpokenPhaseKey = "";
+let wolfSpokenCountdownSecond = 0;
+let wolfRoleDraft = { werewolf: 1, seer: true, doctor: true, hunter: false };
+let wolfAudioContext = null;
+let wolfNarrationAudio = null;
+let wolfTestViewId = "";
+let wolfTestAutoFollowEnabled = true;
 let masterWordSession = null;
 let masterWordRoom = null;
 let masterWordPollTimer = null;
@@ -2299,6 +2369,7 @@ titleHomeLinks.forEach((link) => {
     const url = new URL(window.location.href);
     url.searchParams.delete("impostor");
     url.searchParams.delete("resistance");
+    url.searchParams.delete("wolf");
     url.searchParams.delete("masterword");
     url.searchParams.delete("scoreboard");
     window.history.replaceState({}, "", url);
@@ -2466,6 +2537,26 @@ resistanceRoundPopup?.addEventListener("click", (event) => {
   if (event.target === resistanceRoundPopup) hideResistanceRoundPopup();
 });
 window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
+wolfCreateForm?.addEventListener("submit", createWolfRoomClient);
+wolfJoinForm?.addEventListener("submit", joinWolfRoomClient);
+wolfChooseCreate?.addEventListener("click", () => showWolfForm("create"));
+wolfChooseJoin?.addEventListener("click", () => showWolfForm("join"));
+wolfBackButtons.forEach((button) => button.addEventListener("click", showWolfChoice));
+wolfShareButton?.addEventListener("click", shareWolfRoom);
+wolfRestartButton?.addEventListener("click", restartWolfGameClient);
+wolfLeaveButton?.addEventListener("click", leaveWolfToMenu);
+wolfPlayers?.addEventListener("click", kickWolfPlayerClient);
+wolfPlayers?.addEventListener("keydown", handleWolfPlayerKeydown);
+wolfTestAutoFollow?.addEventListener("change", toggleWolfTestAutoFollow);
+wolfTestSkipButton?.addEventListener("click", skipWolfTestPhaseClient);
+wolfPrimaryButton?.addEventListener("click", handleWolfPrimaryAction);
+wolfRecommendRoles?.addEventListener("click", applyRecommendedWolfRoles);
+wolfMinusWerewolf?.addEventListener("click", () => changeWolfCount(-1));
+wolfPlusWerewolf?.addEventListener("click", () => changeWolfCount(1));
+[wolfUseSeer, wolfUseDoctor, wolfUseHunter].filter(Boolean).forEach((input) => input.addEventListener("change", syncWolfRoleDraft));
+wolfCancelSetup?.addEventListener("click", closeWolfRoleSetup);
+wolfConfirmStart?.addEventListener("click", startWolfGameClient);
+wolfActionList?.addEventListener("click", submitWolfTarget);
 masterWordCreateForm?.addEventListener("submit", createMasterWordRoom);
 masterWordJoinForm?.addEventListener("submit", joinMasterWordRoom);
 masterWordChooseCreate?.addEventListener("click", () => showMasterWordForm("create"));
@@ -4866,10 +4957,11 @@ async function performMasterWordKick(targetPlayerId, control = null) {
 }
 
 function showRoomKickPopup(kind, targetPlayerId) {
-  const room = kind === "resistance" ? resistanceRoom : kind === "masterword" ? masterWordRoom : multiplayerRoom;
+  const room = kind === "resistance" ? resistanceRoom : kind === "wolf" ? wolfRoom : kind === "masterword" ? masterWordRoom : multiplayerRoom;
   const target = (room?.players || []).find((player) => player.id === targetPlayerId);
   if (!target) return;
   if (kind === "resistance") pendingResistanceKickTargetId = targetPlayerId;
+  else if (kind === "wolf") pendingWolfKickTargetId = targetPlayerId;
   else if (kind === "masterword") pendingMasterWordKickTargetId = targetPlayerId;
   else pendingMultiplayerKickTargetId = targetPlayerId;
   let popup = document.querySelector(`#${kind}KickPopup`);
@@ -4897,12 +4989,19 @@ function showRoomKickPopup(kind, targetPlayerId) {
       const confirmButton = popupEvent.target.closest("[data-room-kick-confirm]");
       if (!confirmButton) return;
       if (kind === "resistance") performResistanceKick(pendingResistanceKickTargetId, confirmButton);
+      else if (kind === "wolf") performWolfKick(pendingWolfKickTargetId, confirmButton);
       else if (kind === "masterword") performMasterWordKick(pendingMasterWordKickTargetId, confirmButton);
       else performMultiplayerKick(pendingMultiplayerKickTargetId, confirmButton);
     });
     document.body.append(popup);
   }
   popup.querySelector("p").textContent = `Â¿Quieres expulsar a ${target.name || "este jugador"} de la sala?`;
+  if (kind === "wolf") {
+    popup.querySelector("h2").textContent = "Expulsar jugador";
+    popup.querySelector("p").textContent = `¿Quieres expulsar a ${target.name || "este jugador"} de la aldea?`;
+    popup.querySelectorAll("[data-room-kick-close]").forEach((button, index) => { button.textContent = index ? "Cancelar" : "Cerrar"; });
+    popup.querySelector("[data-room-kick-confirm]").textContent = "Expulsar";
+  }
   popup.hidden = false;
   document.body.classList.add("songs-popup-open");
 }
@@ -4911,6 +5010,7 @@ function hideRoomKickPopup(kind) {
   const popup = document.querySelector(`#${kind}KickPopup`);
   if (popup) popup.hidden = true;
   if (kind === "resistance") pendingResistanceKickTargetId = "";
+  else if (kind === "wolf") pendingWolfKickTargetId = "";
   else if (kind === "masterword") pendingMasterWordKickTargetId = "";
   else pendingMultiplayerKickTargetId = "";
   if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
@@ -5213,6 +5313,1012 @@ function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {
     void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
   }
   clearInterval(resistancePollTimer);
+}
+
+function showWolfLobby() {
+  if (!wolfLobby || !wolfGame) return;
+  if (wolfSession) {
+    wolfLobby.hidden = true;
+    wolfGame.hidden = false;
+    renderWolfRoom(wolfRoom);
+    return;
+  }
+  wolfLobby.hidden = false;
+  wolfGame.hidden = true;
+  const inviteRoom = new URLSearchParams(window.location.search).get("wolf");
+  if (inviteRoom && wolfJoinRoomName) {
+    wolfJoinRoomName.value = inviteRoom.trim();
+    showWolfForm("join");
+    return;
+  }
+  showWolfChoice();
+}
+
+function showWolfChoice() {
+  if (!wolfChoice || !wolfCreateForm || !wolfJoinForm) return;
+  wolfChoice.hidden = false;
+  wolfCreateForm.hidden = true;
+  wolfJoinForm.hidden = true;
+  if (wolfLobbyMessage) wolfLobbyMessage.textContent = "";
+}
+
+function showWolfForm(mode) {
+  if (!wolfChoice || !wolfCreateForm || !wolfJoinForm) return;
+  wolfChoice.hidden = true;
+  wolfCreateForm.hidden = mode !== "create";
+  wolfJoinForm.hidden = mode !== "join";
+  if (wolfLobbyMessage) wolfLobbyMessage.textContent = "";
+  if (mode === "create") wolfCreateRoomName?.focus();
+  else wolfJoinPlayerName?.focus();
+}
+
+async function createWolfRoomClient(event) {
+  event.preventDefault();
+  wolfLobbyMessage.textContent = "";
+  const roomName = wolfCreateRoomName.value.trim();
+  const playerName = wolfCreatePlayerName.value.trim();
+  try {
+    unlockWolfAudio();
+    const response = await fetch("/api/wolf/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomName, playerName, testMode: Boolean(wolfCreateTestMode?.checked) })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
+    enterWolfRoom(payload);
+  } catch (error) {
+    wolfLobbyMessage.textContent = error.message;
+  }
+}
+
+async function joinWolfRoomClient(event) {
+  event.preventDefault();
+  wolfLobbyMessage.textContent = "";
+  const roomName = wolfJoinRoomName.value.trim();
+  const playerName = wolfJoinPlayerName.value.trim();
+  try {
+    unlockWolfAudio();
+    const response = await fetch(`/api/wolf/rooms/${encodeURIComponent(roomName)}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerName })
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo entrar en la sala");
+    enterWolfRoom(payload);
+  } catch (error) {
+    wolfLobbyMessage.textContent = error.message;
+  }
+}
+
+function enterWolfRoom(payload) {
+  if (!payload?.player?.id || !payload?.player?.token) return;
+  wolfRoom = payload;
+  wolfSession = {
+    roomName: payload.roomName,
+    playerId: payload.player.id,
+    token: payload.player.token,
+    isHost: Boolean(payload.player.isHost)
+  };
+  wolfShownEventId = payload.eventId || "";
+  wolfTestViewId = payload.test?.viewPlayerId || payload.player.id;
+  wolfTestAutoFollowEnabled = true;
+  if (wolfTestAutoFollow) wolfTestAutoFollow.checked = true;
+  storeWolfSession(wolfSession);
+  const url = new URL(window.location.href);
+  url.searchParams.set("wolf", payload.roomName);
+  window.history.replaceState({}, "", url);
+  wolfLobby.hidden = true;
+  wolfGame.hidden = false;
+  window.scrollTo(0, 0);
+  closeWolfRoleSetup();
+  renderWolfRoom(payload);
+  clearInterval(wolfPollTimer);
+  wolfPollTimer = window.setInterval(pollWolfRoom, 1200);
+}
+
+async function restoreWolfSession(roomName) {
+  const stored = readWolfSession();
+  if (!stored || stored.roomName.toLocaleLowerCase() !== String(roomName || "").toLocaleLowerCase()) {
+    wolfJoinPlayerName?.focus();
+    return;
+  }
+  try {
+    const params = new URLSearchParams({ playerId: stored.playerId, token: stored.token });
+    const response = await fetch(`/api/wolf/rooms/${encodeURIComponent(roomName)}?${params}`);
+    const payload = await readJsonResponse(response);
+    if (!response.ok || !payload.player) throw new Error(payload.error || "Sesión reemplazada");
+    enterWolfRoom(payload);
+  } catch {
+    clearStoredWolfSession();
+    if (wolfLobbyMessage) wolfLobbyMessage.textContent = "La sesión ha caducado o fue reemplazada. Entra de nuevo con el mismo nombre para reconectar.";
+    wolfJoinPlayerName?.focus();
+  }
+}
+
+async function pollWolfRoom() {
+  if (!wolfSession) return;
+  try {
+    const params = new URLSearchParams({
+      playerId: wolfSession.playerId,
+      token: wolfSession.token,
+      viewPlayerId: wolfTestViewId,
+      autoFollow: wolfTestAutoFollowEnabled ? "1" : "0"
+    });
+    const response = await fetch(`/api/wolf/rooms/${encodeURIComponent(wolfSession.roomName)}?${params}`);
+    const payload = await readJsonResponse(response);
+    if (!response.ok || !payload.player) throw new Error(payload.error || "Sesión reemplazada");
+    const changed = Boolean(payload.eventId && payload.eventId !== wolfShownEventId);
+    wolfRoom = payload;
+    wolfSession.isHost = Boolean(payload.player.isHost);
+    if (changed) wolfShownEventId = payload.eventId;
+    renderWolfRoom(payload);
+  } catch (error) {
+    if (/not found|replaced|session|no encontrad|reemplazad|sesión/i.test(error.message)) {
+      const roomName = wolfSession.roomName;
+      leaveWolfRoomClient({ notify: false, forget: true });
+      if (wolfJoinRoomName) wolfJoinRoomName.value = roomName;
+      showWolfForm("join");
+      if (wolfLobbyMessage) wolfLobbyMessage.textContent = "Conexión perdida. Entra con el mismo nombre para recuperar tu rol.";
+    }
+  }
+}
+
+function renderWolfRoom(room = wolfRoom) {
+  if (!room || !wolfSession || !wolfPlayers) return;
+  const players = [...(room.players || [])].sort((a, b) => a.seatNumber - b.seatNumber);
+  const player = room.player;
+  const isHost = Boolean(player?.isHost);
+  wolfSession.isHost = isHost;
+  wolfGame.classList.toggle("is-night", room.theme === "night");
+  wolfRoomLabel.textContent = room.roomName || "";
+  wolfPlayerCount.textContent = room.status === "lobby" ? `${players.length}/${room.minPlayers}+` : `${players.filter((item) => item.alive).length} con vida`;
+  wolfRestartButton.hidden = !isHost || room.status === "lobby";
+  renderWolfTestTools(room, player, players);
+  renderWolfPlayers(players, player, room);
+  renderWolfRole(room, player);
+  renderWolfNarrator(room, player);
+  renderWolfActions(room, player, players);
+  renderWolfVoteSummary(room);
+  syncWolfNarration(room, player);
+  syncWolfCountdown(room);
+
+  const setupOpen = !wolfRoleSetup.hidden;
+  if (room.status !== "lobby" || !isHost) closeWolfRoleSetup();
+  else if (setupOpen) syncWolfRoleDraft();
+  renderWolfPrimaryButtonOnly();
+}
+
+function renderWolfTestTools(room, player, players) {
+  if (!wolfTestTools) return;
+  const testEnabled = Boolean(room.test?.enabled);
+  const canSkip = Boolean(room.canHostSkip);
+  wolfTestTools.hidden = !testEnabled && !canSkip;
+  wolfTestTools.classList.toggle("is-host-only", !testEnabled);
+  if (wolfTestViewControls) wolfTestViewControls.hidden = !testEnabled;
+  if (wolfTestAutoFollowLabel) wolfTestAutoFollowLabel.hidden = !testEnabled;
+  wolfTestSkipButton.hidden = !canSkip;
+  wolfTestSkipButton.disabled = false;
+  if (!testEnabled) {
+    wolfTestViewId = player?.sessionPlayerId || player?.id || "";
+    return;
+  }
+  wolfTestViewId = room.test.viewPlayerId || player?.id || wolfTestViewId;
+  const viewed = players.find((item) => item.id === wolfTestViewId);
+  wolfTestViewLabel.textContent = `Viendo como ${viewed?.name || "anfitrión"}`;
+  wolfTestAutoFollow.checked = wolfTestAutoFollowEnabled;
+}
+
+function renderWolfPlayers(players, currentPlayer, room) {
+  const canKick = currentPlayer?.isHost && room.status === "lobby" && !room.testMode;
+  const canSwitchView = Boolean(room.test?.enabled);
+  wolfPlayers.replaceChildren(...players.map((item) => {
+    const card = document.createElement("article");
+    card.className = "wolf-player-card";
+    card.dataset.playerId = item.id;
+    if (item.id === currentPlayer?.id) card.classList.add("is-current");
+    if (item.isTestPlayer) card.classList.add("is-test-player");
+    if (item.role) card.classList.add("is-role-known", `is-role-${item.role}`);
+    if (!item.alive) card.classList.add("is-dead");
+    if (!item.connected) card.classList.add("is-disconnected");
+    if (canSwitchView) {
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Ver la partida como ${item.name}`);
+      card.title = `Cambiar punto de vista a ${item.name}`;
+    }
+    const avatar = createWolfPlayerIcon(item.role || "unknown", "wolf-player-avatar");
+    const name = document.createElement("strong");
+    name.textContent = item.name || "Jugador";
+    const status = document.createElement("small");
+    status.textContent = getWolfPlayerStatus(item, room);
+    card.append(avatar, name, status);
+    if (canKick && item.id !== currentPlayer.id) {
+      const kick = document.createElement("button");
+      kick.type = "button";
+      kick.className = "wolf-kick-button";
+      kick.dataset.wolfKickId = item.id;
+      kick.setAttribute("aria-label", `Expulsar a ${item.name}`);
+      kick.textContent = "Expulsar";
+      card.append(kick);
+    } else if (item.isHost) {
+      const badge = document.createElement("b");
+      badge.className = "wolf-card-badge";
+      badge.textContent = "Anfitrión";
+      card.append(badge);
+    }
+    return card;
+  }));
+}
+
+function getWolfPlayerStatus(player, room) {
+  if (!player.connected) return "Reconectando…";
+  if (!player.alive) return player.role ? `Eliminado · ${wolfRoleLabel(player.role)}` : "Eliminado";
+  if (room.phase === "day_vote" && player.hasVoted) return "Voto enviado";
+  if (String(room.phase).startsWith("night_") && player.hasActed) return "Acción enviada";
+  if (room.status === "finished" && player.role) return wolfRoleLabel(player.role);
+  if (player.isTestPlayer) return room.status === "lobby" ? "Jugador virtual" : `Virtual · ${player.role ? wolfRoleLabel(player.role) : "Con vida"}`;
+  return room.status === "lobby" ? "En la aldea" : player.role ? wolfRoleLabel(player.role) : "Con vida";
+}
+
+function renderWolfRole(room, player) {
+  const show = room.status !== "lobby" && Boolean(player?.role);
+  wolfRoleCard.hidden = !show;
+  wolfKnowledge.hidden = true;
+  if (!show) return;
+  const role = player.role;
+  wolfRoleEyebrow.textContent = player.viewingAs ? "Rol del jugador seleccionado" : "Tu rol secreto";
+  setWolfIcon(wolfRoleIcon, role);
+  wolfRoleCard.classList.toggle("is-werewolf", role === "werewolf");
+  wolfRoleName.textContent = wolfRoleLabel(role);
+  const hints = {
+    werewolf: `Despierta con tu manada y elige una víctima. Manada: ${(player.wolfNames || []).join(", ") || "solo tú"}.`,
+    villager: "Vota durante el día. Expulsa a todos los lobos antes de que igualen en número a la aldea.",
+    seer: "Investiga a un jugador con vida cada noche y descubre si es un lobo.",
+    doctor: "Protege a un jugador con vida cada noche. No puedes proteger al mismo dos noches seguidas.",
+    hunter: "Si te eliminan, elige a un jugador con vida para que caiga contigo."
+  };
+  wolfRoleHint.textContent = player.alive ? hints[role] || "" : "Has sido eliminado. Observa en silencio hasta el final.";
+  if (role === "seer" && player.seerDiscoveries?.length) {
+    wolfKnowledge.hidden = false;
+    wolfKnowledgeList.replaceChildren(...player.seerDiscoveries.map((item) => {
+      const chip = document.createElement("span");
+      chip.classList.toggle("is-werewolf", Boolean(item.isWerewolf));
+      chip.textContent = `${item.name}: ${item.isWerewolf ? "Lobo" : "No es lobo"}`;
+      return chip;
+    }));
+  }
+}
+
+function renderWolfNarrator(room, player) {
+  const phase = room.phase || "lobby";
+  const event = room.lastEvent || {};
+  let title = "Reúne a la aldea";
+  let text = `Comparte el enlace. La partida empieza cuando el anfitrión elige los roles con al menos ${room.minPlayers || 5} jugadores.`;
+  let icon = "werewolf";
+  let phaseLabel = "La aldea se reúne";
+  let cycle = "Sala de espera";
+
+  if (phase === "role_reveal") {
+    title = "Memoriza tu rol";
+    text = player?.isHost
+      ? "Cuando todos conozcan su función, pulsa el botón para empezar la primera noche."
+      : "Lee tu función con calma. El anfitrión empezará la primera noche cuando todos estén preparados.";
+    icon = player?.role || "villager";
+    phaseLabel = "Revelación del rol secreto";
+    cycle = "Prólogo";
+  } else if (phase === "night_close") {
+    title = event.completedRole ? wolfNightRoleSleepCommand(event.completedRole) : "Todos, cerrad los ojos";
+    text = "Cerrad los ojos y esperad la siguiente indicación.";
+    icon = "sleep";
+    phaseLabel = "Cerrar los ojos";
+    cycle = `Noche ${room.nightNumber}`;
+  } else if (phase === "night_role_open") {
+    const role = event.nextRole || "werewolf";
+    title = wolfNightRoleOpenCommand(role);
+    text = wolfNightRoleOpenInstruction(role);
+    icon = role;
+    phaseLabel = `Despierta ${wolfNightRoleCallLabel(role)}`;
+    cycle = `Noche ${room.nightNumber}`;
+  } else if (phase === "night_wolves") {
+    title = "Lobos, elegid a vuestra víctima";
+    text = player?.role === "werewolf" && player.alive ? "Decidid sin prisa. No hay límite de tiempo." : "Mantén los ojos cerrados. Los lobos están eligiendo.";
+    icon = "werewolf";
+    phaseLabel = "Actúan los Lobos";
+    cycle = `Noche ${room.nightNumber}`;
+  } else if (phase === "night_seer") {
+    title = "Vidente, elige a quién investigar";
+    text = player?.role === "seer" && player.alive ? "Decide sin prisa. No hay límite de tiempo." : "Mantén los ojos cerrados. La Vidente investiga la aldea.";
+    icon = "seer";
+    phaseLabel = "Actúa la Vidente";
+    cycle = `Noche ${room.nightNumber}`;
+  } else if (phase === "night_doctor") {
+    title = "Doctor, elige a quién proteger";
+    text = player?.role === "doctor" && player.alive ? "Decide sin prisa. No hay límite de tiempo." : "Mantén los ojos cerrados. El Doctor está eligiendo su protección.";
+    icon = "doctor";
+    phaseLabel = "Actúa el Doctor";
+    cycle = `Noche ${room.nightNumber}`;
+  } else if (phase === "night_open") {
+    title = "Se hace de día";
+    text = "Todos abren los ojos a la cuenta de cinco. Después comienza la votación, sin límite de tiempo.";
+    icon = "wake";
+    phaseLabel = "Despertar";
+    cycle = `Noche ${room.nightNumber}`;
+  } else if (phase === "hunter_shot") {
+    title = `${event.hunterName || "El Cazador"} hace su último disparo`;
+    text = player?.role === "hunter" && !player.alive ? "Elige a un jugador con vida. No hay límite de tiempo." : "El Cazador está eligiendo su último objetivo.";
+    icon = "hunter";
+    phaseLabel = "Actúa el Cazador";
+    cycle = event.cause === "night" ? `Amanecer ${room.dayNumber}` : `Día ${room.dayNumber}`;
+  } else if (phase === "day_vote") {
+    title = room.tieCandidates?.length
+      ? "Empate: votad de nuevo"
+      : event.type === "night-victim"
+        ? `${event.playerName} no sobrevivió a la noche`
+        : event.type === "hunter-fired"
+          ? `${event.targetName} cayó por el Cazador`
+          : "Nadie murió durante la noche";
+    const result = event.role ? `${event.playerName} era ${wolfRoleLabel(event.role)}. ` : "";
+    text = player?.alive && !player.hasVoted
+      ? `${result}Elige a quién expulsar. No hay límite de tiempo.`
+      : `Votos enviados: ${room.votesCast || 0}/${room.votesNeeded || 0}.`;
+    icon = "vote";
+    phaseLabel = room.tieCandidates?.length ? "Desempate" : "Votación de la aldea";
+    cycle = `Día ${room.dayNumber}`;
+  } else if (phase === "day_result") {
+    title = event.type === "player-banished" ? `${event.playerName} fue expulsado` : event.type === "hunter-fired" ? `${event.targetName} cayó por el Cazador` : "Termina el día";
+    text = event.role
+      ? `${event.playerName} era ${wolfRoleLabel(event.role)}. El anfitrión empezará la siguiente noche cuando todos estén preparados.`
+      : "El anfitrión empezará la siguiente noche cuando todos estén preparados.";
+    icon = event.role || "sun";
+    phaseLabel = "Resultado de la votación";
+    cycle = `Día ${room.dayNumber}`;
+  } else if (phase === "finished") {
+    const wolvesWon = room.winner === "werewolves";
+    const wolves = room.players.filter((item) => item.role === "werewolf").map((item) => item.name);
+    const eliminations = (room.lastEliminations || []).map((item) => {
+      const role = item.role ? ` Era ${wolfRoleLabel(item.role)}.` : "";
+      if (item.cause === "night") return `Los lobos devoraron a ${item.playerName}.${role}`;
+      if (item.cause === "vote") return `${item.playerName} fue expulsado por votación.${role}`;
+      return `El Cazador eliminó a ${item.playerName}.${role}`;
+    }).join(" ");
+    const wolfRoster = wolves.length === 1 ? `El lobo era ${wolves[0]}.` : `Los lobos eran ${wolves.join(" y ")}.`;
+    title = wolvesWon ? "Los lobos dominan la aldea" : "La aldea derrotó a los lobos";
+    text = `${eliminations ? `${eliminations} ` : ""}${wolfRoster} ${player?.won ? "Has ganado." : "Has perdido."} El anfitrión puede reiniciar con los mismos jugadores.`;
+    icon = wolvesWon ? "werewolf" : "sun";
+    phaseLabel = "Fin de la partida";
+    cycle = "Final";
+  }
+
+  wolfCycleLabel.textContent = cycle;
+  wolfPhaseLabel.textContent = phaseLabel;
+  wolfNarratorTitle.textContent = title;
+  wolfNarratorText.textContent = text;
+  setWolfIcon(wolfNarratorIcon, icon);
+}
+
+function renderWolfActions(room, player, players) {
+  wolfActionList.hidden = true;
+  wolfActionList.replaceChildren();
+  wolfGameMessage.textContent = "";
+  if (!player || room.status !== "playing") return;
+  const phase = room.phase;
+  const visibleVotes = phase === "night_wolves" ? room.nightVotes || [] : phase === "day_vote" ? room.dayVotes || [] : [];
+  const votersByTarget = new Map();
+  visibleVotes.forEach((vote) => {
+    const names = votersByTarget.get(vote.targetPlayerId) || [];
+    names.push(vote.voterName);
+    votersByTarget.set(vote.targetPlayerId, names);
+  });
+  let canAct = false;
+  let kind = "action";
+  let candidates = [];
+  if (phase === "night_wolves" && player.alive && player.role === "werewolf" && !player.hasActed) {
+    const pack = new Set(player.wolfNames || []);
+    candidates = players.filter((item) => item.alive && !pack.has(item.name));
+    canAct = true;
+  } else if (phase === "night_seer" && player.alive && player.role === "seer" && !player.hasActed) {
+    candidates = players.filter((item) => item.alive && item.id !== player.id);
+    canAct = true;
+  } else if (phase === "night_doctor" && player.alive && player.role === "doctor" && !player.hasActed) {
+    candidates = players.filter((item) => item.alive && item.id !== player.lastProtectedId);
+    canAct = true;
+  } else if (phase === "hunter_shot" && player.role === "hunter" && !player.alive && !player.hasActed) {
+    candidates = players.filter((item) => item.alive && item.id !== player.id);
+    canAct = true;
+  } else if (phase === "day_vote" && player.alive && !player.hasVoted) {
+    const tied = new Set(room.tieCandidates || []);
+    candidates = players.filter((item) => item.alive && item.id !== player.id && (!tied.size || tied.has(item.id)));
+    canAct = true;
+    kind = "vote";
+  }
+  if (!canAct) {
+    if ((player.hasActed && String(phase).startsWith("night_")) || player.hasVoted) wolfGameMessage.textContent = "Elección enviada. El narrador espera a los demás jugadores. El anfitrión puede saltar la fase si alguien queda inactivo.";
+    return;
+  }
+  wolfActionList.hidden = false;
+  wolfActionList.replaceChildren(...candidates.map((target) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "wolf-target-button";
+    button.dataset.wolfTargetId = target.id;
+    button.dataset.wolfTargetKind = kind;
+    const voterNames = votersByTarget.get(target.id) || [];
+    button.classList.toggle("has-visible-votes", voterNames.length > 0);
+    const avatar = createWolfPlayerIcon(target.role || "unknown", "wolf-target-icon");
+    const copy = document.createElement("div");
+    const name = document.createElement("strong");
+    const hint = document.createElement("small");
+    name.textContent = target.name;
+    hint.textContent = voterNames.length
+      ? `Votado por: ${voterNames.join(", ")}`
+      : kind === "vote" ? "Expulsar de la aldea" : phase === "night_doctor" ? "Proteger esta noche" : phase === "night_seer" ? "Investigar rol" : "Elegir objetivo";
+    copy.append(name, hint);
+    button.append(avatar, copy);
+    return button;
+  }));
+}
+
+function renderWolfVoteSummary(room) {
+  if (!wolfVoteSummary) return;
+  wolfVoteSummary.hidden = true;
+  wolfVoteSummary.replaceChildren();
+  const tiedRoundFinished = room.phase === "day_vote" && room.lastEvent?.type === "vote-tie";
+  const finalResultVisible = ["day_result", "hunter_shot", "finished"].includes(room.phase);
+  const votes = room.lastDayVotes || [];
+  if ((!tiedRoundFinished && !finalResultVisible) || !votes.length) return;
+
+  const outcome = room.lastDayVoteOutcome || {};
+  const highlighted = new Set(outcome.targetPlayerIds || []);
+  const results = new Map();
+  votes.forEach((vote) => {
+    const current = results.get(vote.targetPlayerId) || {
+      targetPlayerId: vote.targetPlayerId,
+      targetName: vote.targetName,
+      voters: []
+    };
+    current.voters.push(vote.voterName);
+    results.set(vote.targetPlayerId, current);
+  });
+
+  const heading = document.createElement("strong");
+  const grid = document.createElement("div");
+  heading.textContent = outcome.type === "tie" ? "Resultado: empate" : "Resultado de la votación";
+  grid.className = "wolf-vote-result-grid";
+  [...results.values()]
+    .sort((a, b) => b.voters.length - a.voters.length || a.targetName.localeCompare(b.targetName, "es"))
+    .forEach((result) => {
+      const target = room.players.find((item) => item.id === result.targetPlayerId);
+      const card = document.createElement("article");
+      const copy = document.createElement("div");
+      const name = document.createElement("strong");
+      const count = document.createElement("small");
+      const voters = document.createElement("span");
+      card.className = "wolf-vote-result-card";
+      if (highlighted.has(result.targetPlayerId)) card.classList.add(outcome.type === "tie" ? "is-tied" : "is-eliminated");
+      name.textContent = result.targetName;
+      count.textContent = `${result.voters.length} ${result.voters.length === 1 ? "voto" : "votos"}`;
+      voters.className = "wolf-vote-result-voters";
+      voters.textContent = `Votaron: ${result.voters.join(", ")}`;
+      copy.append(name, count);
+      card.append(createWolfPlayerIcon(target?.role || "unknown", "wolf-target-icon"), copy);
+      if (highlighted.has(result.targetPlayerId)) {
+        const badge = document.createElement("b");
+        badge.className = "wolf-vote-result-badge";
+        badge.textContent = outcome.type === "tie" ? "Empate" : "Expulsado";
+        card.append(badge);
+      }
+      card.append(voters);
+      grid.append(card);
+    });
+  wolfVoteSummary.append(heading, grid);
+  wolfVoteSummary.hidden = false;
+}
+
+function syncWolfCountdown(room) {
+  clearInterval(wolfCountdownTimer);
+  wolfCountdownTimer = null;
+  const endsAt = Number(room.phaseEndsAt || 0);
+  if (!endsAt || room.status !== "playing") {
+    wolfCountdown.hidden = true;
+    return;
+  }
+  const offset = Number(room.serverTime || Date.now()) - Date.now();
+  const phaseKey = `${room.phase}:${room.phaseStartedAt}`;
+  const showsCountdown = wolfPhaseOpensEyes(room.phase);
+  if (isWolfNarratedTransitionPhase(room.phase) && wolfNarrationAudio?.wolfPhaseKey === phaseKey) {
+    wolfCountdown.hidden = true;
+    return;
+  }
+  const update = () => {
+    const remaining = Math.max(0, endsAt - (Date.now() + offset));
+    const seconds = Math.ceil(remaining / 1000);
+    wolfCountdown.hidden = !showsCountdown || remaining > 5000 || remaining <= 0;
+    if (showsCountdown && remaining > 0 && remaining <= 5000) wolfCountdownValue.textContent = String(seconds);
+    if (remaining <= 0) {
+      clearInterval(wolfCountdownTimer);
+      wolfCountdownTimer = null;
+      if (wolfSoundedPhaseKey !== phaseKey) {
+        wolfSoundedPhaseKey = phaseKey;
+        playWolfPhaseEndCue(room.phase);
+        void pollWolfRoom();
+      }
+    }
+  };
+  update();
+  if (wolfCountdownTimer === null && endsAt > Date.now() + offset) wolfCountdownTimer = window.setInterval(update, 200);
+}
+
+function openWolfRoleSetup() {
+  if (!wolfSession?.isHost || wolfRoom?.status !== "lobby" || (wolfRoom.players?.length || 0) < (wolfRoom.minPlayers || 5)) return;
+  applyRecommendedWolfRoles();
+  wolfRoleSetup.hidden = false;
+  wolfPrimaryButton.hidden = true;
+}
+
+function handleWolfPrimaryAction() {
+  if (wolfRoom?.status === "playing" && ["role_reveal", "day_result"].includes(wolfRoom.phase)) {
+    void startWolfSequenceClient();
+    return;
+  }
+  openWolfRoleSetup();
+}
+
+function closeWolfRoleSetup() {
+  if (wolfRoleSetup) wolfRoleSetup.hidden = true;
+  if (wolfRoom) renderWolfPrimaryButtonOnly();
+}
+
+function renderWolfPrimaryButtonOnly() {
+  if (!wolfPrimaryButton || !wolfRoom || !wolfSession) return;
+  const canStartSequence = wolfRoom.status === "playing" && ["role_reveal", "day_result"].includes(wolfRoom.phase) && wolfSession.isHost;
+  if (canStartSequence) {
+    wolfPrimaryButton.hidden = false;
+    wolfPrimaryButton.disabled = false;
+    wolfPrimaryButton.textContent = wolfRoom.phase === "day_result" ? "Empezar la siguiente noche" : "Empezar la secuencia nocturna";
+    return;
+  }
+  const show = wolfRoom.status === "lobby" && wolfSession.isHost && wolfRoleSetup.hidden;
+  wolfPrimaryButton.hidden = !show;
+  if (show) {
+    const count = wolfRoom.players?.length || 0;
+    const ready = count >= (wolfRoom.minPlayers || 5);
+    wolfPrimaryButton.disabled = !ready;
+    wolfPrimaryButton.textContent = ready ? "Configurar roles y empezar" : `Esperando jugadores (${count}/${wolfRoom.minPlayers || 5})`;
+  }
+}
+
+function applyRecommendedWolfRoles() {
+  const recommended = wolfRoom?.recommendation || { werewolf: 1, seer: true, doctor: true, hunter: false };
+  wolfRoleDraft = { ...recommended };
+  wolfWerewolfCount.value = String(wolfRoleDraft.werewolf);
+  wolfWerewolfCount.textContent = String(wolfRoleDraft.werewolf);
+  wolfUseSeer.checked = Boolean(wolfRoleDraft.seer);
+  wolfUseDoctor.checked = Boolean(wolfRoleDraft.doctor);
+  wolfUseHunter.checked = Boolean(wolfRoleDraft.hunter);
+  wolfUseHunter.disabled = (wolfRoom?.players?.length || 0) < 7;
+  syncWolfRoleDraft();
+}
+
+function changeWolfCount(delta) {
+  syncWolfRoleDraft();
+  const players = wolfRoom?.players?.length || 5;
+  const max = Math.max(1, Math.floor((players - 1) / 2));
+  wolfRoleDraft.werewolf = Math.max(1, Math.min(max, Number(wolfRoleDraft.werewolf || 1) + delta));
+  wolfWerewolfCount.value = String(wolfRoleDraft.werewolf);
+  wolfWerewolfCount.textContent = String(wolfRoleDraft.werewolf);
+  syncWolfRoleDraft();
+}
+
+function syncWolfRoleDraft() {
+  if (!wolfRoom || !wolfWerewolfCount) return;
+  if ((wolfRoom.players?.length || 0) < 7) wolfUseHunter.checked = false;
+  wolfRoleDraft = {
+    werewolf: Math.max(1, Number(wolfWerewolfCount.value || wolfWerewolfCount.textContent || 1)),
+    seer: Boolean(wolfUseSeer.checked),
+    doctor: Boolean(wolfUseDoctor.checked),
+    hunter: Boolean(wolfUseHunter.checked)
+  };
+  const players = wolfRoom.players?.length || 0;
+  const assigned = wolfRoleDraft.werewolf + Number(wolfRoleDraft.seer) + Number(wolfRoleDraft.doctor) + Number(wolfRoleDraft.hunter);
+  const villagers = players - assigned;
+  const maxWolves = Math.max(1, Math.floor((players - 1) / 2));
+  const valid = players >= (wolfRoom.minPlayers || 5) && wolfRoleDraft.werewolf <= maxWolves && villagers >= 1;
+  wolfRoleSummary.textContent = valid
+    ? `${wolfRoleDraft.werewolf} ${wolfRoleDraft.werewolf === 1 ? "Lobo" : "Lobos"}, ${villagers} ${villagers === 1 ? "Aldeano" : "Aldeanos"}${wolfRoleDraft.seer ? ", Vidente" : ""}${wolfRoleDraft.doctor ? ", Doctor" : ""}${wolfRoleDraft.hunter ? ", Cazador" : ""}.`
+    : "Debe quedar al menos un Aldeano y los Lobos deben ser menos de la mitad.";
+  wolfConfirmStart.disabled = !valid;
+  wolfMinusWerewolf.disabled = wolfRoleDraft.werewolf <= 1;
+  wolfPlusWerewolf.disabled = wolfRoleDraft.werewolf >= maxWolves;
+}
+
+async function startWolfGameClient() {
+  if (!wolfSession?.isHost || !wolfRoom) return;
+  syncWolfRoleDraft();
+  wolfConfirmStart.disabled = true;
+  try {
+    unlockWolfAudio();
+    const payload = await wolfPost("start", { roles: wolfRoleDraft });
+    wolfRoom = payload;
+    closeWolfRoleSetup();
+    renderWolfRoom(payload);
+    window.scrollTo(0, 0);
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+  } finally {
+    wolfConfirmStart.disabled = false;
+  }
+}
+
+async function startWolfSequenceClient() {
+  if (!wolfSession?.isHost || wolfRoom?.status !== "playing" || !["role_reveal", "day_result"].includes(wolfRoom.phase)) return;
+  wolfPrimaryButton.disabled = true;
+  unlockWolfAudio();
+  try {
+    const payload = await wolfPost("start-sequence");
+    wolfRoom = payload;
+    renderWolfRoom(payload);
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+    wolfPrimaryButton.disabled = false;
+  }
+}
+
+async function submitWolfTarget(event) {
+  const button = event.target.closest("[data-wolf-target-id]");
+  if (!button || !wolfSession) return;
+  button.disabled = true;
+  try {
+    const previousPhase = wolfRoom?.phase;
+    const payload = await wolfPost(button.dataset.wolfTargetKind === "vote" ? "vote" : "action", { targetPlayerId: button.dataset.wolfTargetId });
+    wolfRoom = payload;
+    renderWolfRoom(payload);
+    if (payload.phase === previousPhase) playWolfCue("choice");
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+    button.disabled = false;
+  }
+}
+
+function kickWolfPlayerClient(event) {
+  const button = event.target.closest("[data-wolf-kick-id]");
+  if (button) {
+    if (wolfSession?.isHost) showRoomKickPopup("wolf", button.dataset.wolfKickId);
+    return;
+  }
+  const card = event.target.closest("[data-player-id]");
+  if (!card || !wolfRoom?.test?.enabled) return;
+  selectWolfTestView(card.dataset.playerId);
+}
+
+function handleWolfPlayerKeydown(event) {
+  if (!wolfRoom?.test?.enabled || !["Enter", " "].includes(event.key)) return;
+  const card = event.target.closest("[data-player-id]");
+  if (!card) return;
+  event.preventDefault();
+  selectWolfTestView(card.dataset.playerId);
+}
+
+function selectWolfTestView(playerId) {
+  if (!playerId || !wolfRoom?.test?.enabled) return;
+  wolfTestViewId = playerId;
+  wolfTestAutoFollowEnabled = false;
+  if (wolfTestAutoFollow) wolfTestAutoFollow.checked = false;
+  void pollWolfRoom();
+}
+
+function toggleWolfTestAutoFollow() {
+  wolfTestAutoFollowEnabled = Boolean(wolfTestAutoFollow?.checked);
+  void pollWolfRoom();
+}
+
+async function skipWolfTestPhaseClient() {
+  if (!wolfRoom?.canHostSkip) return;
+  wolfTestSkipButton.disabled = true;
+  try {
+    const skippedPhase = wolfRoom.phase;
+    stopWolfNarrationAudio();
+    playWolfPhaseEndCue(skippedPhase);
+    const payload = await wolfPost("skip-phase");
+    wolfRoom = payload;
+    renderWolfRoom(payload);
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+    wolfTestSkipButton.disabled = false;
+  }
+}
+
+async function performWolfKick(targetPlayerId, control = null) {
+  if (!targetPlayerId || !wolfSession?.isHost) return;
+  if (control) control.disabled = true;
+  try {
+    const payload = await wolfPost("kick", { targetPlayerId });
+    hideRoomKickPopup("wolf");
+    wolfRoom = payload;
+    renderWolfRoom(payload);
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+    if (control) control.disabled = false;
+  }
+}
+
+async function restartWolfGameClient() {
+  if (!wolfSession?.isHost || !window.confirm("¿Reiniciar la partida y devolver a todos los jugadores a la configuración de roles?")) return;
+  wolfRestartButton.disabled = true;
+  try {
+    const payload = await wolfPost("restart");
+    wolfRoom = payload;
+    renderWolfRoom(payload);
+    window.scrollTo(0, 0);
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+  } finally {
+    wolfRestartButton.disabled = false;
+  }
+}
+
+async function shareWolfRoom() {
+  if (!wolfSession) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("wolf", wolfSession.roomName);
+  await navigator.clipboard.writeText(url.toString());
+  flashButton(wolfShareButton, "Copiado", "🔗 Copiar enlace");
+}
+
+function leaveWolfToMenu() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("wolf");
+  window.history.replaceState({}, "", url);
+  leaveWolfRoomClient({ notify: true, forget: true });
+  showWolfLobby();
+}
+
+function leaveWolfRoomClient({ notify = false, forget = false } = {}) {
+  const session = wolfSession;
+  if (notify && session) {
+    const url = `/api/wolf/rooms/${encodeURIComponent(session.roomName)}/leave`;
+    const body = JSON.stringify({ playerId: session.playerId, token: session.token });
+    void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+  }
+  clearInterval(wolfPollTimer);
+  clearInterval(wolfCountdownTimer);
+  wolfPollTimer = null;
+  wolfCountdownTimer = null;
+  wolfSession = null;
+  wolfRoom = null;
+  wolfShownEventId = "";
+  wolfSoundedPhaseKey = "";
+  wolfSpokenPhaseKey = "";
+  wolfSpokenCountdownSecond = 0;
+  stopWolfNarrationAudio();
+  wolfTestViewId = "";
+  wolfTestAutoFollowEnabled = true;
+  if (forget) clearStoredWolfSession();
+  closeWolfRoleSetup();
+}
+
+async function wolfPost(action, extra = {}) {
+  if (!wolfSession) throw new Error("No hay una sesión activa de Hombres Lobo");
+  const response = await fetch(`/api/wolf/rooms/${encodeURIComponent(wolfSession.roomName)}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      playerId: wolfSession.playerId,
+      token: wolfSession.token,
+      asPlayerId: wolfTestViewId || wolfRoom?.player?.id || "",
+      autoFollow: wolfTestAutoFollowEnabled,
+      ...extra
+    })
+  });
+  const payload = await readJsonResponse(response);
+  if (!response.ok) throw new Error(payload.error || "Falló la solicitud de la sala de Hombres Lobo");
+  return payload;
+}
+
+function storeWolfSession(session) {
+  try { localStorage.setItem(WOLF_SESSION_STORAGE_KEY, JSON.stringify(session)); } catch {}
+}
+
+function readWolfSession() {
+  try { return JSON.parse(localStorage.getItem(WOLF_SESSION_STORAGE_KEY) || "null"); } catch { return null; }
+}
+
+function clearStoredWolfSession() {
+  try { localStorage.removeItem(WOLF_SESSION_STORAGE_KEY); } catch {}
+}
+
+function wolfRoleLabel(role) {
+  return ({ werewolf: "Lobo", villager: "Aldeano", seer: "Vidente", doctor: "Doctor", hunter: "Cazador" })[role] || "Rol desconocido";
+}
+
+function wolfNightRoleCallLabel(role, sentenceStart = false) {
+  const label = ({ werewolf: "los Lobos", seer: "la Vidente", doctor: "el Doctor" })[role] || "el siguiente rol";
+  return sentenceStart ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : label;
+}
+
+function wolfNightRoleSleepCommand(role) {
+  return ({
+    werewolf: "Lobos, cerrad los ojos",
+    seer: "Vidente, cierra los ojos",
+    doctor: "Doctor, cierra los ojos"
+  })[role] || "Rol activo, cierra los ojos";
+}
+
+function wolfNightRoleOpenCommand(role) {
+  return ({
+    werewolf: "Los hombres lobo abren los ojos",
+    seer: "La Vidente abre los ojos",
+    doctor: "El Doctor abre los ojos"
+  })[role] || "El siguiente rol abre los ojos";
+}
+
+function wolfNightRoleOpenInstruction(role) {
+  return ({
+    werewolf: "Tras la señal, elegid a vuestra víctima. Sin límite de tiempo.",
+    seer: "Tras la señal, elige a quién investigar. Sin límite de tiempo.",
+    doctor: "Tras la señal, elige a quién proteger. Sin límite de tiempo."
+  })[role] || "Actúa tras la señal. Sin límite de tiempo.";
+}
+
+function isWolfNarratedTransitionPhase(phase) {
+  return ["night_close", "night_role_open", "night_open"].includes(phase);
+}
+
+function wolfPhaseOpensEyes(phase) {
+  return phase === "night_role_open" || phase === "night_open";
+}
+
+function syncWolfNarration(room, player) {
+  const phaseKey = `${room.phase}:${room.phaseStartedAt}`;
+  if (wolfSpokenPhaseKey === phaseKey) return;
+  wolfSpokenPhaseKey = phaseKey;
+  wolfSpokenCountdownSecond = 0;
+  stopWolfNarrationAudio();
+  if (room.status === "lobby") return;
+  const clip = getWolfNarrationClip(room, player);
+  if (!clip) return;
+  const audio = new Audio(`/audio/wolf/${clip}.wav`);
+  const transition = isWolfNarratedTransitionPhase(room.phase);
+  audio.preload = "auto";
+  audio.volume = 1;
+  audio.wolfPhaseKey = phaseKey;
+  wolfNarrationAudio = audio;
+  if (transition) {
+    audio.addEventListener("timeupdate", () => {
+      if (wolfNarrationAudio !== audio || !Number.isFinite(audio.duration)) return;
+      const remaining = Math.max(0, Math.ceil(audio.duration - audio.currentTime));
+      const showsCountdown = wolfPhaseOpensEyes(room.phase);
+      wolfCountdown.hidden = !showsCountdown || remaining > 5 || remaining <= 0;
+      if (showsCountdown && remaining > 0 && remaining <= 5) wolfCountdownValue.textContent = String(remaining);
+    });
+    audio.addEventListener("ended", () => {
+      if (wolfNarrationAudio !== audio) return;
+      wolfCountdown.hidden = true;
+      void finishWolfNarratedTransition(room.eventId, phaseKey, room.phase);
+    });
+  } else {
+    audio.addEventListener("ended", () => {
+      if (wolfNarrationAudio === audio) wolfNarrationAudio = null;
+    });
+  }
+  void audio.play().catch(() => {
+    if (wolfNarrationAudio !== audio) return;
+    wolfNarrationAudio = null;
+    if (transition) syncWolfCountdown(room);
+  });
+}
+
+function getWolfNarrationClip(room, player) {
+  const event = room.lastEvent || {};
+  if (room.phase === "night_close") return `${event.completedRole || "all"}-close`;
+  if (room.phase === "night_role_open") return `${event.nextRole || "werewolf"}-open`;
+  if (room.phase === "night_open") return "village-open";
+  if (room.phase === "hunter_shot") return "hunter-act";
+  if (room.phase === "day_vote") return room.tieCandidates?.length ? "vote-tie" : "";
+  if (room.phase === "day_result") return event.type === "hunter-fired" ? "day-hunter" : "day-banished";
+  if (room.phase === "finished") return room.winner === "village" ? "village-wins" : "werewolves-win";
+  return "";
+}
+
+function stopWolfNarrationAudio() {
+  if (!wolfNarrationAudio) return;
+  wolfNarrationAudio.pause();
+  wolfNarrationAudio.currentTime = 0;
+  wolfNarrationAudio = null;
+  wolfCountdown.hidden = true;
+}
+
+async function finishWolfNarratedTransition(eventId, phaseKey, phase) {
+  if (!wolfSession || wolfSpokenPhaseKey !== phaseKey) return;
+  if (wolfSoundedPhaseKey !== phaseKey) {
+    wolfSoundedPhaseKey = phaseKey;
+    playWolfPhaseEndCue(phase);
+  }
+  try {
+    const payload = await wolfPost("narration-complete", { eventId });
+    wolfRoom = payload;
+    renderWolfRoom(payload);
+  } catch (error) {
+    wolfGameMessage.textContent = error.message;
+  }
+}
+
+function createWolfPlayerIcon(icon, className) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 64 64");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add(className);
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  svg.append(use);
+  setWolfIcon(svg, icon);
+  return svg;
+}
+
+function setWolfIcon(svg, icon) {
+  const use = svg?.querySelector("use");
+  if (!use) return;
+  const href = `/images/wolf-icons.svg#${["unknown", "werewolf", "villager", "seer", "doctor", "hunter", "sleep", "wake", "sun", "vote"].includes(icon) ? icon : "unknown"}`;
+  use.setAttribute("href", href);
+  use.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
+}
+
+function unlockWolfAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  if (!wolfAudioContext) wolfAudioContext = new AudioContextClass();
+  if (wolfAudioContext.state === "suspended") void wolfAudioContext.resume();
+}
+
+function playWolfPhaseEndCue(phase) {
+  if (phase === "night_role_open" || phase === "night_open") playWolfCue("wake");
+}
+
+function playWolfCue(type) {
+  unlockWolfAudio();
+  if (!wolfAudioContext || wolfAudioContext.state !== "running") return;
+  const now = wolfAudioContext.currentTime;
+  const master = wolfAudioContext.createDynamicsCompressor();
+  master.threshold.setValueAtTime(-14, now);
+  master.knee.setValueAtTime(10, now);
+  master.ratio.setValueAtTime(5, now);
+  master.attack.setValueAtTime(.003, now);
+  master.release.setValueAtTime(.22, now);
+  master.connect(wolfAudioContext.destination);
+  if (type === "wake") {
+    [0, .34, .68].forEach((delay) => {
+      [0, 1].forEach((layer) => {
+        const oscillator = wolfAudioContext.createOscillator();
+        const gain = wolfAudioContext.createGain();
+        const start = now + delay;
+        oscillator.type = layer ? "square" : "sawtooth";
+        oscillator.frequency.setValueAtTime(layer ? 990 : 620, start);
+        oscillator.frequency.exponentialRampToValueAtTime(layer ? 1480 : 1240, start + .25);
+        gain.gain.setValueAtTime(.0001, start);
+        gain.gain.exponentialRampToValueAtTime(layer ? .12 : .2, start + .018);
+        gain.gain.exponentialRampToValueAtTime(.0001, start + .3);
+        oscillator.connect(gain).connect(master);
+        oscillator.start(start);
+        oscillator.stop(start + .32);
+      });
+    });
+    return;
+  }
+  const notes = type === "sleep" ? [523.25, 392, 293.66, 196] : type === "choice" ? [440, 587.33] : [349.23, 440];
+  notes.forEach((frequency, index) => {
+    const oscillator = wolfAudioContext.createOscillator();
+    const gain = wolfAudioContext.createGain();
+    const start = now + index * (type === "sleep" ? .24 : .18);
+    oscillator.type = type === "sleep" ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    if (type === "sleep") oscillator.frequency.exponentialRampToValueAtTime(Math.max(90, frequency * .72), start + .42);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(type === "sleep" ? .22 : .11, start + .025);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + (type === "sleep" ? .48 : .35));
+    oscillator.connect(gain).connect(master);
+    oscillator.start(start);
+    oscillator.stop(start + .52);
+  });
 }
 
 function showScoreboardLobby() {
@@ -6596,6 +7702,14 @@ function applyLanguage() {
   if (scoreboardRoom && !document.querySelector("#scoreboardView")?.hidden) renderScoreboardRoom(scoreboardRoom);
 }
 
+function applyWolfRoomFromUrl() {
+  const roomName = new URLSearchParams(window.location.search).get("wolf");
+  if (!roomName) return;
+  showView("wolfView");
+  if (wolfJoinRoomName) wolfJoinRoomName.value = roomName.trim();
+  void restoreWolfSession(roomName.trim());
+}
+
 function applyScoreboardLanguage() {
   const textTargets = [
     ["#homeScoreboardHint", "scoreboard.homeHint"], ["#homeScoreboardPlayers", "scoreboard.homePlayers"],
@@ -6768,11 +7882,13 @@ function showView(targetId) {
   if (targetId !== "gameView" && document.querySelector("#gameView")?.classList.contains("active")) leaveMultiplayerRoom();
   if (targetId !== "impostorView" && document.querySelector("#impostorView")?.classList.contains("active")) leaveimpostorRoom();
   if (targetId !== "resistanceView" && document.querySelector("#resistanceView")?.classList.contains("active")) leaveResistanceRoom();
+  if (targetId !== "wolfView" && document.querySelector("#wolfView")?.classList.contains("active")) leaveWolfRoomClient({ notify: false, forget: false });
   if (targetId !== "masterWordView" && document.querySelector("#masterWordView")?.classList.contains("active")) leaveMasterWordRoom();
   if (targetId !== "scoreboardView" && document.querySelector("#scoreboardView")?.classList.contains("active")) leaveScoreboardRoom();
   document.body.classList.toggle("arcade-game-active", targetId === "gameView");
   document.body.classList.toggle("impostor-active", targetId === "impostorView");
   document.body.classList.toggle("resistance-active", targetId === "resistanceView");
+  document.body.classList.toggle("wolf-active", targetId === "wolfView");
   document.body.classList.toggle("masterword-active", targetId === "masterWordView");
   document.body.classList.toggle("scoreboard-active", targetId === "scoreboardView");
 
@@ -6790,6 +7906,7 @@ function showView(targetId) {
   if (targetId === "gameView" && gamePhase === "challenge") showChallengeSetup();
   if (targetId === "impostorView") showimpostorLobby();
   if (targetId === "resistanceView") showResistanceLobby();
+  if (targetId === "wolfView") showWolfLobby();
   if (targetId === "masterWordView") showMasterWordLobby();
   if (targetId === "scoreboardView") showScoreboardLobby();
   if (targetId === "scoreboardView") window.scrollTo(0, 0);
@@ -9488,6 +10605,7 @@ showChallengeSetup();
 applyInviteRoomFromUrl();
 applyimpostorRoomFromUrl();
 applyResistanceRoomFromUrl();
+applyWolfRoomFromUrl();
 applyMasterWordRoomFromUrl();
 applyScoreboardRoomFromUrl();
 setGameBusy(true);

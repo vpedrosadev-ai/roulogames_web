@@ -6,5 +6,6 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 await mkdir(path.join(root, "public"), { recursive: true });
 await copyFile(path.join(root, "worker.js"), path.join(root, "public", "_worker.js"));
+await copyFile(path.join(root, "wolf-engine.js"), path.join(root, "public", "wolf-engine.js"));
 
 console.log("Cloudflare Pages build ready: public/_worker.js created");

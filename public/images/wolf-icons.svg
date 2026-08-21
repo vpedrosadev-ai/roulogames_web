@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="unknown" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="25" fill="currentColor" opacity=".16"/>
+    <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" stroke-width="3.5"/>
+    <path d="M23 24c1-7 6-11 13-11 8 0 13 5 13 12 0 6-3 9-9 12-5 2-7 5-7 10M33 54h.1" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="werewolf" viewBox="0 0 64 64">
+    <path d="M13 9l13 9h12L51 9l-3 19c4 5 5 12 2 18-4 8-11 12-18 12S18 54 14 46c-3-6-2-13 2-18L13 9z" fill="currentColor" opacity=".2"/>
+    <path d="M13 9l13 9h12L51 9l-3 19c4 5 5 12 2 18-4 8-11 12-18 12S18 54 14 46c-3-6-2-13 2-18L13 9zM22 35l7 3m13-3l-7 3m-7 10l4 4 4-4M20 20l5 8m19-8l-5 8" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="villager" viewBox="0 0 64 64">
+    <circle cx="32" cy="21" r="10" fill="currentColor" opacity=".2"/>
+    <path d="M16 56c1-13 7-20 16-20s15 7 16 20M22 20c1-8 5-12 10-12s9 4 10 12M25 22h.1M39 22h.1M28 28c2 2 6 2 8 0" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="seer" viewBox="0 0 64 64">
+    <path d="M7 32s9-15 25-15 25 15 25 15-9 15-25 15S7 32 7 32z" fill="currentColor" opacity=".18"/>
+    <path d="M7 32s9-15 25-15 25 15 25 15-9 15-25 15S7 32 7 32z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+    <circle cx="32" cy="32" r="7" fill="none" stroke="currentColor" stroke-width="3.5"/>
+    <path d="M32 4v6M12 10l4 5M52 10l-4 5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="doctor" viewBox="0 0 64 64">
+    <path d="M32 57S9 45 9 25c0-9 6-15 14-15 5 0 8 2 9 6 2-4 5-6 10-6 8 0 14 6 14 15 0 20-24 32-24 32z" fill="currentColor" opacity=".18"/>
+    <path d="M32 57S9 45 9 25c0-9 6-15 14-15 5 0 8 2 9 6 2-4 5-6 10-6 8 0 14 6 14 15 0 20-24 32-24 32zM32 24v17M24 32h16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="hunter" viewBox="0 0 64 64">
+    <path d="M9 52L50 11m-30 0h30v30M9 52l13-4-9-9-4 13z" fill="currentColor" opacity=".18"/>
+    <path d="M9 52L50 11m-30 0h30v30M9 52l13-4-9-9-4 13zM37 14l10 10M14 37l10 10" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="sleep" viewBox="0 0 64 64">
+    <path d="M42 7c-3 2-5 6-5 10 0 8 7 15 15 15 2 0 4 0 5-1-3 10-12 18-23 18-13 0-23-10-23-23C11 15 20 6 31 4c4-1 8 0 11 3z" fill="currentColor" opacity=".2"/>
+    <path d="M42 7c-3 2-5 6-5 10 0 8 7 15 15 15 2 0 4 0 5-1-3 10-12 18-23 18-13 0-23-10-23-23C11 15 20 6 31 4c4-1 8 0 11 3zM39 43h12l-12 12h12" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="wake" viewBox="0 0 64 64">
+    <path d="M18 43h28l-4-6V26c0-6-4-11-10-11s-10 5-10 11v11l-4 6z" fill="currentColor" opacity=".2"/>
+    <path d="M18 43h28l-4-6V26c0-6-4-11-10-11s-10 5-10 11v11l-4 6zM27 49c1 4 9 4 10 0M32 4v5M10 18l6 3M54 18l-6 3M14 40H7M57 40h-7" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="sun" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="12" fill="currentColor" opacity=".2"/>
+    <circle cx="32" cy="32" r="12" fill="none" stroke="currentColor" stroke-width="3.5"/>
+    <path d="M32 5v8M32 51v8M5 32h8M51 32h8M13 13l6 6M45 45l6 6M51 13l-6 6M19 45l-6 6" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="vote" viewBox="0 0 64 64">
+    <path d="M18 31l14-18 14 18-7 1v13H25V32l-7-1zM12 45h40v12H12z" fill="currentColor" opacity=".18"/>
+    <path d="M18 31l14-18 14 18-7 1v13H25V32l-7-1zM12 45h40v12H12z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+  </symbol>
+</svg>

@@ -1,3 +1,25 @@
+import {
+  WolfGameError,
+  authenticateWolfPlayer,
+  completeWolfNarration,
+  createWolfRoom,
+  isWolfHostConnected,
+  kickWolfPlayer,
+  leaveWolfRoom,
+  normalizeWolfIdentity,
+  normalizeWolfRoomKey,
+  replaceOrJoinWolfPlayer,
+  resolveWolfTestViewPlayer,
+  restartWolfGame,
+  skipWolfPhase,
+  startWolfGame,
+  startWolfSequence,
+  submitWolfAction,
+  submitWolfVote,
+  touchWolfRoom,
+  wolfRoomResponse
+} from "./wolf-engine.js";
+
 const jobs = new Map();
 const SONG_GROUPS = [
   {
@@ -537,6 +559,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/multiplayer/rooms") return createMultiplayerRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(request, env);
       if (request.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(request, env);
+      if (request.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomWorker(request, env);
       if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
       if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
       if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
@@ -603,6 +626,11 @@ export default {
       if (request.method === "POST" && resistanceRestartMatch) return restartResistanceGame(request, resistanceRestartMatch[1], env);
       const resistanceLeaveMatch = url.pathname.match(/^\/api\/resistance\/rooms\/([^/]+)\/leave$/);
       if (request.method === "POST" && resistanceLeaveMatch) return leaveResistanceRoom(request, resistanceLeaveMatch[1], env);
+
+      const wolfRoomMatch = url.pathname.match(/^\/api\/wolf\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && wolfRoomMatch) return getWolfRoomWorker(wolfRoomMatch[1], request, env);
+      const wolfActionMatch = url.pathname.match(/^\/api\/wolf\/rooms\/([^/]+)\/(join|start|start-sequence|action|vote|kick|restart|skip-phase|test-skip|narration-complete|leave)$/);
+      if (request.method === "POST" && wolfActionMatch) return handleWolfRoomActionWorker(request, wolfActionMatch[1], wolfActionMatch[2], env);
 
       const masterWordRoomMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)$/);
       if (request.method === "GET" && masterWordRoomMatch) return getMasterWordRoom(masterWordRoomMatch[1], request, env);
@@ -4344,4 +4372,122 @@ function decodeHtml(value) {
     .replaceAll("&#39;", "'")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">");
+}
+
+async function createWolfRoomWorker(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const room = createWolfRoom(await request.json().catch(() => ({})));
+  if (!room) return json({ error: "Los datos de la sala o del jugador no son válidos" }, 400);
+  const existing = await loadWolfRoomWorker(room.key, env);
+  if (existing && isWolfHostConnected(existing)) return json({ error: "Ese nombre de sala ya está en uso" }, 409);
+  if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(wolfStorageKey(room.key)).run();
+  const saved = await saveWolfRoomWorker(room, env, true);
+  if (!saved) return json({ error: "No se pudo crear la sala" }, 409);
+  return json(wolfRoomResponse(room, room.players[0]), 201);
+}
+
+async function getWolfRoomWorker(roomName, request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const url = new URL(request.url);
+  try {
+    const result = await mutateWolfRoomWorker(normalizeWolfRoomKey(decodeWolfRoomPathName(roomName)), env, (room) => {
+      const player = touchWolfRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+      return player?.id || "";
+    });
+    const sessionPlayer = result.room.players.find((item) => item.id === result.value) || null;
+    const viewPlayer = resolveWolfTestViewPlayer(result.room, sessionPlayer, url.searchParams.get("viewPlayerId"), url.searchParams.get("autoFollow") === "1");
+    return json(wolfRoomResponse(result.room, viewPlayer, sessionPlayer));
+  } catch (error) {
+    return wolfWorkerError(error);
+  }
+}
+
+async function handleWolfRoomActionWorker(request, roomName, action, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const body = await request.json().catch(() => ({}));
+  try {
+    const result = await mutateWolfRoomWorker(normalizeWolfRoomKey(decodeWolfRoomPathName(roomName)), env, (room) => {
+      if (action === "join") {
+        const identity = normalizeWolfIdentity(body);
+        if (!identity) throw new WolfGameError("Los datos del jugador no son válidos");
+        const joined = replaceOrJoinWolfPlayer(room, identity);
+        return { playerId: joined.player.id, created: joined.created };
+      }
+      const sessionPlayer = authenticateWolfPlayer(room, body);
+      if (!sessionPlayer) throw new WolfGameError("Sesión no válida o reemplazada", 401);
+      const actingPlayer = resolveWolfTestViewPlayer(room, sessionPlayer, body.asPlayerId, false);
+      if (action === "start") startWolfGame(room, sessionPlayer, body.roles);
+      else if (action === "start-sequence") startWolfSequence(room, sessionPlayer);
+      else if (action === "action") submitWolfAction(room, actingPlayer, body.targetPlayerId);
+      else if (action === "vote") submitWolfVote(room, actingPlayer, body.targetPlayerId);
+      else if (action === "kick") kickWolfPlayer(room, sessionPlayer, String(body.targetPlayerId || ""));
+      else if (action === "restart") restartWolfGame(room, sessionPlayer);
+      else if (action === "skip-phase" || action === "test-skip") skipWolfPhase(room, sessionPlayer);
+      else if (action === "narration-complete") completeWolfNarration(room, sessionPlayer, body.eventId);
+      else if (action === "leave") leaveWolfRoom(room, sessionPlayer);
+      return { playerId: sessionPlayer.id, created: false };
+    });
+    if (action === "leave") return json({ ok: true });
+    const sessionPlayer = result.room.players.find((item) => item.id === result.value.playerId) || null;
+    const viewPlayer = resolveWolfTestViewPlayer(result.room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+    return json(wolfRoomResponse(result.room, viewPlayer, sessionPlayer), action === "join" && result.value.created ? 201 : 200);
+  } catch (error) {
+    return wolfWorkerError(error);
+  }
+}
+
+function decodeWolfRoomPathName(value) {
+  try {
+    return decodeURIComponent(String(value || ""));
+  } catch {
+    return String(value || "");
+  }
+}
+
+async function mutateWolfRoomWorker(key, env, mutator) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const room = await loadWolfRoomWorker(key, env);
+    if (!room) throw new WolfGameError("Sala no encontrada", 404);
+    const value = mutator(room);
+    if (await saveWolfRoomWorker(room, env)) return { room, value };
+  }
+  throw new WolfGameError("La sala cambió al mismo tiempo. Inténtalo de nuevo.", 409);
+}
+
+async function loadWolfRoomWorker(key, env) {
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(wolfStorageKey(key)).first();
+  if (!row?.stateJson) return null;
+  try {
+    return { ...JSON.parse(row.stateJson), _version: Number(row.updatedAt || 0) };
+  } catch {
+    return null;
+  }
+}
+
+async function saveWolfRoomWorker(room, env, create = false) {
+  const previousVersion = Number(room._version || 0);
+  const version = Math.max(Date.now(), previousVersion + 1);
+  room.updatedAt = version;
+  const stateJson = JSON.stringify(room, (key, value) => key === "_version" ? undefined : value);
+  let result;
+  if (create) {
+    result = await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(wolfStorageKey(room.key), stateJson, version).run();
+  } else {
+    result = await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+      .bind(stateJson, version, wolfStorageKey(room.key), previousVersion).run();
+  }
+  const changed = Number(result?.meta?.changes ?? result?.changes ?? 0) > 0;
+  if (changed) room._version = version;
+  return changed;
+}
+
+function wolfStorageKey(key) {
+  return `wolf:${key}`;
+}
+
+function wolfWorkerError(error) {
+  if (error instanceof WolfGameError) return json({ error: error.message }, error.status);
+  throw error;
 }

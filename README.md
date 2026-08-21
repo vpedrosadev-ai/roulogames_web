@@ -1,9 +1,13 @@
 # ROULOGAMES
 
-Two browser games:
+Browser party-game collection, including:
 
 - MANGOless game
 - Impostor GAME
+- La resistencia
+- Hombres Lobo (automatic narrator)
+- Palabra maestra
+- Shared scoreboard
 
 ## Development
 
@@ -11,6 +15,8 @@ Two browser games:
 npm install
 npm run dev
 ```
+
+For single-browser Hombres Lobo QA, enable **Solo test mode** while creating a room. It adds six virtual players, enables Hunter testing, supports player-card viewpoint switching, auto-follows pending actors, and exposes host phase controls.
 
 ## Cloudflare Pages
 

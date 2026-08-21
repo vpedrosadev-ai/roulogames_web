@@ -52,6 +52,7 @@
         <button type="button" class="nav-link" data-view-target="gameView"><span class="nav-icon" aria-hidden="true">♪</span>MANGOless game</button>
         <button type="button" class="nav-link" data-view-target="impostorView"><span class="nav-icon" aria-hidden="true">?</span>Impostor</button>
         <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
+        <button type="button" class="nav-link" data-view-target="wolfView"><span class="nav-icon wolf-nav-icon" aria-hidden="true">W</span>Hombres Lobo</button>
         <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
         <button type="button" class="nav-link" data-view-target="scoreboardView"><span class="nav-icon" aria-hidden="true">#</span>Tabla de puntuacion</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
@@ -105,6 +106,12 @@
               <strong>La resistencia</strong>
               <small id="homeResistanceHint">Misiones, espias y votos secretos</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeResistancePlayers">Min. 5 players</small></em>
+            </button>
+            <button type="button" class="home-menu-card wolf-home-card" data-view-target="wolfView">
+              <svg class="wolf-home-icon" aria-hidden="true"><use href="/images/wolf-icons.svg#werewolf"></use></svg>
+              <strong>Hombres Lobo</strong>
+              <small>Una aldea de roles ocultos, ataques nocturnos y votaciones diurnas</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small>Mín. 5 jugadores</small></em>
             </button>
             <button type="button" class="home-menu-card" data-view-target="masterWordView">
               <span aria-hidden="true">M</span>
@@ -415,6 +422,109 @@
             </header>
             <div id="resistanceRoundPopupBody" class="resistance-round-popup-body"></div>
           </div>
+        </section>
+
+        <section id="wolfView" class="view wolf-view" aria-labelledby="wolfTitle" hidden>
+          <section id="wolfLobby" class="wolf-lobby" aria-label="Sala de Hombres Lobo">
+            <header class="wolf-hero">
+              <svg aria-hidden="true"><use href="/images/wolf-icons.svg#werewolf"></use></svg>
+              <div>
+                <span>Deducción social bajo la luna</span>
+                <h1 id="wolfTitle">Hombres Lobo</h1>
+                <p>Sobrevive cada noche, descubre a los lobos ocultos y deja que el juego narre cada fase.</p>
+              </div>
+            </header>
+            <div id="wolfChoice" class="wolf-choice">
+              <button type="button" id="wolfChooseCreate" class="wolf-choice-button"><span aria-hidden="true">+</span><strong>Crear sala</strong><small>No hace falta indicar jugadores</small></button>
+              <button type="button" id="wolfChooseJoin" class="wolf-choice-button"><span aria-hidden="true">&#8594;</span><strong>Unirse a una sala</strong><small>Usa el mismo nombre para recuperar tu sesión</small></button>
+            </div>
+            <form id="wolfCreateForm" class="wolf-form" hidden>
+              <h2>Crear aldea</h2>
+              <input id="wolfCreateRoomName" maxlength="16" required placeholder="Nombre de la sala">
+              <input id="wolfCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
+              <label class="wolf-test-create-toggle">
+                <input id="wolfCreateTestMode" type="checkbox">
+                <span><strong>Modo de prueba individual</strong><small>Añade 6 jugadores virtuales. Cambia de punto de vista y prueba todas las acciones, incluido el Cazador.</small></span>
+              </label>
+              <p>La sala se abre al instante. El anfitrión puede configurarla y empezar cuando haya 5 jugadores.</p>
+              <div class="wolf-form-actions">
+                <button type="button" class="secondary" data-wolf-back>Volver</button>
+                <button type="submit">Crear sala</button>
+              </div>
+            </form>
+            <form id="wolfJoinForm" class="wolf-form" hidden>
+              <h2>Unirse a la aldea</h2>
+              <input id="wolfJoinRoomName" maxlength="16" required placeholder="Nombre de la sala">
+              <input id="wolfJoinPlayerName" maxlength="16" required placeholder="Tu nombre">
+              <p>El mismo nombre de sala y jugador recupera tu sesión y reemplaza la anterior.</p>
+              <div class="wolf-form-actions">
+                <button type="button" class="secondary" data-wolf-back>Volver</button>
+                <button type="submit">Unirse</button>
+              </div>
+            </form>
+            <p id="wolfLobbyMessage" class="message" aria-live="polite"></p>
+          </section>
+
+          <section id="wolfGame" class="wolf-game" hidden>
+            <div class="wolf-control-strip">
+              <div class="wolf-room-chip"><span>Aldea</span><strong id="wolfRoomLabel"></strong></div>
+              <div class="wolf-control-actions">
+                <button type="button" id="wolfShareButton" class="secondary"><span aria-hidden="true">&#128279;</span> Copiar enlace</button>
+                <button type="button" id="wolfRestartButton" class="secondary" hidden><span aria-hidden="true">&#8635;</span> Reiniciar</button>
+                <button type="button" id="wolfLeaveButton" class="secondary"><span aria-hidden="true">&#8592;</span> Salir</button>
+              </div>
+            </div>
+            <div class="wolf-table">
+              <aside class="wolf-players-panel" aria-label="Jugadores">
+                <header><span>Jugadores</span><strong id="wolfPlayerCount">0/5</strong></header>
+                <div id="wolfPlayers" class="wolf-players"></div>
+              </aside>
+              <main class="wolf-narrator" aria-live="polite">
+                <div class="wolf-sky" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
+                <section id="wolfTestTools" class="wolf-test-tools" hidden>
+                  <div id="wolfTestViewControls"><span>Modo de prueba individual</span><strong id="wolfTestViewLabel">Viendo como anfitrión</strong></div>
+                  <label id="wolfTestAutoFollowLabel"><input id="wolfTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
+                  <button type="button" id="wolfTestSkipButton" class="secondary">Saltar fase</button>
+                </section>
+                <div class="wolf-phase-kicker"><span id="wolfCycleLabel">Sala de espera</span><strong id="wolfPhaseLabel">La aldea se reúne</strong></div>
+                <svg id="wolfNarratorIcon" class="wolf-narrator-icon" aria-hidden="true"><use href="/images/wolf-icons.svg#werewolf"></use></svg>
+                <div id="wolfCountdown" class="wolf-countdown" hidden><strong id="wolfCountdownValue">7</strong><span>segundos</span></div>
+                <h2 id="wolfNarratorTitle">Reúne a la aldea</h2>
+                <p id="wolfNarratorText">Comparte el enlace. La partida puede empezar cuando haya al menos 5 jugadores.</p>
+
+                <section id="wolfRoleCard" class="wolf-role-card" hidden>
+                  <svg id="wolfRoleIcon" aria-hidden="true"><use href="/images/wolf-icons.svg#villager"></use></svg>
+                  <div><span id="wolfRoleEyebrow">Tu rol secreto</span><strong id="wolfRoleName">Aldeano</strong><p id="wolfRoleHint"></p></div>
+                </section>
+
+                <section id="wolfKnowledge" class="wolf-knowledge" hidden>
+                  <h3>Descubrimientos de la Vidente</h3>
+                  <div id="wolfKnowledgeList"></div>
+                </section>
+
+                <section id="wolfRoleSetup" class="wolf-role-setup" hidden>
+                  <header><div><span>Configuración del anfitrión</span><h3>Elegir roles</h3></div><button type="button" id="wolfRecommendRoles" class="secondary compact-button">Usar recomendados</button></header>
+                  <div class="wolf-role-grid">
+                    <article class="wolf-role-option is-required">
+                      <svg aria-hidden="true"><use href="/images/wolf-icons.svg#werewolf"></use></svg>
+                      <div><strong>Lobos</strong><small>Eligen juntos una víctima cada noche.</small></div>
+                      <div class="wolf-stepper"><button type="button" id="wolfMinusWerewolf" class="secondary" aria-label="Menos lobos">-</button><output id="wolfWerewolfCount">1</output><button type="button" id="wolfPlusWerewolf" class="secondary" aria-label="Más lobos">+</button></div>
+                    </article>
+                    <label class="wolf-role-option"><input id="wolfUseSeer" type="checkbox" checked><svg aria-hidden="true"><use href="/images/wolf-icons.svg#seer"></use></svg><div><strong>Vidente</strong><small>Investiga a un jugador cada noche.</small></div></label>
+                    <label class="wolf-role-option"><input id="wolfUseDoctor" type="checkbox" checked><svg aria-hidden="true"><use href="/images/wolf-icons.svg#doctor"></use></svg><div><strong>Doctor</strong><small>Protege a un jugador cada noche.</small></div></label>
+                    <label class="wolf-role-option"><input id="wolfUseHunter" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#hunter"></use></svg><div><strong>Cazador</strong><small>Desde 7 jugadores: elimina a alguien al morir.</small></div></label>
+                  </div>
+                  <p id="wolfRoleSummary"></p>
+                  <div class="wolf-setup-actions"><button type="button" id="wolfCancelSetup" class="secondary">Cancelar</button><button type="button" id="wolfConfirmStart">Asignar roles y empezar</button></div>
+                </section>
+
+                <div id="wolfActionList" class="wolf-action-list" hidden></div>
+                <section id="wolfVoteSummary" class="wolf-vote-summary" aria-live="polite" hidden></section>
+                <p id="wolfGameMessage" class="message"></p>
+                <button type="button" id="wolfPrimaryButton" class="wolf-primary-button" hidden>Continuar</button>
+              </main>
+            </div>
+          </section>
         </section>
 
         <section id="masterWordView" class="view masterword-view" aria-labelledby="masterWordTitle" hidden>
