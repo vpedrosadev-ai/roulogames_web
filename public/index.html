@@ -297,49 +297,42 @@
                   <div><span>Modo de prueba individual</span><strong id="impostorTestViewLabel">Viendo como anfitrión</strong></div>
                   <label><input id="impostorTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
                 </section>
+                <p id="impostorGameMessage" class="message"></p>
+                <section id="impostorEventPopup" class="impostor-inline-panel impostor-inline-event" hidden>
+                  <header>
+                    <h2 id="impostorEventTitle">Notice</h2>
+                    <button type="button" id="impostorEventClose" class="secondary compact-button">Close</button>
+                  </header>
+                  <div id="impostorEventMessage" class="impostor-event-content"></div>
+                </section>
+                <section id="impostorVotePopup" class="impostor-inline-panel impostor-inline-vote" hidden>
+                  <header>
+                    <h2 id="impostorVotePopupTitle">Vote</h2>
+                    <button type="button" id="impostorVotePopupClose" class="secondary compact-button">Close</button>
+                  </header>
+                  <div id="impostorVoteList" class="impostor-vote-list"></div>
+                </section>
+                <section id="impostorGuessPopup" class="impostor-inline-panel impostor-inline-guess" hidden>
+                  <form id="impostorGuessForm" class="impostor-guess-form">
+                    <header>
+                      <h2 id="impostorGuessPopupTitle">Impostor guess</h2>
+                      <button type="button" id="impostorGuessPopupClose" class="secondary compact-button">Close</button>
+                    </header>
+                    <input id="impostorGuessInput" maxlength="40" placeholder="Secret word">
+                    <button type="submit">Adivinar palabra</button>
+                  </form>
+                </section>
+                <button type="button" id="impostorStartButton" class="impostor-main-button">Iniciar partida</button>
+                <button type="button" id="impostorVoteButton" class="impostor-main-button">Vote</button>
                 <section id="impostorRoleCard" class="impostor-role-card" hidden>
                   <span id="impostorRoleLabel">Your role</span>
                   <strong id="impostorSecretWord">Waiting...</strong>
                   <p id="impostorHintText"></p>
                   <button type="button" id="impostorGuessButton" class="secondary impostor-guess-button" hidden>Adivinar palabra</button>
                 </section>
-                <p id="impostorGameMessage" class="message"></p>
-                <button type="button" id="impostorStartButton" class="impostor-main-button">Iniciar partida</button>
-                <button type="button" id="impostorVoteButton" class="impostor-main-button">Vote</button>
               </section>
             </div>
           </section>
-        </section>
-
-        <section id="impostorVotePopup" class="impostor-popup" hidden aria-modal="true" role="dialog" aria-labelledby="impostorVotePopupTitle">
-          <div class="impostor-popup-card">
-            <header>
-              <h2 id="impostorVotePopupTitle">Vote</h2>
-              <button type="button" id="impostorVotePopupClose" class="secondary compact-button">Close</button>
-            </header>
-            <div id="impostorVoteList" class="impostor-vote-list"></div>
-          </div>
-        </section>
-
-        <section id="impostorEventPopup" class="impostor-popup" hidden aria-modal="true" role="dialog" aria-labelledby="impostorEventTitle">
-          <div class="impostor-popup-card impostor-event-card">
-            <header>
-              <h2 id="impostorEventTitle">Notice</h2>
-              <button type="button" id="impostorEventClose" class="secondary compact-button">Close</button>
-            </header>
-            <div id="impostorEventMessage" class="impostor-event-content"></div>
-          </div>
-        </section>
-
-        <section id="impostorGuessPopup" class="impostor-popup" hidden aria-modal="true" role="dialog" aria-labelledby="impostorGuessPopupTitle">
-          <form id="impostorGuessForm" class="impostor-popup-card impostor-guess-form">
-            <header>
-              <h2 id="impostorGuessPopupTitle">Impostor guess</h2>
-              <button type="button" id="impostorGuessPopupClose" class="secondary compact-button">Close</button>
-            </header>
-            <input id="impostorGuessInput" maxlength="40" placeholder="Secret word">
-            <button type="submit">Adivinar palabra</button>
-          </form>
         </section>
 
         <section id="resistanceView" class="view resistance-view" aria-labelledby="resistanceTitle" hidden>

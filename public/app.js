@@ -2667,16 +2667,7 @@ window.addEventListener("pagehide", () => releaseScoreboardRoomIfHost({ useBeaco
 window.addEventListener("resize", updateViewportChromeVars);
 impostorVotePopupClose?.addEventListener("click", hideImpostorVotePopup);
 impostorEventClose?.addEventListener("click", hideImpostorEventPopup);
-impostorVotePopup?.addEventListener("click", (event) => {
-  dismissImpostorPopupOnClick(event, hideImpostorVotePopup);
-});
-impostorEventPopup?.addEventListener("click", (event) => {
-  dismissImpostorPopupOnClick(event, hideImpostorEventPopup);
-});
 impostorGuessPopupClose?.addEventListener("click", hideImpostorGuessPopup);
-impostorGuessPopup?.addEventListener("click", (event) => {
-  dismissImpostorPopupOnClick(event, hideImpostorGuessPopup);
-});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -3774,7 +3765,6 @@ function showImpostorVotePopup() {
   if (!impostorVotePopup || !impostorRoom) return;
   renderimpostorActions(impostorRoom, impostorRoom.player);
   impostorVotePopup.hidden = false;
-  document.body.classList.add("songs-popup-open");
   playimpostorAlarmSound("popup");
 }
 
@@ -3789,7 +3779,6 @@ function showImpostorGuessPopup() {
   const player = impostorRoom?.player;
   if (!["playing", "tiebreak"].includes(impostorRoom?.status) || player?.role !== "impostor" || player?.eliminated) return;
   impostorGuessPopup.hidden = false;
-  document.body.classList.add("songs-popup-open");
   impostorGuessInput.focus();
 }
 
@@ -3830,7 +3819,6 @@ function showImpostorEventPopup(title, message, detail = {}) {
   if (detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
   if (detail.tieVoteCandidates?.length) impostorEventMessage.append(renderImpostorTieVoteChoices(detail.tieVoteCandidates));
   impostorEventPopup.hidden = false;
-  document.body.classList.add("songs-popup-open");
 }
 
 function renderImpostorEventHero(hero) {
@@ -5224,20 +5212,37 @@ function renderResistanceRoom(room = resistanceRoom) {
 }
 
 function renderResistanceMissionTrack(room) {
+  const teamSizes = getResistanceMissionTeamSizes(room);
   resistanceMissionTrack.replaceChildren(...Array.from({ length: 5 }, (_, index) => {
     const result = room.missionResults?.[index];
     const item = document.createElement(result ? "button" : "span");
+    const number = document.createElement("strong");
+    const team = document.createElement("small");
     item.className = "resistance-mission-node";
+    number.textContent = String(index + 1);
+    team.textContent = `Equipo de ${teamSizes[index] || 2}`;
     if (result) {
       item.type = "button";
       item.dataset.resistanceRoundIndex = String(index);
-      item.setAttribute("aria-label", `Mostrar informe de la misión ${index + 1}`);
+      item.setAttribute("aria-label", `Mostrar informe de la misión ${index + 1}, equipo de ${teamSizes[index] || 2}`);
     }
     if (result) item.classList.add(result.failed ? "is-failed" : "is-success");
     if (!result && index === room.missionIndex && room.status !== "lobby") item.classList.add("is-current");
-    item.textContent = String(index + 1);
+    item.append(number, team);
     return item;
   }));
+}
+
+function getResistanceMissionTeamSizes(room) {
+  const rules = {
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
+    10: [3, 4, 4, 5, 5]
+  };
+  return rules[Number(room.config?.playerLimit)] || rules[5];
 }
 
 function renderResistancePlayers(players, currentPlayer, room) {
