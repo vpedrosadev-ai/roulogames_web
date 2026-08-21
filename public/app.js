@@ -245,7 +245,9 @@ const resistanceRoleCard = document.querySelector("#resistanceRoleCard");
 const resistanceRoleLabel = document.querySelector("#resistanceRoleLabel");
 const resistanceRoleName = document.querySelector("#resistanceRoleName");
 const resistanceRoleHint = document.querySelector("#resistanceRoleHint");
+const resistancePhaseLabel = document.querySelector("#resistancePhaseLabel");
 const resistanceGameMessage = document.querySelector("#resistanceGameMessage");
+const resistanceCurrentTeam = document.querySelector("#resistanceCurrentTeam");
 const resistanceTeamPicker = document.querySelector("#resistanceTeamPicker");
 const resistanceTeamOptions = document.querySelector("#resistanceTeamOptions");
 const resistanceProposeButton = document.querySelector("#resistanceProposeButton");
@@ -257,10 +259,9 @@ const resistanceSuccessButton = document.querySelector("#resistanceSuccessButton
 const resistanceSabotageButton = document.querySelector("#resistanceSabotageButton");
 const resistanceStartButton = document.querySelector("#resistanceStartButton");
 const resistanceBackButtons = document.querySelectorAll("[data-resistance-back]");
-const resistanceRoundPopup = document.querySelector("#resistanceRoundPopup");
-const resistanceRoundPopupTitle = document.querySelector("#resistanceRoundPopupTitle");
-const resistanceRoundPopupClose = document.querySelector("#resistanceRoundPopupClose");
-const resistanceRoundPopupBody = document.querySelector("#resistanceRoundPopupBody");
+const resistanceMissionSummary = document.querySelector("#resistanceMissionSummary");
+const resistanceMissionSummaryTitle = document.querySelector("#resistanceMissionSummaryTitle");
+const resistanceMissionSummaryBody = document.querySelector("#resistanceMissionSummaryBody");
 const wolfLobby = document.querySelector("#wolfLobby");
 const wolfChoice = document.querySelector("#wolfChoice");
 const wolfChooseCreate = document.querySelector("#wolfChooseCreate");
@@ -2322,6 +2323,9 @@ let resistanceShownEventId = "";
 let resistanceKnownPlayerIds = new Set();
 let resistanceTestViewId = "";
 let resistanceTestAutoFollowEnabled = true;
+let resistanceTeamDraftIds = new Set();
+let resistanceTeamDraftKey = "";
+let resistanceSelectedMissionIndex = -1;
 let wolfSession = null;
 let wolfRoom = null;
 let wolfPollTimer = null;
@@ -2331,6 +2335,8 @@ let wolfSoundedPhaseKey = "";
 let wolfSpokenPhaseKey = "";
 let wolfSpokenCountdownSecond = 0;
 let wolfRoleDraft = { werewolf: 1, seer: true, doctor: true, hunter: false };
+let wolfActionRenderKey = "";
+let wolfVoteSummaryRenderKey = "";
 let wolfAudioContext = null;
 let wolfNarrationAudio = null;
 let wolfTestViewId = "";
@@ -2490,7 +2496,6 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && hostConfigPopup && !hostConfigPopup.hidden) hideHostConfigPopup();
   if (event.key === "Escape" && !customPlaylistPopup.hidden) hideCustomPlaylistPopup();
   if (event.key === "Escape" && !multiplayerPodiumPopup.hidden) hideMultiplayerPodium();
-  if (event.key === "Escape" && resistanceRoundPopup && !resistanceRoundPopup.hidden) hideResistanceRoundPopup();
   if (event.key === "Escape") closeScoreboardPopups();
 });
 
@@ -2549,17 +2554,13 @@ resistancePlayers?.addEventListener("click", kickResistancePlayer);
 resistancePlayers?.addEventListener("keydown", handleResistancePlayerKeydown);
 resistanceCreateTestMode?.addEventListener("change", syncResistanceTestCreateMode);
 resistanceTestAutoFollow?.addEventListener("change", toggleResistanceTestAutoFollow);
-resistanceTeamOptions?.addEventListener("change", syncResistanceTeamSelection);
+resistanceTeamOptions?.addEventListener("change", updateResistanceTeamDraft);
 resistanceProposeButton?.addEventListener("click", proposeResistanceTeam);
 resistanceApproveButton?.addEventListener("click", () => voteResistanceTeam(true));
 resistanceRejectButton?.addEventListener("click", () => voteResistanceTeam(false));
 resistanceSuccessButton?.addEventListener("click", () => voteResistanceMission(false));
 resistanceSabotageButton?.addEventListener("click", () => voteResistanceMission(true));
-resistanceMissionTrack?.addEventListener("click", showResistanceRoundPopup);
-resistanceRoundPopupClose?.addEventListener("click", hideResistanceRoundPopup);
-resistanceRoundPopup?.addEventListener("click", (event) => {
-  if (event.target === resistanceRoundPopup) hideResistanceRoundPopup();
-});
+resistanceMissionTrack?.addEventListener("click", selectResistanceMissionSummary);
 window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
 wolfCreateForm?.addEventListener("submit", createWolfRoomClient);
 wolfJoinForm?.addEventListener("submit", joinWolfRoomClient);
@@ -5144,7 +5145,7 @@ function hideRoomKickPopup(kind) {
 
 async function proposeResistanceTeam() {
   if (!resistanceSession || !resistanceRoom) return;
-  const teamIds = [...resistanceTeamOptions.querySelectorAll("input:checked")].map((input) => input.value);
+  const teamIds = [...resistanceTeamDraftIds];
   try {
     resistanceProposeButton.disabled = true;
     const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team`, {
@@ -5218,6 +5219,8 @@ function renderResistanceRoom(room = resistanceRoom) {
   renderResistancePlayers(players, player, room);
   renderResistanceRole(room, player);
   renderResistanceActions(room, player, players, isHost);
+  renderResistanceCurrentTeam(room, players);
+  renderResistanceMissionSummary(room);
 }
 
 function renderResistanceMissionTrack(room) {
@@ -5228,7 +5231,7 @@ function renderResistanceMissionTrack(room) {
     if (result) {
       item.type = "button";
       item.dataset.resistanceRoundIndex = String(index);
-      item.setAttribute("aria-label", `Ver detalle de mision ${index + 1}`);
+      item.setAttribute("aria-label", `Mostrar informe de la misión ${index + 1}`);
     }
     if (result) item.classList.add(result.failed ? "is-failed" : "is-success");
     if (!result && index === room.missionIndex && room.status !== "lobby") item.classList.add("is-current");
@@ -5331,6 +5334,14 @@ function renderResistanceRole(room, player) {
 
 function renderResistanceActions(room, player, players, isHost) {
   const status = room.status || "lobby";
+  const phaseLabels = {
+    lobby: "Sala de espera",
+    team: `Misión ${room.missionNumber || 1} · formar equipo`,
+    voting: `Misión ${room.missionNumber || 1} · votar equipo`,
+    mission: `Misión ${room.missionNumber || 1} · operación en curso`,
+    finished: "Operación terminada"
+  };
+  resistancePhaseLabel.textContent = phaseLabels[status] || "Operación en curso";
   resistanceGameMessage.textContent = getResistanceStatusMessage(room, player);
   resistanceTeamPicker.hidden = !(status === "team" && player?.isLeader);
   resistanceTeamVoteActions.hidden = !(status === "voting" && !player?.hasTeamVoted);
@@ -5347,21 +5358,38 @@ function renderResistanceActions(room, player, players, isHost) {
 }
 
 function renderResistanceTeamPicker(room, players) {
-  const current = new Set(room.currentTeam || []);
-  resistanceTeamOptions.replaceChildren(...players.map((item) => {
-    const label = document.createElement("label");
-    label.className = "resistance-team-option";
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = item.id;
-    input.checked = current.has(item.id);
-    const avatar = document.createElement("span");
-    avatar.textContent = item.emoji || "";
-    const name = document.createElement("strong");
-    name.textContent = item.name || "";
-    label.append(input, avatar, name);
-    return label;
-  }));
+  const draftKey = [room.roomName, room.status, room.missionIndex, room.rejectCount, room.leaderId].join(":");
+  if (draftKey !== resistanceTeamDraftKey) {
+    resistanceTeamDraftKey = draftKey;
+    resistanceTeamDraftIds = new Set(room.currentTeam || []);
+  }
+  const existing = new Map([...resistanceTeamOptions.querySelectorAll(".resistance-team-option")]
+    .map((label) => [label.dataset.playerId, label]));
+  const activeIds = new Set(players.map((player) => player.id));
+  existing.forEach((label, id) => { if (!activeIds.has(id)) label.remove(); });
+  players.forEach((item) => {
+    let label = existing.get(item.id);
+    if (!label) {
+      label = document.createElement("label");
+      label.className = "resistance-team-option";
+      label.dataset.playerId = item.id;
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = item.id;
+      const avatar = document.createElement("span");
+      const name = document.createElement("strong");
+      label.append(input, avatar, name);
+    }
+    label.querySelector("input").checked = resistanceTeamDraftIds.has(item.id);
+    label.querySelector("span").textContent = item.emoji || "";
+    label.querySelector("strong").textContent = item.name || "";
+    resistanceTeamOptions.append(label);
+  });
+  syncResistanceTeamSelection();
+}
+
+function updateResistanceTeamDraft() {
+  resistanceTeamDraftIds = new Set([...resistanceTeamOptions.querySelectorAll("input:checked")].map((input) => input.value));
   syncResistanceTeamSelection();
 }
 
@@ -5397,21 +5425,33 @@ function formatResistanceEvent(event) {
   return "";
 }
 
-function showResistanceRoundPopup(event) {
+function selectResistanceMissionSummary(event) {
   const button = event.target.closest("[data-resistance-round-index]");
-  if (!button || !resistanceRoundPopup || !resistanceRoundPopupBody || !resistanceRoom) return;
-  const index = Number(button.dataset.resistanceRoundIndex);
-  const result = resistanceRoom.missionResults?.[index];
-  if (!result) return;
+  if (!button || !resistanceRoom) return;
+  resistanceSelectedMissionIndex = Number(button.dataset.resistanceRoundIndex);
+  renderResistanceMissionSummary(resistanceRoom);
+}
+
+function renderResistanceMissionSummary(room) {
+  if (!resistanceMissionSummary || !resistanceMissionSummaryBody || !resistanceMissionSummaryTitle) return;
+  const results = room.missionResults || [];
+  if (!results.length) {
+    resistanceMissionSummary.hidden = true;
+    resistanceSelectedMissionIndex = -1;
+    return;
+  }
+  if (!results[resistanceSelectedMissionIndex]) resistanceSelectedMissionIndex = results.length - 1;
+  const index = resistanceSelectedMissionIndex;
+  const result = results[index];
   const missionNumber = Number(result.missionNumber || index + 1);
-  const playersById = new Map((resistanceRoom.players || []).map((player) => [player.id, player]));
+  const playersById = new Map((room.players || []).map((player) => [player.id, player]));
   const supportIds = Object.entries(result.teamVotes || {}).filter(([, approved]) => approved).map(([id]) => id);
   const rejectIds = Object.entries(result.teamVotes || {}).filter(([, approved]) => !approved).map(([id]) => id);
   const missionIds = result.teamIds || [];
   const sabotages = Number(result.sabotages || 0);
   const successes = Number.isFinite(Number(result.successes)) ? Number(result.successes) : Math.max(0, missionIds.length - sabotages);
-  resistanceRoundPopupTitle.textContent = `Mision ${missionNumber}: ${result.failed ? "Fracaso" : "Exito"}`;
-  resistanceRoundPopupBody.replaceChildren(
+  resistanceMissionSummaryTitle.textContent = `Misión ${missionNumber}: ${result.failed ? "fracaso" : "éxito"}`;
+  resistanceMissionSummaryBody.replaceChildren(
     renderResistanceRoundStatGrid([
       { label: "Aciertos", value: String(successes) },
       { label: "Fracasos", value: String(sabotages) },
@@ -5421,14 +5461,29 @@ function showResistanceRoundPopup(event) {
     renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById),
     renderResistanceRoundList("Participaron en la mision", missionIds, playersById)
   );
-  resistanceRoundPopup.hidden = false;
-  document.body.classList.add("songs-popup-open");
+  resistanceMissionSummary.hidden = false;
 }
 
-function hideResistanceRoundPopup() {
-  if (!resistanceRoundPopup) return;
-  resistanceRoundPopup.hidden = true;
-  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+function renderResistanceCurrentTeam(room, players) {
+  if (!resistanceCurrentTeam) return;
+  const teamIds = room.currentTeam || [];
+  const visible = teamIds.length > 0 && ["voting", "mission"].includes(room.status);
+  resistanceCurrentTeam.hidden = !visible;
+  if (!visible) {
+    resistanceCurrentTeam.replaceChildren();
+    return;
+  }
+  const playersById = new Map(players.map((player) => [player.id, player]));
+  const label = document.createElement("span");
+  label.textContent = room.status === "voting" ? "Equipo propuesto" : "Equipo en misión";
+  const chips = document.createElement("div");
+  chips.replaceChildren(...teamIds.map((id) => {
+    const player = playersById.get(id);
+    const chip = document.createElement("strong");
+    chip.textContent = player ? `${player.emoji || ""} ${player.name}`.trim() : "Jugador";
+    return chip;
+  }));
+  resistanceCurrentTeam.replaceChildren(label, chips);
 }
 
 function renderResistanceRoundStatGrid(items) {
@@ -5488,7 +5543,9 @@ function leaveResistanceRoom() {
   resistanceKnownPlayerIds = new Set();
   resistanceTestViewId = "";
   resistanceTestAutoFollowEnabled = true;
-  hideResistanceRoundPopup();
+  resistanceTeamDraftIds = new Set();
+  resistanceTeamDraftKey = "";
+  resistanceSelectedMissionIndex = -1;
 }
 
 function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {
@@ -5703,10 +5760,21 @@ function renderWolfTestTools(room, player, players) {
 function renderWolfPlayers(players, currentPlayer, room) {
   const canKick = currentPlayer?.isHost && room.status === "lobby" && !room.testMode;
   const canSwitchView = Boolean(room.test?.enabled);
-  wolfPlayers.replaceChildren(...players.map((item) => {
-    const card = document.createElement("article");
+  const existing = new Map([...wolfPlayers.querySelectorAll(".wolf-player-card[data-player-id]")]
+    .map((card) => [card.dataset.playerId, card]));
+  const activeIds = new Set(players.map((player) => player.id));
+  existing.forEach((card, id) => { if (!activeIds.has(id)) card.remove(); });
+  players.forEach((item) => {
+    let card = existing.get(item.id);
+    if (!card) {
+      card = document.createElement("article");
+      card.dataset.playerId = item.id;
+      const avatar = createWolfPlayerIcon(item.role || "unknown", "wolf-player-avatar");
+      const name = document.createElement("strong");
+      const status = document.createElement("small");
+      card.append(avatar, name, status);
+    }
     card.className = "wolf-player-card";
-    card.dataset.playerId = item.id;
     if (item.id === currentPlayer?.id) card.classList.add("is-current");
     if (item.isTestPlayer) card.classList.add("is-test-player");
     if (item.role) card.classList.add("is-role-known", `is-role-${item.role}`);
@@ -5717,13 +5785,19 @@ function renderWolfPlayers(players, currentPlayer, room) {
       card.setAttribute("role", "button");
       card.setAttribute("aria-label", `Ver la partida como ${item.name}`);
       card.title = `Cambiar punto de vista a ${item.name}`;
+    } else {
+      card.removeAttribute("tabindex");
+      card.removeAttribute("role");
+      card.removeAttribute("aria-label");
+      card.removeAttribute("title");
     }
-    const avatar = createWolfPlayerIcon(item.role || "unknown", "wolf-player-avatar");
-    const name = document.createElement("strong");
+    const avatar = card.querySelector(".wolf-player-avatar");
+    setWolfIcon(avatar, item.role || "unknown");
+    const name = card.querySelector(":scope > strong");
     name.textContent = item.name || "Jugador";
-    const status = document.createElement("small");
+    const status = card.querySelector(":scope > small");
     status.textContent = getWolfPlayerStatus(item, room);
-    card.append(avatar, name, status);
+    card.querySelectorAll(":scope > .wolf-kick-button, :scope > .wolf-card-badge").forEach((control) => control.remove());
     if (canKick && item.id !== currentPlayer.id) {
       const kick = document.createElement("button");
       kick.type = "button";
@@ -5738,8 +5812,8 @@ function renderWolfPlayers(players, currentPlayer, room) {
       badge.textContent = "Anfitrión";
       card.append(badge);
     }
-    return card;
-  }));
+    wolfPlayers.append(card);
+  });
 }
 
 function getWolfPlayerStatus(player, room) {
@@ -5890,9 +5964,12 @@ function renderWolfNarrator(room, player) {
 
 function renderWolfActions(room, player, players) {
   wolfActionList.hidden = true;
-  wolfActionList.replaceChildren();
   wolfGameMessage.textContent = "";
-  if (!player || room.status !== "playing") return;
+  if (!player || room.status !== "playing") {
+    if (wolfActionRenderKey) wolfActionList.replaceChildren();
+    wolfActionRenderKey = "";
+    return;
+  }
   const phase = room.phase;
   const visibleVotes = phase === "night_wolves" ? room.nightVotes || [] : phase === "day_vote" ? room.dayVotes || [] : [];
   const votersByTarget = new Map();
@@ -5924,10 +6001,15 @@ function renderWolfActions(room, player, players) {
     kind = "vote";
   }
   if (!canAct) {
+    if (wolfActionRenderKey) wolfActionList.replaceChildren();
+    wolfActionRenderKey = "";
     if ((player.hasActed && String(phase).startsWith("night_")) || player.hasVoted) wolfGameMessage.textContent = "Elección enviada. El narrador espera a los demás jugadores. El anfitrión puede saltar la fase si alguien queda inactivo.";
     return;
   }
   wolfActionList.hidden = false;
+  const renderKey = JSON.stringify([phase, player.id, kind, candidates.map((target) => [target.id, target.role || "unknown", votersByTarget.get(target.id) || []])]);
+  if (renderKey === wolfActionRenderKey) return;
+  wolfActionRenderKey = renderKey;
   wolfActionList.replaceChildren(...candidates.map((target) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -5952,14 +6034,22 @@ function renderWolfActions(room, player, players) {
 
 function renderWolfVoteSummary(room) {
   if (!wolfVoteSummary) return;
-  wolfVoteSummary.hidden = true;
-  wolfVoteSummary.replaceChildren();
   const tiedRoundFinished = room.phase === "day_vote" && room.lastEvent?.type === "vote-tie";
   const finalResultVisible = ["day_result", "hunter_shot", "finished"].includes(room.phase);
   const votes = room.lastDayVotes || [];
-  if ((!tiedRoundFinished && !finalResultVisible) || !votes.length) return;
+  if ((!tiedRoundFinished && !finalResultVisible) || !votes.length) {
+    wolfVoteSummary.hidden = true;
+    if (wolfVoteSummaryRenderKey) wolfVoteSummary.replaceChildren();
+    wolfVoteSummaryRenderKey = "";
+    return;
+  }
 
   const outcome = room.lastDayVoteOutcome || {};
+  const renderKey = JSON.stringify([room.phase, room.lastEvent?.type, votes, outcome]);
+  wolfVoteSummary.hidden = false;
+  if (renderKey === wolfVoteSummaryRenderKey) return;
+  wolfVoteSummaryRenderKey = renderKey;
+  wolfVoteSummary.replaceChildren();
   const highlighted = new Set(outcome.targetPlayerIds || []);
   const results = new Map();
   votes.forEach((vote) => {
@@ -6003,7 +6093,6 @@ function renderWolfVoteSummary(room) {
       grid.append(card);
     });
   wolfVoteSummary.append(heading, grid);
-  wolfVoteSummary.hidden = false;
 }
 
 function syncWolfCountdown(room) {
@@ -6449,6 +6538,7 @@ function setWolfIcon(svg, icon) {
   const use = svg?.querySelector("use");
   if (!use) return;
   const href = `/images/wolf-icons.svg#${["unknown", "werewolf", "villager", "seer", "doctor", "hunter", "sleep", "wake", "sun", "vote"].includes(icon) ? icon : "unknown"}`;
+  if (use.getAttribute("href") === href) return;
   use.setAttribute("href", href);
   use.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
 }

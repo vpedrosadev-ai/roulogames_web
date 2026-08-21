@@ -407,12 +407,11 @@
                   <div><span>Modo de prueba individual</span><strong id="resistanceTestViewLabel">Viendo como anfitrión</strong></div>
                   <label><input id="resistanceTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
                 </section>
-                <section id="resistanceRoleCard" class="resistance-role-card" hidden>
-                  <span id="resistanceRoleLabel">Tu rol</span>
-                  <strong id="resistanceRoleName">Esperando...</strong>
-                  <p id="resistanceRoleHint"></p>
+                <section class="resistance-operation-brief" aria-live="polite">
+                  <span id="resistancePhaseLabel">Sala de espera</span>
+                  <p id="resistanceGameMessage" class="message"></p>
                 </section>
-                <p id="resistanceGameMessage" class="message"></p>
+                <section id="resistanceCurrentTeam" class="resistance-current-team" hidden></section>
                 <div id="resistanceTeamPicker" class="resistance-team-picker" hidden>
                   <div id="resistanceTeamOptions"></div>
                   <button type="button" id="resistanceProposeButton">Proponer equipo</button>
@@ -426,19 +425,21 @@
                   <button type="button" id="resistanceSabotageButton" class="danger">Sabotear</button>
                 </div>
                 <button type="button" id="resistanceStartButton" class="resistance-main-button">Esperando jugadores</button>
+                <section id="resistanceMissionSummary" class="resistance-mission-summary" hidden>
+                  <header>
+                    <span>Informe de misión</span>
+                    <strong id="resistanceMissionSummaryTitle"></strong>
+                  </header>
+                  <div id="resistanceMissionSummaryBody" class="resistance-mission-summary-body"></div>
+                </section>
+                <section id="resistanceRoleCard" class="resistance-role-card" hidden>
+                  <span id="resistanceRoleLabel">Tu rol</span>
+                  <strong id="resistanceRoleName">Esperando...</strong>
+                  <p id="resistanceRoleHint"></p>
+                </section>
               </section>
             </section>
           </section>
-        </section>
-
-        <section id="resistanceRoundPopup" class="impostor-popup resistance-round-popup" hidden aria-modal="true" role="dialog" aria-labelledby="resistanceRoundPopupTitle">
-          <div class="impostor-popup-card resistance-round-popup-card">
-            <header>
-              <h2 id="resistanceRoundPopupTitle">Mision</h2>
-              <button type="button" id="resistanceRoundPopupClose" class="secondary compact-button">Close</button>
-            </header>
-            <div id="resistanceRoundPopupBody" class="resistance-round-popup-body"></div>
-          </div>
         </section>
 
         <section id="wolfView" class="view wolf-view" aria-labelledby="wolfTitle" hidden>

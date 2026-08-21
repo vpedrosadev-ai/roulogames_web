@@ -12658,3 +12658,311 @@ body.scoreboard-active .title-bar {
   .wolf-control-actions { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 6px; }
   .wolf-control-actions button { display: flex; width: auto; min-width: 0; height: 42px; padding: 7px 8px; font-size: 0.74rem; }
 }
+
+/* Resistance compact game board: stable player rail, inline reports, no modal flow. */
+.resistance-current-team[hidden],
+.resistance-mission-summary[hidden] { display: none !important; }
+
+body.resistance-active:has(#resistanceGame:not([hidden])) {
+  overflow: hidden;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+  height: calc(100dvh - var(--title-bar-height, 72px));
+  min-height: 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  overflow: hidden;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-view {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.resistance-game {
+  width: min(1180px, 100%);
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+  grid-template-columns: minmax(220px, 290px) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "controls controls"
+    "players status"
+    "players actions";
+  overflow: hidden;
+}
+
+.resistance-command-strip {
+  min-height: 0;
+  gap: 7px;
+}
+
+.resistance-command-strip button {
+  min-height: 40px;
+  padding: 7px 10px;
+}
+
+.resistance-status-board {
+  min-height: 0;
+  padding: 9px 11px;
+  gap: 10px;
+  grid-template-columns: minmax(90px, .55fr) minmax(210px, 1.35fr) minmax(190px, 1fr);
+}
+
+.resistance-mission-node { min-height: 34px; }
+
+.resistance-players {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.resistance-player-card {
+  min-height: 58px;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  padding: 6px 7px;
+}
+
+.resistance-player-card > span {
+  width: 36px;
+  height: 36px;
+  font-size: 1.15rem;
+}
+
+.resistance-action-panel {
+  min-height: 0;
+  overflow: hidden;
+  align-content: start;
+  gap: 8px;
+  padding: 10px 12px;
+  background:
+    radial-gradient(circle at 84% 12%, rgba(126, 255, 170, .1), transparent 28%),
+    rgba(5, 18, 13, .88);
+}
+
+.resistance-operation-brief {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 5px solid #7be39d;
+  border-radius: 8px;
+  background: rgba(126, 255, 170, .07);
+}
+
+.resistance-operation-brief > span,
+.resistance-current-team > span,
+.resistance-mission-summary > header span {
+  color: #7be39d;
+  font-size: .68rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.resistance-operation-brief .message {
+  min-height: 0;
+  margin: 0;
+  color: #f1fff5;
+  font-size: clamp(.9rem, 1.7vw, 1.08rem);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.resistance-current-team {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(126, 255, 170, .18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .045);
+}
+
+.resistance-current-team > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.resistance-current-team strong {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #07110d;
+  background: #7be39d;
+  font-size: .78rem;
+}
+
+.resistance-team-picker {
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+#resistanceTeamOptions {
+  min-height: 0;
+  max-height: min(34dvh, 310px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.resistance-team-option:has(input:checked) {
+  border-color: #7be39d;
+  background: rgba(126, 255, 170, .16);
+  box-shadow: inset 0 0 0 1px rgba(126, 255, 170, .16);
+}
+
+.resistance-team-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  accent-color: #62dd8c;
+}
+
+.resistance-mission-summary {
+  display: grid;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid rgba(126, 255, 170, .2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .13);
+}
+
+.resistance-mission-summary > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resistance-mission-summary > header strong {
+  color: #f4ca64;
+  font-size: .9rem;
+}
+
+.resistance-mission-summary-body {
+  display: grid;
+  grid-template-columns: minmax(180px, .7fr) repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.resistance-mission-summary .resistance-round-stat-grid {
+  align-self: stretch;
+}
+
+.resistance-mission-summary .resistance-round-stat-grid article,
+.resistance-mission-summary .resistance-round-list {
+  min-width: 0;
+  padding: 7px;
+}
+
+.resistance-mission-summary .resistance-round-list { gap: 5px; }
+.resistance-mission-summary .resistance-round-list div { gap: 4px; }
+.resistance-mission-summary .resistance-round-list span { padding: 4px 6px; font-size: .7rem; }
+
+.resistance-role-card {
+  margin-top: auto;
+  grid-template-columns: minmax(90px, .32fr) minmax(0, 1fr);
+  grid-template-areas:
+    "label hint"
+    "name hint";
+  align-items: center;
+  gap: 2px 12px;
+  padding: 9px 11px;
+}
+
+.resistance-role-card > span { grid-area: label; }
+.resistance-role-card > strong { grid-area: name; font-size: clamp(1.05rem, 2.4vw, 1.7rem); }
+.resistance-role-card > p { grid-area: hint; }
+
+@media (max-width: 760px) {
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+    padding: 4px 4px max(4px, env(safe-area-inset-bottom));
+  }
+
+  .resistance-game {
+    grid-template-columns: minmax(116px, 34vw) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .resistance-command-strip { gap: 4px; }
+  .resistance-command-strip button { min-height: 36px; padding: 5px 3px; font-size: clamp(.59rem, 2.55vw, .76rem); }
+
+  .resistance-status-board {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 7px;
+    padding: 6px;
+  }
+
+  .resistance-room-code { grid-row: 1; }
+  .resistance-room-code span { display: none; }
+  .resistance-room-code strong { font-size: .78rem; }
+  .resistance-mission-track { grid-column: 2; gap: 3px; }
+  .resistance-mission-node { min-height: 25px; border-radius: 6px; font-size: .7rem; }
+  .resistance-stat-grid { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .resistance-stat-grid article { display: flex; align-items: baseline; justify-content: center; gap: 3px; }
+  .resistance-stat-grid span { font-size: .5rem; }
+  .resistance-stat-grid strong { font-size: .7rem; }
+
+  .resistance-players { gap: 5px; padding: 5px; }
+  .resistance-player-card {
+    min-height: 47px;
+    grid-template-columns: 27px minmax(0, 1fr);
+    grid-template-areas: "avatar name" "avatar status" "note note";
+    gap: 0 5px;
+    padding: 4px;
+    border-left-width: 3px;
+  }
+  .resistance-player-card > span { width: 27px; height: 27px; font-size: .9rem; }
+  .resistance-player-card strong { font-size: .72rem; }
+  .resistance-player-card small { font-size: .59rem; line-height: 1.05; }
+  .resistance-player-card b { font-size: .56rem; line-height: 1.05; }
+  .resistance-player-card .resistance-kick-button { grid-column: 1 / -1; width: 100%; height: 22px; }
+
+  .resistance-action-panel { gap: 5px; padding: 6px; }
+  .resistance-operation-brief { gap: 2px; padding: 7px; border-left-width: 3px; }
+  .resistance-operation-brief > span { font-size: .54rem; }
+  .resistance-operation-brief .message { font-size: clamp(.72rem, 3.2vw, .9rem); line-height: 1.2; }
+
+  .resistance-current-team { padding: 6px; gap: 4px; }
+  .resistance-current-team > span { font-size: .52rem; }
+  .resistance-current-team strong { padding: 3px 5px; font-size: .61rem; }
+
+  #resistanceTeamOptions { grid-template-columns: minmax(0, 1fr); gap: 4px; max-height: none; }
+  .resistance-team-option { min-height: 36px; padding: 4px 5px; grid-template-columns: auto 24px minmax(0, 1fr); gap: 5px; }
+  .resistance-team-option span { font-size: .95rem; }
+  .resistance-team-option strong { font-size: .7rem; }
+  .resistance-team-picker { overflow: hidden; }
+  .resistance-team-picker #resistanceTeamOptions { overflow-y: auto; }
+  #resistanceProposeButton, .resistance-action-row button, .resistance-main-button { min-height: 36px; padding: 5px; font-size: .72rem; }
+
+  .resistance-mission-summary { gap: 4px; padding: 6px; }
+  .resistance-mission-summary > header { display: grid; gap: 1px; }
+  .resistance-mission-summary > header span { font-size: .5rem; }
+  .resistance-mission-summary > header strong { font-size: .68rem; }
+  .resistance-mission-summary-body { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .resistance-mission-summary .resistance-round-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .resistance-mission-summary .resistance-round-stat-grid article { padding: 3px; }
+  .resistance-mission-summary .resistance-round-stat-grid span { font-size: .48rem; }
+  .resistance-mission-summary .resistance-round-stat-grid strong { font-size: .72rem; }
+  .resistance-mission-summary .resistance-round-list { display: none; }
+
+  .resistance-role-card {
+    grid-template-columns: minmax(62px, .36fr) minmax(0, 1fr);
+    padding: 6px;
+    gap: 1px 6px;
+  }
+  .resistance-role-card span { font-size: .5rem; }
+  .resistance-role-card strong { font-size: .82rem; }
+  .resistance-role-card p { font-size: .62rem; line-height: 1.15; }
+
+  .resistance-action-panel .solo-test-tools { padding: 5px; gap: 4px; }
+  .resistance-action-panel .solo-test-tools span,
+  .resistance-action-panel .solo-test-tools strong,
+  .resistance-action-panel .solo-test-tools label { font-size: .58rem; }
+}
