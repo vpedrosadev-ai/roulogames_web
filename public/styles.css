@@ -13827,6 +13827,12 @@ body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card {
 body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card .impostor-guess-button {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: clamp(.58rem, 1.5vw, .74rem);
+  line-height: 1.05;
+  text-wrap: balance;
+  white-space: normal;
 }
 
 body.impostor-active:has(#impostorGame:not([hidden])) #impostorEventMessage {
@@ -13923,6 +13929,11 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVotePopup.is-fina
     grid-template-columns: minmax(0, 1fr) minmax(96px, 40%);
   }
 
+  body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card .impostor-guess-button {
+    font-size: clamp(.48rem, 2.4vw, .62rem) !important;
+    padding-inline: 3px;
+  }
+
   body.impostor-active:has(#impostorGame:not([hidden])) #impostorEventMessage {
     max-height: none;
   }
@@ -13954,4 +13965,118 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVotePopup.is-fina
   .resistance-role-card { min-height: 45px; padding: 5px 7px; gap: 1px; }
   .resistance-role-card span { font-size: .5rem; }
   .resistance-role-card strong { font-size: .86rem; }
+}
+
+/* Requested mobile/layout corrections for Impostor and Resistance boards. */
+body.impostor-active:has(#impostorGame:not([hidden])),
+body.resistance-active:has(#resistanceGame:not([hidden])) {
+  min-height: 100dvh;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .app-shell,
+body.resistance-active:has(#resistanceGame:not([hidden])) .app-shell {
+  height: auto !important;
+  min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .content,
+body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+  min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card > div {
+  width: 100%;
+  justify-items: center;
+  text-align: center;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) #impostorSecretWord {
+  width: 100%;
+  text-align: center;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) #impostorEventMessage {
+  order: 2;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
+  order: 3;
+}
+
+.impostor-vote-results li {
+  grid-template-columns: minmax(0, 1fr) minmax(86px, auto);
+  align-items: center;
+}
+
+.impostor-vote-result-summary {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  min-width: 0;
+  text-align: right;
+}
+
+.impostor-vote-result-summary small {
+  color: #ffe59e;
+  font-size: .62rem;
+  font-weight: 850;
+  line-height: 1.08;
+}
+
+.resistance-round-stat-grid article {
+  min-height: 76px;
+  align-content: center;
+}
+
+.resistance-round-stat-grid span {
+  max-width: 100%;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+#resistanceTeamVoteActions button {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  white-space: normal;
+}
+
+#resistanceTeamVoteActions button small {
+  color: currentColor;
+  font-size: .66rem;
+  font-weight: 850;
+  line-height: 1.08;
+  opacity: .78;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  body.impostor-active:has(#impostorGame:not([hidden])) .content,
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-game {
+    height: 100% !important;
+  }
+
+  .resistance-round-stat-grid article {
+    min-height: 58px;
+    padding: 5px 3px !important;
+  }
+
+  .resistance-round-stat-grid span {
+    font-size: .5rem !important;
+  }
+
+  .impostor-vote-results li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .impostor-vote-result-summary {
+    justify-items: center;
+    text-align: center;
+  }
 }

@@ -3960,9 +3960,17 @@ function renderImpostorVoteResults(results) {
     const name = document.createElement("strong");
     name.textContent = result.name || "-";
     player.append(emoji, name);
+    const summary = document.createElement("div");
+    summary.className = "impostor-vote-result-summary";
     const votes = document.createElement("b");
-    votes.textContent = String(result.votes || 0);
-    item.append(player, votes);
+    votes.textContent = `${result.votes || 0} voto${Number(result.votes || 0) === 1 ? "" : "s"}`;
+    summary.append(votes);
+    if (result.voterNames?.length) {
+      const voters = document.createElement("small");
+      voters.textContent = t("impostor.votedBy", { names: result.voterNames.join(", ") });
+      summary.append(voters);
+    }
+    item.append(player, summary);
     list.append(item);
   });
   section.append(title, list);
@@ -4189,7 +4197,7 @@ function getImpostorPopupDetails(room) {
       role: accentRole,
       hero: { emoji: event.emoji, name: event.playerName || "-", role: event.role },
       voteResults: event.voteResults || [],
-      voteResultsFirst: true,
+      voteResultsFirst: false,
       outcomeCards,
       message: ""
     };
@@ -5604,6 +5612,10 @@ function renderResistanceActions(room, player, players, isHost) {
   resistanceTeamPicker.hidden = !(status === "team" && player?.isLeader);
   resistanceTeamVoteActions.hidden = !(status === "voting" && !player?.hasTeamVoted);
   resistanceMissionActions.hidden = !(status === "mission" && player?.onTeam && !player?.hasMissionVoted);
+  const approvedVoters = (room.teamVoteDetails || []).filter((vote) => vote.approve).map((vote) => vote.voterName).filter(Boolean);
+  const rejectedVoters = (room.teamVoteDetails || []).filter((vote) => !vote.approve).map((vote) => vote.voterName).filter(Boolean);
+  setResistanceVoteButtonContent(resistanceApproveButton, "Aprobar", approvedVoters);
+  setResistanceVoteButtonContent(resistanceRejectButton, "Rechazar", rejectedVoters);
   resistanceStartButton.hidden = status !== "lobby" || !isHost;
   resistanceStartButton.disabled = !(isHost && players.length === Number(room.config?.playerLimit || 0));
   resistanceStartButton.textContent = resistanceStartButton.disabled ? `Esperando ${players.length}/${room.config?.playerLimit || "?"}` : "Iniciar operacion";
@@ -5613,6 +5625,15 @@ function renderResistanceActions(room, player, players, isHost) {
   resistanceRejectButton.disabled = false;
   resistanceSuccessButton.disabled = false;
   resistanceSabotageButton.disabled = false;
+}
+
+function setResistanceVoteButtonContent(button, label, voters) {
+  if (!button) return;
+  const text = document.createElement("span");
+  text.textContent = label;
+  const details = document.createElement("small");
+  details.textContent = voters.length ? voters.join(", ") : "";
+  button.replaceChildren(text, details);
 }
 
 function renderResistanceTeamPicker(room, players) {
@@ -5715,12 +5736,16 @@ function renderResistanceMissionSummary(room) {
   const missionIds = result.teamIds || [];
   const sabotages = Number(result.sabotages || 0);
   const successes = Number.isFinite(Number(result.successes)) ? Number(result.successes) : Math.max(0, missionIds.length - sabotages);
+  const requiredFails = Number(result.requiredFails || 1);
+  const requiredSuccesses = Math.max(0, missionIds.length - requiredFails + 1);
+  const neededLabel = result.failed ? "Fracasos necesarios" : "Aciertos necesarios";
+  const neededValue = result.failed ? `${sabotages}/${requiredFails}` : `${successes}/${requiredSuccesses}`;
   resistanceMissionSummaryTitle.textContent = `Misión ${missionNumber}: ${result.failed ? "fracaso" : "éxito"}`;
   resistanceMissionSummaryBody.replaceChildren(
     renderResistanceRoundStatGrid([
       { label: "Aciertos", value: String(successes) },
       { label: "Fracasos", value: String(sabotages) },
-      { label: "Necesarios", value: `${successes}/${result.requiredFails || 1}` }
+      { label: neededLabel, value: neededValue }
     ]),
     renderResistanceRoundList("Apoyaron el equipo", supportIds, playersById),
     renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById),

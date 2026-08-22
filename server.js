@@ -2180,12 +2180,17 @@ function buildimpostorVoteResults(room, counts) {
   return [...counts.entries()]
     .map(([playerId, count]) => {
       const player = room.players.find((item) => item.id === playerId);
+      const voterNames = Object.entries(room.votes || {})
+        .filter(([, targetId]) => targetId === playerId)
+        .map(([voterId]) => room.players.find((item) => item.id === voterId)?.name)
+        .filter(Boolean);
       return {
         playerId,
         name: player?.name || "",
         emoji: player?.emoji || "",
         role: player?.role || "",
-        votes: count
+        votes: count,
+        voterNames
       };
     })
     .sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
