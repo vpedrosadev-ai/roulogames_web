@@ -8,6 +8,10 @@
     <path d="M13 9l13 9h12L51 9l-3 19c4 5 5 12 2 18-4 8-11 12-18 12S18 54 14 46c-3-6-2-13 2-18L13 9z" fill="currentColor" opacity=".2"/>
     <path d="M13 9l13 9h12L51 9l-3 19c4 5 5 12 2 18-4 8-11 12-18 12S18 54 14 46c-3-6-2-13 2-18L13 9zM22 35l7 3m13-3l-7 3m-7 10l4 4 4-4M20 20l5 8m19-8l-5 8" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
   </symbol>
+  <symbol id="wolf-cub" viewBox="0 0 64 64">
+    <path d="M15 15l10 7h14l10-7-2 16c4 5 4 12 1 17-4 7-10 10-16 10s-12-3-16-10c-3-5-3-12 1-17l-2-16z" fill="currentColor" opacity=".18"/>
+    <path d="M15 15l10 7h14l10-7-2 16c4 5 4 12 1 17-4 7-10 10-16 10s-12-3-16-10c-3-5-3-12 1-17l-2-16zM24 37l5 2m11-2l-5 2m-6 8l3 3 3-3M24 25h.1M40 25h.1" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
   <symbol id="villager" viewBox="0 0 64 64">
     <circle cx="32" cy="21" r="10" fill="currentColor" opacity=".2"/>
     <path d="M16 56c1-13 7-20 16-20s15 7 16 20M22 20c1-8 5-12 10-12s9 4 10 12M25 22h.1M39 22h.1M28 28c2 2 6 2 8 0" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>

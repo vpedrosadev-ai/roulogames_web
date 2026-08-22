@@ -324,6 +324,7 @@ const wolfUseSeer = document.querySelector("#wolfUseSeer");
 const wolfUseDoctor = document.querySelector("#wolfUseDoctor");
 const wolfUseWitch = document.querySelector("#wolfUseWitch");
 const wolfUseHunter = document.querySelector("#wolfUseHunter");
+const wolfUseWolfCub = document.querySelector("#wolfUseWolfCub");
 const wolfUseElder = document.querySelector("#wolfUseElder");
 const wolfUseIdiot = document.querySelector("#wolfUseIdiot");
 const wolfRoleSummary = document.querySelector("#wolfRoleSummary");
@@ -2354,7 +2355,7 @@ let wolfOutcomeEventId = "";
 let wolfSoundedPhaseKey = "";
 let wolfSpokenPhaseKey = "";
 let wolfSpokenCountdownSecond = 0;
-let wolfRoleDraft = { werewolf: 1, seer: true, doctor: true, witch: false, hunter: false, elder: false, idiot: false };
+let wolfRoleDraft = { werewolf: 1, seer: true, doctor: true, witch: false, hunter: false, wolfCub: false, elder: false, idiot: false };
 let wolfActionRenderKey = "";
 let wolfVoteSummaryRenderKey = "";
 let wolfAudioContext = null;
@@ -2627,7 +2628,7 @@ wolfPrimaryButton?.addEventListener("click", handleWolfPrimaryAction);
 wolfRecommendRoles?.addEventListener("click", applyRecommendedWolfRoles);
 wolfMinusWerewolf?.addEventListener("click", () => changeWolfCount(-1));
 wolfPlusWerewolf?.addEventListener("click", () => changeWolfCount(1));
-[wolfUseSeer, wolfUseDoctor, wolfUseWitch, wolfUseHunter, wolfUseElder, wolfUseIdiot].filter(Boolean).forEach((input) => input.addEventListener("change", syncWolfRoleDraft));
+[wolfUseSeer, wolfUseDoctor, wolfUseWitch, wolfUseHunter, wolfUseWolfCub, wolfUseElder, wolfUseIdiot].filter(Boolean).forEach((input) => input.addEventListener("change", syncWolfRoleDraft));
 wolfCancelSetup?.addEventListener("click", closeWolfRoleSetup);
 wolfConfirmStart?.addEventListener("click", startWolfGameClient);
 wolfActionList?.addEventListener("click", submitWolfTarget);
@@ -6411,11 +6412,12 @@ function renderWolfRole(room, player) {
   if (!show) return;
   const role = player.role;
   setWolfIcon(wolfRoleIcon, role);
-  wolfRoleCard.classList.toggle("is-werewolf", role === "werewolf");
+  wolfRoleCard.classList.toggle("is-werewolf", role === "werewolf" || role === "wolf_cub");
   wolfRoleCard.classList.toggle("is-witch", role === "witch");
   wolfRoleName.textContent = wolfRoleLabel(role);
   const hints = {
     werewolf: `Despierta con tu manada y elige una víctima. Manada: ${(player.wolfNames || []).join(", ") || "solo tú"}.`,
+    wolf_cub: `Eres parte de la manada. Si mueres, los Lobos atacan dos veces la noche siguiente. Manada: ${(player.wolfNames || []).join(", ") || "solo tú"}.`,
     villager: "Vota durante el día. Expulsa a todos los lobos antes de que igualen en número a la aldea.",
     seer: "Investiga a un jugador con vida cada noche y descubre si es un lobo.",
     doctor: "Protege a un jugador con vida cada noche. No puedes proteger al mismo dos noches seguidas.",
@@ -6468,7 +6470,7 @@ function renderWolfNarrator(room, player) {
     cycle = `Noche ${room.nightNumber}`;
   } else if (phase === "night_wolves") {
     title = "Lobos, elegid a vuestra víctima";
-    text = player?.role === "werewolf" && player.alive ? "Decidid sin prisa. No hay límite de tiempo." : "Mantén los ojos cerrados. Los lobos están eligiendo.";
+    text = isWolfPlayerRole(player?.role) && player.alive ? `Decidid sin prisa. No hay límite de tiempo.${Number(room.wolfKillCount || 1) > 1 ? " Esta noche atacáis dos veces." : ""}` : "Mantén los ojos cerrados. Los lobos están eligiendo.";
     icon = "werewolf";
     phaseLabel = "Actúan los Lobos";
     cycle = `Noche ${room.nightNumber}`;
@@ -6531,7 +6533,7 @@ function renderWolfNarrator(room, player) {
     cycle = `Día ${room.dayNumber}`;
   } else if (phase === "finished") {
     const wolvesWon = room.winner === "werewolves";
-    const wolves = room.players.filter((item) => item.role === "werewolf").map((item) => item.name);
+    const wolves = room.players.filter((item) => isWolfPlayerRole(item.role)).map((item) => item.name);
     const eliminations = (room.lastEliminations || []).map((item) => {
       const role = item.role ? ` Era ${wolfRoleLabel(item.role)}.` : "";
       if (item.cause === "night") return `Los lobos devoraron a ${item.playerName}.${role}`;
@@ -6583,7 +6585,7 @@ function renderWolfActions(room, player, players) {
   let canAct = false;
   let kind = "action";
   let candidates = [];
-  if (phase === "night_wolves" && player.alive && player.role === "werewolf" && !player.hasActed) {
+  if (phase === "night_wolves" && player.alive && isWolfPlayerRole(player.role) && !player.hasActed) {
     const pack = new Set(player.wolfNames || []);
     candidates = players.filter((item) => item.alive && !pack.has(item.name));
     canAct = true;
@@ -6616,7 +6618,7 @@ function renderWolfActions(room, player, players) {
     return;
   }
   wolfActionList.hidden = false;
-  const renderKey = JSON.stringify([phase, player.id, kind, candidates.map((target) => [target.id, target.role || "unknown", votersByTarget.get(target.id) || []])]);
+  const renderKey = JSON.stringify([phase, player.id, kind, room.wolfKillCount || 1, candidates.map((target) => [target.id, target.role || "unknown", target.witchAction || "", votersByTarget.get(target.id) || []])]);
   if (renderKey === wolfActionRenderKey) return;
   wolfActionRenderKey = renderKey;
   wolfActionList.replaceChildren(...candidates.map((target) => {
@@ -6781,7 +6783,7 @@ function renderWolfPrimaryButtonOnly() {
 }
 
 function applyRecommendedWolfRoles() {
-  const recommended = wolfRoom?.recommendation || { werewolf: 1, seer: true, doctor: true, witch: false, hunter: false, elder: false, idiot: false };
+  const recommended = wolfRoom?.recommendation || { werewolf: 1, seer: true, doctor: true, witch: false, hunter: false, wolfCub: false, elder: false, idiot: false };
   wolfRoleDraft = { ...recommended };
   wolfWerewolfCount.value = String(wolfRoleDraft.werewolf);
   wolfWerewolfCount.textContent = String(wolfRoleDraft.werewolf);
@@ -6789,10 +6791,12 @@ function applyRecommendedWolfRoles() {
   wolfUseDoctor.checked = Boolean(wolfRoleDraft.doctor);
   wolfUseWitch.checked = Boolean(wolfRoleDraft.witch);
   wolfUseHunter.checked = Boolean(wolfRoleDraft.hunter);
+  wolfUseWolfCub.checked = Boolean(wolfRoleDraft.wolfCub);
   wolfUseElder.checked = Boolean(wolfRoleDraft.elder);
   wolfUseIdiot.checked = Boolean(wolfRoleDraft.idiot);
   wolfUseWitch.disabled = (wolfRoom?.players?.length || 0) < 7;
   wolfUseHunter.disabled = (wolfRoom?.players?.length || 0) < 7;
+  wolfUseWolfCub.disabled = (wolfRoom?.players?.length || 0) < 12;
   wolfUseElder.disabled = (wolfRoom?.players?.length || 0) < 10;
   wolfUseIdiot.disabled = (wolfRoom?.players?.length || 0) < 13;
   syncWolfRoleDraft();
@@ -6810,26 +6814,34 @@ function changeWolfCount(delta) {
 
 function syncWolfRoleDraft() {
   if (!wolfRoom || !wolfWerewolfCount) return;
-  if ((wolfRoom.players?.length || 0) < 7) wolfUseWitch.checked = false;
-  if ((wolfRoom.players?.length || 0) < 7) wolfUseHunter.checked = false;
-  if ((wolfRoom.players?.length || 0) < 10) wolfUseElder.checked = false;
-  if ((wolfRoom.players?.length || 0) < 13) wolfUseIdiot.checked = false;
+  const playerCount = wolfRoom.players?.length || 0;
+  wolfUseWitch.disabled = playerCount < 7;
+  wolfUseHunter.disabled = playerCount < 7;
+  wolfUseWolfCub.disabled = playerCount < 12;
+  wolfUseElder.disabled = playerCount < 10;
+  wolfUseIdiot.disabled = playerCount < 13;
+  if (playerCount < 7) wolfUseWitch.checked = false;
+  if (playerCount < 7) wolfUseHunter.checked = false;
+  if (playerCount < 12) wolfUseWolfCub.checked = false;
+  if (playerCount < 10) wolfUseElder.checked = false;
+  if (playerCount < 13) wolfUseIdiot.checked = false;
   wolfRoleDraft = {
     werewolf: Math.max(1, Number(wolfWerewolfCount.value || wolfWerewolfCount.textContent || 1)),
     seer: Boolean(wolfUseSeer.checked),
     doctor: Boolean(wolfUseDoctor.checked),
     witch: Boolean(wolfUseWitch.checked),
     hunter: Boolean(wolfUseHunter.checked),
+    wolfCub: Boolean(wolfUseWolfCub.checked),
     elder: Boolean(wolfUseElder.checked),
     idiot: Boolean(wolfUseIdiot.checked)
   };
   const players = wolfRoom.players?.length || 0;
-  const assigned = wolfRoleDraft.werewolf + Number(wolfRoleDraft.seer) + Number(wolfRoleDraft.doctor) + Number(wolfRoleDraft.witch) + Number(wolfRoleDraft.hunter) + Number(wolfRoleDraft.elder) + Number(wolfRoleDraft.idiot);
+  const assigned = wolfRoleDraft.werewolf + Number(wolfRoleDraft.seer) + Number(wolfRoleDraft.doctor) + Number(wolfRoleDraft.witch) + Number(wolfRoleDraft.hunter) + Number(wolfRoleDraft.wolfCub) + Number(wolfRoleDraft.elder) + Number(wolfRoleDraft.idiot);
   const villagers = players - assigned;
   const maxWolves = Math.max(1, Math.floor((players - 1) / 2));
   const valid = players >= (wolfRoom.minPlayers || 5) && wolfRoleDraft.werewolf <= maxWolves && villagers >= 1;
   wolfRoleSummary.textContent = valid
-    ? `${wolfRoleDraft.werewolf} ${wolfRoleDraft.werewolf === 1 ? "Lobo" : "Lobos"}, ${villagers} ${villagers === 1 ? "Aldeano" : "Aldeanos"}${wolfRoleDraft.seer ? ", Vidente" : ""}${wolfRoleDraft.doctor ? ", Doctor" : ""}${wolfRoleDraft.witch ? ", Bruja" : ""}${wolfRoleDraft.hunter ? ", Cazador" : ""}${wolfRoleDraft.elder ? ", Anciano" : ""}${wolfRoleDraft.idiot ? ", Tonto del pueblo" : ""}.`
+    ? `${wolfRoleDraft.werewolf} ${wolfRoleDraft.werewolf === 1 ? "Lobo" : "Lobos"}${wolfRoleDraft.wolfCub ? ", Cachorro de Lobo" : ""}, ${villagers} ${villagers === 1 ? "Aldeano" : "Aldeanos"}${wolfRoleDraft.seer ? ", Vidente" : ""}${wolfRoleDraft.doctor ? ", Doctor" : ""}${wolfRoleDraft.witch ? ", Bruja" : ""}${wolfRoleDraft.hunter ? ", Cazador" : ""}${wolfRoleDraft.elder ? ", Anciano" : ""}${wolfRoleDraft.idiot ? ", Tonto del pueblo" : ""}.`
     : "Debe quedar al menos un Aldeano y los Lobos deben ser menos de la mitad.";
   wolfConfirmStart.disabled = !valid;
   wolfMinusWerewolf.disabled = wolfRoleDraft.werewolf <= 1;
@@ -7040,7 +7052,11 @@ function clearStoredWolfSession() {
 }
 
 function wolfRoleLabel(role) {
-  return ({ werewolf: "Lobo", villager: "Aldeano", seer: "Vidente", doctor: "Doctor", witch: "Bruja", hunter: "Cazador", elder: "Anciano", idiot: "Tonto del pueblo" })[role] || "Rol desconocido";
+  return ({ werewolf: "Lobo", wolf_cub: "Cachorro de Lobo", villager: "Aldeano", seer: "Vidente", doctor: "Doctor", witch: "Bruja", hunter: "Cazador", elder: "Anciano", idiot: "Tonto del pueblo" })[role] || "Rol desconocido";
+}
+
+function isWolfPlayerRole(role) {
+  return role === "werewolf" || role === "wolf_cub";
 }
 
 function wolfNightRoleCallLabel(role, sentenceStart = false) {
@@ -7172,7 +7188,8 @@ function createWolfPlayerIcon(icon, className) {
 function setWolfIcon(svg, icon) {
   const use = svg?.querySelector("use");
   if (!use) return;
-  const href = `/images/wolf-icons.svg#${["unknown", "werewolf", "villager", "seer", "doctor", "witch", "hunter", "elder", "idiot", "sleep", "wake", "sun", "vote"].includes(icon) ? icon : "unknown"}`;
+  const normalizedIcon = icon === "wolf_cub" ? "wolf-cub" : icon;
+  const href = `/images/wolf-icons.svg#${["unknown", "werewolf", "wolf-cub", "villager", "seer", "doctor", "witch", "hunter", "elder", "idiot", "sleep", "wake", "sun", "vote"].includes(normalizedIcon) ? normalizedIcon : "unknown"}`;
   if (use.getAttribute("href") === href) return;
   use.setAttribute("href", href);
   use.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
