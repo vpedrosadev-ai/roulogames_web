@@ -2546,6 +2546,7 @@ impostorCircle?.addEventListener("click", kickimpostorPlayer);
 impostorCircle?.addEventListener("keydown", handleImpostorPlayerKeydown);
 impostorVoteList?.addEventListener("click", voteimpostorPlayer);
 impostorEventMessage?.addEventListener("click", voteimpostorPlayer);
+impostorEventMessage?.addEventListener("click", advanceImpostorRound);
 impostorGuessButton?.addEventListener("click", showImpostorGuessPopup);
 impostorGuessForm?.addEventListener("submit", guessimpostorWord);
 impostorGuessPopup?.addEventListener("click", (event) => {
@@ -3410,6 +3411,29 @@ async function restartimpostorGame() {
     if (impostorGameMessage) impostorGameMessage.textContent = error.message;
   } finally {
     impostorRestartButton.disabled = false;
+  }
+}
+
+async function advanceImpostorRound(event) {
+  const button = event.target.closest("[data-impostor-advance-round]");
+  if (!button || !impostorSession?.isHost) return;
+  event.preventDefault();
+  button.disabled = true;
+  try {
+    const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/advance`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(impostorTestActionBody())
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudo avanzar de ronda");
+    impostorRoom = payload;
+    impostorLastAssignmentId = payload.eventId || "";
+    impostorLastVotesCast = Number(payload.votesCast || 0);
+    renderimpostorRoom(payload);
+  } catch (error) {
+    if (impostorGameMessage) impostorGameMessage.textContent = error.message;
+    if (button.isConnected) button.disabled = false;
   }
 }
 

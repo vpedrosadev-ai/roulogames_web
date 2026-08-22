@@ -603,6 +603,8 @@ export default {
       if (request.method === "POST" && impostorKickMatch) return kickimpostorPlayer(request, impostorKickMatch[1], env);
       const impostorVoteMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/vote$/);
       if (request.method === "POST" && impostorVoteMatch) return voteimpostorPlayer(request, impostorVoteMatch[1], env);
+      const impostorAdvanceMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/advance$/);
+      if (request.method === "POST" && impostorAdvanceMatch) return advanceimpostorRound(request, impostorAdvanceMatch[1], env);
       const impostorGuessMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/guess$/);
       if (request.method === "POST" && impostorGuessMatch) return guessimpostorWord(request, impostorGuessMatch[1], env);
       const impostorLeaveMatch = url.pathname.match(/^\/api\/impostor\/rooms\/([^/]+)\/leave$/);
@@ -2059,6 +2061,20 @@ async function voteimpostorPlayer(request, roomName, env) {
   return json(impostorRoomResponse(room, viewPlayer, sessionPlayer));
 }
 
+async function advanceimpostorRound(request, roomName, env) {
+  const room = await loadimpostorRoom(normalizeRoomKey(roomName), env);
+  if (!room) return json({ error: "Room not found" }, 404);
+  const body = await request.json().catch(() => ({}));
+  const player = authenticateMultiplayerPlayer(room, body);
+  if (!isImpostorHost(room, player)) return json({ error: "Only host can advance" }, 403);
+  if (room.status !== "round-result") return json({ error: "No round result to advance" }, 409);
+  advanceimpostorRoomState(room);
+  room.updatedAt = Date.now();
+  await saveimpostorRoom(room, env);
+  const viewPlayer = resolveImpostorTestViewPlayer(room, player, body.asPlayerId, Boolean(body.autoFollow));
+  return json(impostorRoomResponse(room, viewPlayer, player));
+}
+
 async function guessimpostorWord(request, roomName, env) {
   const room = await loadimpostorRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
@@ -2228,10 +2244,11 @@ function resolveimpostorVotesIfReady(room) {
   const high = Math.max(0, ...counts.values());
   const tiedIds = [...counts.entries()].filter(([, count]) => count === high).map(([id]) => id);
   if (tiedIds.length !== 1) {
-    room.status = "tiebreak";
-    room.tieCandidates = tiedIds;
+    room.status = "round-result";
+    room.pendingStatus = "tiebreak";
+    room.pendingTieCandidates = tiedIds;
+    room.tieCandidates = [];
     room.votes = {};
-    room.roundIndex += 1;
     setimpostorEvent(room, {
       type: "tie",
       names: tiedIds.map((id) => room.players.find((player) => player.id === id)?.name).filter(Boolean),
@@ -2250,11 +2267,23 @@ function resolveimpostorVotesIfReady(room) {
       voteResults
     });
   }
-  room.status = "playing";
+  room.status = "round-result";
+  room.pendingStatus = "playing";
+  room.pendingTieCandidates = [];
   room.votes = {};
   room.tieCandidates = [];
-  room.roundIndex += 1;
   checkimpostorWinState(room);
+}
+
+function advanceimpostorRoomState(room) {
+  const nextStatus = ["playing", "tiebreak"].includes(room.pendingStatus) ? room.pendingStatus : "playing";
+  room.status = nextStatus;
+  room.votes = {};
+  room.tieCandidates = nextStatus === "tiebreak" ? [...(room.pendingTieCandidates || [])] : [];
+  room.roundIndex += 1;
+  delete room.pendingStatus;
+  delete room.pendingTieCandidates;
+  setimpostorEvent(room, null);
 }
 
 function checkimpostorWinState(room) {
@@ -2270,6 +2299,8 @@ function finishimpostorGame(room, winner, event) {
   room.winner = winner;
   room.votes = {};
   room.tieCandidates = [];
+  delete room.pendingStatus;
+  delete room.pendingTieCandidates;
   room.players.forEach((player) => { player.won = winner === "impostors" ? player.role === "impostor" : player.role !== "impostor"; });
   setimpostorEvent(room, event || { type: "finished" });
 }
