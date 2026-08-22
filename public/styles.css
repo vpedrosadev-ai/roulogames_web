@@ -6282,16 +6282,21 @@ body.impostor-active .content {
 }
 
 .wolf-home-card .wolf-home-icon {
-  display: block;
+  display: grid;
   box-sizing: border-box;
   width: 42px;
   height: 42px;
+  place-items: center;
   margin-bottom: 14px;
-  padding: 7px;
   border: 1px solid rgba(255, 255, 255, .24);
   border-radius: 8px;
   background: rgba(255, 255, 255, .12);
   color: #dbe9cb;
+}
+
+.wolf-home-card .wolf-home-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .wolf-home-card strong {
@@ -6550,6 +6555,7 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
 .wolf-player-card.is-role-werewolf > .wolf-player-avatar { color: #a33f3f; background: rgba(163, 63, 63, .12); }
 .wolf-player-card.is-role-seer > .wolf-player-avatar { color: #6d5593; background: rgba(109, 85, 147, .12); }
 .wolf-player-card.is-role-doctor > .wolf-player-avatar { color: #477a67; background: rgba(71, 122, 103, .12); }
+.wolf-player-card.is-role-witch > .wolf-player-avatar { color: #7d4aa8; background: rgba(125, 74, 168, .13); }
 .wolf-player-card.is-role-hunter > .wolf-player-avatar { color: #8a5b39; background: rgba(138, 91, 57, .12); }
 .wolf-player-card.is-role-villager > .wolf-player-avatar { color: #596e4d; }
 .wolf-player-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -6644,6 +6650,7 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
 .wolf-role-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 1rem; padding: 1rem 1.2rem; text-align: left; }
 .wolf-role-card > svg { width: 4rem; height: 4rem; color: #596e4d; }
 .wolf-role-card.is-werewolf > svg { color: #a33f3f; }
+.wolf-role-card.is-witch > svg { color: #7d4aa8; }
 .wolf-role-card strong { display: block; margin: .15rem 0; font-size: 1.45rem; }
 .wolf-role-card p { margin: 0; opacity: .65; }
 

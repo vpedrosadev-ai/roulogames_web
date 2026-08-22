@@ -64,6 +64,8 @@ export function createWolfRoom(value) {
     tieCandidates: [],
     pendingVictimId: "",
     pendingProtectedId: "",
+    pendingWitchHealId: "",
+    pendingWitchPoisonId: "",
     pendingHunterId: "",
     afterHunterPhase: "",
     nextNightRole: "",
@@ -107,6 +109,8 @@ export function createWolfPlayer(identity, seatNumber) {
     lastProtectedId: "",
     seerDiscoveries: [],
     wolfAttackHits: 0,
+    witchHealUsed: false,
+    witchPoisonUsed: false,
     idiotRevealed: false,
     voteDisabled: false
   };
@@ -161,6 +165,7 @@ export function recommendedWolfRoles(playerCount) {
     werewolf: Math.max(1, Math.floor(count / 4)),
     seer: true,
     doctor: true,
+    witch: count >= 7,
     hunter: count >= 7,
     elder: count >= 10,
     idiot: count >= 13
@@ -173,17 +178,19 @@ export function normalizeWolfRoleConfig(value, playerCount) {
   const maxWerewolves = Math.max(1, Math.floor((count - 1) / 2));
   if (!Number.isFinite(werewolf) || werewolf < 1 || werewolf > maxWerewolves) return null;
   if (Boolean(value?.hunter) && count < 7) return null;
+  if (Boolean(value?.witch) && count < 7) return null;
   if (Boolean(value?.elder) && count < 10) return null;
   if (Boolean(value?.idiot) && count < 13) return null;
   const config = {
     werewolf,
     seer: Boolean(value?.seer),
     doctor: Boolean(value?.doctor),
+    witch: Boolean(value?.witch),
     hunter: Boolean(value?.hunter),
     elder: Boolean(value?.elder),
     idiot: Boolean(value?.idiot)
   };
-  const assigned = werewolf + Number(config.seer) + Number(config.doctor) + Number(config.hunter) + Number(config.elder) + Number(config.idiot);
+  const assigned = werewolf + Number(config.seer) + Number(config.doctor) + Number(config.witch) + Number(config.hunter) + Number(config.elder) + Number(config.idiot);
   if (assigned >= count) return null;
   return { ...config, villager: count - assigned };
 }
@@ -199,6 +206,7 @@ export function startWolfGame(room, player, roleConfig) {
     ...Array(config.villager).fill("villager"),
     ...(config.seer ? ["seer"] : []),
     ...(config.doctor ? ["doctor"] : []),
+    ...(config.witch ? ["witch"] : []),
     ...(config.hunter ? ["hunter"] : []),
     ...(config.elder ? ["elder"] : []),
     ...(config.idiot ? ["idiot"] : [])
@@ -210,6 +218,8 @@ export function startWolfGame(room, player, roleConfig) {
     item.lastProtectedId = "";
     item.seerDiscoveries = [];
     item.wolfAttackHits = 0;
+    item.witchHealUsed = false;
+    item.witchPoisonUsed = false;
     item.idiotRevealed = false;
     item.voteDisabled = false;
     delete item.won;
@@ -228,6 +238,8 @@ export function startWolfGame(room, player, roleConfig) {
   room.tieCandidates = [];
   room.pendingVictimId = "";
   room.pendingProtectedId = "";
+  room.pendingWitchHealId = "";
+  room.pendingWitchPoisonId = "";
   room.pendingHunterId = "";
   room.afterHunterPhase = "";
   room.nextNightRole = "";
@@ -253,6 +265,8 @@ export function restartWolfGame(room, player) {
     item.lastProtectedId = "";
     item.seerDiscoveries = [];
     item.wolfAttackHits = 0;
+    item.witchHealUsed = false;
+    item.witchPoisonUsed = false;
     item.idiotRevealed = false;
     item.voteDisabled = false;
     delete item.won;
@@ -269,6 +283,8 @@ export function restartWolfGame(room, player) {
   room.tieCandidates = [];
   room.pendingVictimId = "";
   room.pendingProtectedId = "";
+  room.pendingWitchHealId = "";
+  room.pendingWitchPoisonId = "";
   room.pendingHunterId = "";
   room.afterHunterPhase = "";
   room.nextNightRole = "";
@@ -304,8 +320,9 @@ export function submitWolfAction(room, player, targetId) {
   } else {
     requireAliveWolfPlayer(player);
   }
-  const target = getAliveWolfPlayer(room, targetId);
-  if (!target) throw new WolfGameError("Elige un jugador activo");
+  const rawTargetId = String(targetId || "");
+  const target = getAliveWolfPlayer(room, rawTargetId.replace(/^(heal|poison):/, ""));
+  if (!target && !(room.phase === "night_witch" && rawTargetId === "skip")) throw new WolfGameError("Elige un jugador activo");
 
   if (room.phase === "night_wolves") {
     if (player.role !== "werewolf") throw new WolfGameError("Ahora solo actúan los lobos", 403);
@@ -326,6 +343,29 @@ export function submitWolfAction(room, player, targetId) {
     room.pendingProtectedId = target.id;
     room.actions[player.id] = target.id;
     completeWolfNightRole(room, "doctor");
+  } else if (room.phase === "night_witch") {
+    if (player.role !== "witch") throw new WolfGameError("Ahora solo actua la Bruja", 403);
+    const action = rawTargetId.startsWith("heal:") ? "heal" : rawTargetId.startsWith("poison:") ? "poison" : rawTargetId === "skip" ? "skip" : "";
+    if (!action) throw new WolfGameError("Elige una pocima");
+    if (action === "skip") {
+      room.actions[player.id] = "skip";
+      completeWolfNightRole(room, "witch");
+    } else if (action === "heal") {
+      if (player.witchHealUsed) throw new WolfGameError("Ya has usado la pocima de vida", 409);
+      const victim = getAliveWolfPlayer(room, room.pendingVictimId);
+      if (!victim || !target || target.id !== victim.id) throw new WolfGameError("Solo puedes salvar a la victima de los Lobos");
+      player.witchHealUsed = true;
+      room.pendingWitchHealId = target.id;
+      room.actions[player.id] = rawTargetId;
+      completeWolfNightRole(room, "witch");
+    } else {
+      if (player.witchPoisonUsed) throw new WolfGameError("Ya has usado la pocima de muerte", 409);
+      if (!target) throw new WolfGameError("Elige un jugador activo");
+      player.witchPoisonUsed = true;
+      room.pendingWitchPoisonId = target.id;
+      room.actions[player.id] = rawTargetId;
+      completeWolfNightRole(room, "witch");
+    }
   } else if (room.phase === "hunter_shot") {
     if (player.role !== "hunter" || player.id !== room.pendingHunterId) throw new WolfGameError("Ahora solo puede actuar el Cazador eliminado", 403);
     if (target.id === player.id) throw new WolfGameError("Elige otro jugador");
@@ -396,6 +436,7 @@ export function skipWolfPhase(room, player) {
   } else if (room.phase === "night_wolves") resolveWerewolfChoices(room, true);
   else if (room.phase === "night_seer") completeWolfNightRole(room, "seer");
   else if (room.phase === "night_doctor") completeWolfNightRole(room, "doctor");
+  else if (room.phase === "night_witch") completeWolfNightRole(room, "witch");
   else if (room.phase === "day_vote") resolveWolfDayVotes(room, true);
   else if (room.phase === "hunter_shot") resolveTimedOutHunter(room);
   else throw new WolfGameError("No se puede saltar la fase actual", 409);
@@ -497,6 +538,9 @@ export function wolfRoomResponse(room, privatePlayer = null, sessionPlayer = pri
       wolfNames,
       seerDiscoveries: privatePlayer.seerDiscoveries || [],
       lastProtectedId: privatePlayer.role === "doctor" ? privatePlayer.lastProtectedId || "" : "",
+      witchVictimId: privatePlayer.role === "witch" ? room.pendingVictimId || "" : "",
+      witchHealUsed: privatePlayer.role === "witch" ? Boolean(privatePlayer.witchHealUsed) : undefined,
+      witchPoisonUsed: privatePlayer.role === "witch" ? Boolean(privatePlayer.witchPoisonUsed) : undefined,
       wolfAttackHits: privatePlayer.role === "elder" ? Number(privatePlayer.wolfAttackHits || 0) : 0,
       voteDisabled: Boolean(privatePlayer.voteDisabled),
       won: revealAll ? Boolean(privatePlayer.won) : undefined
@@ -520,6 +564,8 @@ function startWolfNight(room, closeAllPlayers = false) {
   room.tieCandidates = [];
   room.pendingVictimId = "";
   room.pendingProtectedId = "";
+  room.pendingWitchHealId = "";
+  room.pendingWitchPoisonId = "";
   room.nextNightRole = getNextLivingWolfNightRole(room, "");
   if (closeAllPlayers) beginWolfRoleClose(room);
   else beginWolfRoleOpen(room);
@@ -532,6 +578,7 @@ function beginWolfNightActions(room) {
   if (role === "werewolf") setWolfPhase(room, "night_wolves", { type: "werewolves-wake", nightNumber: room.nightNumber });
   else if (role === "seer") setWolfPhase(room, "night_seer", { type: "seer-wakes", nightNumber: room.nightNumber });
   else if (role === "doctor") setWolfPhase(room, "night_doctor", { type: "doctor-wakes", nightNumber: room.nightNumber });
+  else if (role === "witch") setWolfPhase(room, "night_witch", { type: "witch-wakes", nightNumber: room.nightNumber });
   else beginWolfWake(room);
 }
 
@@ -599,36 +646,56 @@ function beginWolfWake(room, completedRole = "") {
 }
 
 function getNextLivingWolfNightRole(room, completedRole) {
-  const roles = ["werewolf", "seer", "doctor"];
+  const roles = ["werewolf", "seer", "doctor", "witch"];
   const startIndex = completedRole ? roles.indexOf(completedRole) + 1 : 0;
-  return roles.slice(Math.max(0, startIndex)).find((role) => room.players.some((player) => player.alive && player.role === role)) || "";
+  return roles.slice(Math.max(0, startIndex)).find((role) => room.players.some((player) => (
+    player.alive
+    && player.role === role
+    && (role !== "witch" || !player.witchHealUsed || !player.witchPoisonUsed)
+  ))) || "";
 }
 
 function resolveWolfNight(room) {
   const victim = getAliveWolfPlayer(room, room.pendingVictimId);
   const protectedPlayer = getAliveWolfPlayer(room, room.pendingProtectedId);
+  const witchSaved = getAliveWolfPlayer(room, room.pendingWitchHealId);
+  const poisoned = getAliveWolfPlayer(room, room.pendingWitchPoisonId);
   room.pendingVictimId = "";
   room.pendingProtectedId = "";
+  room.pendingWitchHealId = "";
+  room.pendingWitchPoisonId = "";
   room.actions = {};
   room.dayNumber = Number(room.dayNumber || 0) + 1;
-  if (!victim || victim.id === protectedPlayer?.id) {
+  const nightDeaths = [];
+  const victimSaved = victim && (victim.id === protectedPlayer?.id || victim.id === witchSaved?.id);
+  if (victim && !victimSaved) {
+    if (victim.role === "elder" && Number(victim.wolfAttackHits || 0) < 1) {
+      victim.wolfAttackHits = Number(victim.wolfAttackHits || 0) + 1;
+    } else {
+      nightDeaths.push({ player: victim, cause: "night" });
+    }
+  }
+  if (poisoned && !nightDeaths.some((item) => item.player.id === poisoned.id)) nightDeaths.push({ player: poisoned, cause: "witch" });
+  if (!nightDeaths.length) {
     beginWolfDayVote(room, { type: "night-peaceful", dayNumber: room.dayNumber });
     return;
   }
-  if (victim.role === "elder" && Number(victim.wolfAttackHits || 0) < 1) {
-    victim.wolfAttackHits = Number(victim.wolfAttackHits || 0) + 1;
-    beginWolfDayVote(room, { type: "night-peaceful", dayNumber: room.dayNumber });
-    return;
-  }
-  victim.alive = false;
-  appendWolfElimination(room, victim, "night");
-  if (victim.role === "hunter") {
-    room.pendingHunterId = victim.id;
+  nightDeaths.forEach(({ player, cause }) => {
+    player.alive = false;
+    appendWolfElimination(room, player, cause);
+  });
+  const hunterDeath = nightDeaths.find(({ player }) => player.role === "hunter");
+  const hunter = hunterDeath?.player;
+  if (hunter) {
+    room.pendingHunterId = hunter.id;
     room.afterHunterPhase = "day_vote";
-    setWolfPhase(room, "hunter_shot", { type: "hunter-fell", hunterName: victim.name, cause: "night" });
+    setWolfPhase(room, "hunter_shot", { type: "hunter-fell", hunterName: hunter.name, cause: hunterDeath.cause || "night" });
     return;
   }
-  if (!checkWolfWinner(room)) beginWolfDayVote(room, { type: "night-victim", playerName: victim.name, role: victim.role, dayNumber: room.dayNumber });
+  if (!checkWolfWinner(room)) {
+    const primary = nightDeaths[0].player;
+    beginWolfDayVote(room, { type: "night-victim", playerName: primary.name, role: primary.role, deathCount: nightDeaths.length, dayNumber: room.dayNumber });
+  }
 }
 
 function beginWolfDayVote(room, event) {
@@ -760,6 +827,7 @@ function getWolfActionActors(room) {
   if (room.phase === "night_wolves") return room.players.filter((player) => player.alive && player.role === "werewolf");
   if (room.phase === "night_seer") return room.players.filter((player) => player.alive && player.role === "seer");
   if (room.phase === "night_doctor") return room.players.filter((player) => player.alive && player.role === "doctor");
+  if (room.phase === "night_witch") return room.players.filter((player) => player.alive && player.role === "witch" && (!player.witchHealUsed || !player.witchPoisonUsed));
   if (room.phase === "hunter_shot") return room.players.filter((player) => player.id === room.pendingHunterId);
   return [];
 }

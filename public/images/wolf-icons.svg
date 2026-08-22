@@ -22,6 +22,10 @@
     <path d="M32 57S9 45 9 25c0-9 6-15 14-15 5 0 8 2 9 6 2-4 5-6 10-6 8 0 14 6 14 15 0 20-24 32-24 32z" fill="currentColor" opacity=".18"/>
     <path d="M32 57S9 45 9 25c0-9 6-15 14-15 5 0 8 2 9 6 2-4 5-6 10-6 8 0 14 6 14 15 0 20-24 32-24 32zM32 24v17M24 32h16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
   </symbol>
+  <symbol id="witch" viewBox="0 0 64 64">
+    <path d="M18 35h28l-3 17H21l-3-17zM24 35l8-25 8 25" fill="currentColor" opacity=".18"/>
+    <path d="M18 35h28l-3 17H21l-3-17zM14 35h36M24 35l8-25 8 25M26 21h12M23 57h18M27 43h.1M37 43h.1M32 48h.1" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
   <symbol id="hunter" viewBox="0 0 64 64">
     <path d="M9 52L50 11m-30 0h30v30M9 52l13-4-9-9-4 13z" fill="currentColor" opacity=".18"/>
     <path d="M9 52L50 11m-30 0h30v30M9 52l13-4-9-9-4 13zM37 14l10 10M14 37l10 10" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
