@@ -13584,3 +13584,53 @@ body.impostor-active:has(#impostorGame:not([hidden])) .impostor-starting-player-
 @media (max-width: 760px) {
   .impostor-stage .impostor-vote-list button { min-height: 42px !important; }
 }
+
+/* Final alignment and viewport fixes for compact Impostor and Resistance boards. */
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel,
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-stage-header,
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-inline-vote {
+  text-align: center;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-round-counter,
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-play-panel > .impostor-role-card:not([hidden]) {
+  justify-content: center !important;
+  justify-items: center !important;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-role-card > strong {
+  text-align: center !important;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card,
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-stage-header {
+  justify-items: center;
+}
+
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card > div,
+body.impostor-active:has(#impostorGame:not([hidden])) .impostor-inline-vote .impostor-vote-list button {
+  text-align: center;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .title-bar {
+  position: relative;
+  top: auto;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .app-shell {
+  height: calc(100dvh - var(--title-bar-height, 72px));
+  min-height: 0;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+  height: 100% !important;
+  max-height: 100% !important;
+  box-sizing: border-box;
+  padding-top: max(8px, env(safe-area-inset-top)) !important;
+}
+
+@media (max-width: 760px) {
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+    padding-top: max(5px, env(safe-area-inset-top)) !important;
+  }
+}

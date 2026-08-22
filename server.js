@@ -2041,6 +2041,7 @@ function normalizeNewimpostorRoom(value) {
   const room = { key, roomName, testMode, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
   if (testMode) {
     IMPOSTOR_TEST_IDENTITIES.forEach((bot, index) => room.players.push(createimpostorPlayer({ ...bot, isTestPlayer: true }, index + 2)));
+    assignimpostorRoles(room);
   }
   return room;
 }

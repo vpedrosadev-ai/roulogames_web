@@ -3393,14 +3393,14 @@ async function kickimpostorPlayer(event) {
     await skipImpostorTestPhase(testControl);
     return;
   }
-  const button = event.target.closest("[data-kick-player-id]");
-  if (!impostorSession?.isHost) return;
   const chip = event.target.closest(".impostor-chip[data-player-id]");
-  if (!button && chip && impostorRoom?.test?.enabled) {
+  if (chip && impostorRoom?.test?.enabled) {
     event.preventDefault();
     selectImpostorTestView(chip.dataset.playerId);
     return;
   }
+  const button = event.target.closest("[data-kick-player-id]");
+  if (!impostorSession?.isHost) return;
   if (!button && (!chip || chip.dataset.playerId === impostorSession.playerId || impostorRoom?.status !== "lobby")) return;
   event.preventDefault();
   showImpostorKickPopup(button?.dataset.kickPlayerId || chip.dataset.playerId);
@@ -3453,7 +3453,7 @@ function hideImpostorKickPopup() {
   const popup = document.querySelector("#impostorKickPopup");
   if (popup) popup.hidden = true;
   pendingImpostorKickTargetId = "";
-  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden !== false && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
 async function performImpostorKick(targetPlayerId, control = null) {
@@ -3542,7 +3542,7 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   const config = room.config || {};
   const currentPlayer = room.player || players.find((player) => player.id === impostorSession?.playerId);
   const activePlayers = players.filter((player) => !player.eliminated);
-  const isHost = Boolean(currentPlayer?.isHost && currentPlayer.id === impostorSession?.playerId);
+  const isHost = Boolean(currentPlayer?.isHost || impostorSession?.isHost);
   if (impostorSession) impostorSession.isHost = isHost;
   const status = room.status || "lobby";
   const votesCast = room.votesCast || 0;
@@ -3814,8 +3814,7 @@ function showImpostorVotePopup() {
 
 function hideImpostorVotePopup() {
   if (!impostorVotePopup) return;
-  impostorVotePopup.hidden = true;
-  if (impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+  if (impostorRoom) renderimpostorActions(impostorRoom, impostorRoom.player);
 }
 
 function showImpostorGuessPopup() {
@@ -3930,8 +3929,7 @@ function renderImpostorTieVoteChoices(candidates) {
 }
 
 function hideImpostorEventPopup() {
-  if (!impostorEventPopup) return;
-  impostorEventPopup.hidden = true;
+  if (impostorEventPopup) impostorEventPopup.hidden = true;
   if (impostorRoom) renderimpostorActions(impostorRoom, impostorRoom.player);
   if (impostorVotePopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
@@ -4856,7 +4854,7 @@ function buildMasterWordContributionRows(room) {
 function hideMasterWordResultPopup() {
   if (!masterWordResultPopup) return;
   masterWordResultPopup.hidden = true;
-  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden !== false && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
 async function shareMasterWordRoom() {
@@ -5227,7 +5225,7 @@ function hideRoomKickPopup(kind) {
   else if (kind === "wolf") pendingWolfKickTargetId = "";
   else if (kind === "masterword") pendingMasterWordKickTargetId = "";
   else pendingMultiplayerKickTargetId = "";
-  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden !== false && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
 async function proposeResistanceTeam() {
