@@ -3046,6 +3046,77 @@ function updateSetupRoomLabel() {
   if (inviteLinkButton) inviteLinkButton.hidden = setupRoomLabel.hidden;
 }
 
+function ensureJoinRoomDirectory({ key, apiPath, form, anchor, roomInput, playerInput, messageElement, onSelect }) {
+  if (!form || !anchor || !roomInput) return null;
+  let list = form.querySelector(`[data-room-directory="${key}"] .active-room-list`);
+  if (list) return list;
+  const section = document.createElement("section");
+  section.className = "active-room-directory";
+  section.dataset.roomDirectory = key;
+  const header = document.createElement("div");
+  const title = document.createElement("strong");
+  const refresh = document.createElement("button");
+  title.textContent = "Salas activas";
+  refresh.type = "button";
+  refresh.className = "secondary compact-button";
+  refresh.textContent = "Actualizar";
+  header.append(title, refresh);
+  list = document.createElement("div");
+  list.className = "active-room-list";
+  section.append(header, list);
+  anchor.insertAdjacentElement("afterend", section);
+  refresh.addEventListener("click", () => loadJoinRoomDirectory({ apiPath, list, messageElement }));
+  list.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-room-name]");
+    if (!card) return;
+    roomInput.value = card.dataset.roomName || "";
+    if (!playerInput?.value?.trim()) {
+      playerInput?.focus();
+      return;
+    }
+    onSelect?.();
+  });
+  return list;
+}
+
+async function loadJoinRoomDirectory({ apiPath, list, messageElement }) {
+  if (!list) return;
+  list.replaceChildren(renderJoinRoomDirectoryEmpty("Cargando salas..."));
+  try {
+    const response = await fetch(apiPath);
+    const payload = await readJsonResponse(response);
+    if (!response.ok) throw new Error(payload.error || "No se pudieron cargar las salas");
+    const rooms = Array.isArray(payload.rooms) ? payload.rooms : [];
+    if (!rooms.length) {
+      list.replaceChildren(renderJoinRoomDirectoryEmpty("No hay salas activas"));
+      return;
+    }
+    list.replaceChildren(...rooms.map((room) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "active-room-card";
+      button.dataset.roomName = room.roomName || "";
+      const name = document.createElement("strong");
+      const meta = document.createElement("small");
+      const count = Number(room.playerLimit || 0) ? `${room.playerCount || 0}/${room.playerLimit}` : `${room.playerCount || 0}`;
+      name.textContent = room.roomName || "Sala";
+      meta.textContent = `${count} jugadores`;
+      button.append(name, meta);
+      return button;
+    }));
+  } catch (error) {
+    list.replaceChildren(renderJoinRoomDirectoryEmpty(error.message));
+    if (messageElement && !messageElement.textContent) messageElement.textContent = error.message;
+  }
+}
+
+function renderJoinRoomDirectoryEmpty(text) {
+  const empty = document.createElement("div");
+  empty.className = "active-room-list-empty";
+  empty.textContent = text;
+  return empty;
+}
+
 async function copyInviteLink() {
   await copyRoomInviteLink(createRoomName.value, inviteLinkButton);
 }
@@ -3226,7 +3297,20 @@ function showimpostorForm(mode) {
   impostorJoinForm.hidden = mode !== "join";
   impostorLobbyMessage.textContent = "";
   if (mode === "create") impostorCreateRoomName.focus();
-  if (mode === "join") impostorJoinRoomName.focus();
+  if (mode === "join") {
+    const list = ensureJoinRoomDirectory({
+      key: "impostor",
+      apiPath: "/api/impostor/rooms",
+      form: impostorJoinForm,
+      anchor: impostorJoinForm.querySelector(".impostor-form-actions"),
+      roomInput: impostorJoinRoomName,
+      playerInput: impostorJoinPlayerName,
+      messageElement: impostorLobbyMessage,
+      onSelect: () => impostorJoinForm.requestSubmit()
+    });
+    void loadJoinRoomDirectory({ apiPath: "/api/impostor/rooms", list, messageElement: impostorLobbyMessage });
+    impostorJoinRoomName.focus();
+  }
 }
 
 async function createimpostorRoom(event) {
@@ -4433,7 +4517,20 @@ function showMasterWordForm(mode) {
   if (masterWordLobbyMessage) masterWordLobbyMessage.textContent = "";
   if (mode === "create") syncMasterWordCreateOptions();
   if (mode === "create") masterWordCreateRoomName?.focus();
-  if (mode === "join") masterWordJoinRoomName?.focus();
+  if (mode === "join") {
+    const list = ensureJoinRoomDirectory({
+      key: "masterword",
+      apiPath: "/api/masterword/rooms",
+      form: masterWordJoinForm,
+      anchor: masterWordJoinForm.querySelector(".impostor-form-actions"),
+      roomInput: masterWordJoinRoomName,
+      playerInput: masterWordJoinPlayerName,
+      messageElement: masterWordLobbyMessage,
+      onSelect: () => masterWordJoinForm.requestSubmit()
+    });
+    void loadJoinRoomDirectory({ apiPath: "/api/masterword/rooms", list, messageElement: masterWordLobbyMessage });
+    masterWordJoinRoomName?.focus();
+  }
 }
 
 function setMasterWordMode(kind, value) {
@@ -5077,7 +5174,20 @@ function showResistanceForm(mode) {
   resistanceJoinForm.hidden = mode !== "join";
   if (resistanceLobbyMessage) resistanceLobbyMessage.textContent = "";
   if (mode === "create") resistanceCreateRoomName?.focus();
-  if (mode === "join") resistanceJoinRoomName?.focus();
+  if (mode === "join") {
+    const list = ensureJoinRoomDirectory({
+      key: "resistance",
+      apiPath: "/api/resistance/rooms",
+      form: resistanceJoinForm,
+      anchor: resistanceJoinForm.querySelector(".resistance-form-actions"),
+      roomInput: resistanceJoinRoomName,
+      playerInput: resistanceJoinPlayerName,
+      messageElement: resistanceLobbyMessage,
+      onSelect: () => resistanceJoinForm.requestSubmit()
+    });
+    void loadJoinRoomDirectory({ apiPath: "/api/resistance/rooms", list, messageElement: resistanceLobbyMessage });
+    resistanceJoinRoomName?.focus();
+  }
 }
 
 function syncResistanceTestCreateMode() {
@@ -5919,7 +6029,20 @@ function showWolfForm(mode) {
   wolfJoinForm.hidden = mode !== "join";
   if (wolfLobbyMessage) wolfLobbyMessage.textContent = "";
   if (mode === "create") wolfCreateRoomName?.focus();
-  else wolfJoinPlayerName?.focus();
+  else {
+    const list = ensureJoinRoomDirectory({
+      key: "wolf",
+      apiPath: "/api/wolf/rooms",
+      form: wolfJoinForm,
+      anchor: wolfJoinForm.querySelector(".wolf-form-actions"),
+      roomInput: wolfJoinRoomName,
+      playerInput: wolfJoinPlayerName,
+      messageElement: wolfLobbyMessage,
+      onSelect: () => wolfJoinForm.requestSubmit()
+    });
+    void loadJoinRoomDirectory({ apiPath: "/api/wolf/rooms", list, messageElement: wolfLobbyMessage });
+    wolfJoinPlayerName?.focus();
+  }
 }
 
 function syncWolfTestCreateMode() {
@@ -8734,7 +8857,20 @@ function setPlayerMode(mode) {
   });
   multiplayerSetup.hidden = playerMode !== "multiplayer";
   multiplayerSetupMessage.textContent = "";
-  if (playerMode === "multiplayer") setSetupMode("ten");
+  if (playerMode === "multiplayer") {
+    setSetupMode("ten");
+    const list = ensureJoinRoomDirectory({
+      key: "multiplayer",
+      apiPath: "/api/multiplayer/rooms",
+      form: multiplayerSetup,
+      anchor: joinRoomButton,
+      roomInput: joinRoomName,
+      playerInput: joinPlayerName,
+      messageElement: multiplayerSetupMessage,
+      onSelect: () => joinRoomButton?.click()
+    });
+    void loadJoinRoomDirectory({ apiPath: "/api/multiplayer/rooms", list, messageElement: multiplayerSetupMessage });
+  }
   else leaveMultiplayerRoom();
 }
 

@@ -594,10 +594,15 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/game/custom-playlist") return loadCustomGamePlaylist(req, res);
     if (req.method === "GET" && url.pathname === "/api/leaderboard") return getLeaderboard(res, url.searchParams.get("config"));
     if (req.method === "POST" && url.pathname === "/api/leaderboard") return submitLeaderboardScore(req, res);
+    if (req.method === "GET" && url.pathname === "/api/multiplayer/rooms") return listActiveGameRooms(res, multiplayerRooms, isMultiplayerHostConnected, isMultiplayerRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/multiplayer/rooms") return createMultiplayerRoom(req, res);
+    if (req.method === "GET" && url.pathname === "/api/impostor/rooms") return listActiveGameRooms(res, impostorRooms, isimpostorHostConnected, isLobbyRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/impostor/rooms") return createimpostorRoom(req, res);
+    if (req.method === "GET" && url.pathname === "/api/resistance/rooms") return listActiveGameRooms(res, resistanceRooms, isResistanceHostConnected, isLobbyRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/resistance/rooms") return createResistanceRoom(req, res);
+    if (req.method === "GET" && url.pathname === "/api/wolf/rooms") return listActiveGameRooms(res, wolfRooms, isWolfHostConnected, isWolfRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomNode(req, res);
+    if (req.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(res, masterWordRooms, isMasterWordHostConnected, isLobbyRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
@@ -1263,6 +1268,39 @@ function listScoreboardRooms(res) {
     .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
     .map(scoreboardDirectoryEntry);
   sendJson(res, { rooms });
+}
+
+function listActiveGameRooms(res, roomsMap, hostConnected, canJoin) {
+  const rooms = [...roomsMap.values()]
+    .filter((room) => hostConnected(room) && canJoin(room))
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+    .map(gameDirectoryEntry);
+  sendJson(res, { rooms });
+}
+
+function gameDirectoryEntry(room) {
+  const playerLimit = Number(room.config?.playerLimit || room.maxPlayers || room.playerLimit || 0);
+  return {
+    roomName: room.roomName || room.name || "",
+    playerCount: Array.isArray(room.players) ? room.players.filter((player) => !player.isTestPlayer).length : 0,
+    playerLimit,
+    status: room.status || "",
+    updatedAt: Number(room.updatedAt || room.createdAt || 0)
+  };
+}
+
+function isLobbyRoomJoinable(room) {
+  const players = Array.isArray(room.players) ? room.players : [];
+  return room.status === "lobby" && !room.testMode && (!room.config?.playerLimit || players.length < Number(room.config.playerLimit));
+}
+
+function isMultiplayerRoomJoinable(room) {
+  const players = Array.isArray(room.players) ? room.players : [];
+  return room.status !== "finished" && Number(room.roundIndex || 0) <= 0 && players.length < 12;
+}
+
+function isWolfRoomJoinable(room) {
+  return room.status !== "finished" && !room.testMode;
 }
 
 async function createScoreboardRoom(req, res) {

@@ -11856,6 +11856,85 @@ body.scoreboard-active .title-bar {
   font-weight: 800;
 }
 
+.active-room-directory {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.active-room-directory > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.active-room-directory > div:first-child > strong {
+  color: inherit;
+  font-size: .9rem;
+  font-weight: 950;
+}
+
+.active-room-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(260px, 36dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.active-room-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid rgba(39, 93, 159, .22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .92);
+  color: #172033;
+  text-align: left;
+}
+
+.active-room-card:hover,
+.active-room-card:focus-visible {
+  border-color: var(--scoreboard-blue, #275d9f);
+  background: #f2f8fb;
+}
+
+.active-room-card strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: .95rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-room-card small {
+  color: #627086;
+  font-size: .72rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.active-room-list-empty {
+  display: grid;
+  min-height: 74px;
+  place-items: center;
+  padding: 14px;
+  border: 1px dashed rgba(103, 116, 137, .45);
+  border-radius: 8px;
+  color: #677489;
+  text-align: center;
+  font-size: .84rem;
+  font-weight: 850;
+}
+
 .scoreboard-game { display: grid; gap: 11px; min-width: 0; }
 .scoreboard-game[hidden],
 .scoreboard-lobby[hidden] { display: none; }
@@ -14094,12 +14173,13 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .content {
     min-height: 0 !important;
-    height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    height: calc(100dvh - var(--title-bar-height, 72px) + 14px) !important;
   }
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-action-panel {
-    max-height: calc(100dvh - var(--title-bar-height, 72px) - 58px);
+    max-height: calc(100dvh - var(--title-bar-height, 72px) - 38px);
     gap: 6px !important;
+    padding-bottom: max(14px, env(safe-area-inset-bottom)) !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
     scrollbar-width: thin;
@@ -14115,6 +14195,8 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
   }
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-team-picker:not([hidden]) {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, auto) auto;
     flex: 0 0 auto !important;
     min-height: auto !important;
     overflow: visible !important;
@@ -14122,10 +14204,16 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
 
   body.resistance-active:has(#resistanceGame:not([hidden])) #resistanceTeamOptions {
     height: auto !important;
-    max-height: 38dvh !important;
+    max-height: min(30dvh, 210px) !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
     scrollbar-width: thin;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) #resistanceProposeButton {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
   }
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-summary:not([hidden]) {
