@@ -6270,6 +6270,9 @@ body.impostor-active .content {
 
 .wolf-home-card {
   grid-column: span 3;
+  grid-template-rows: auto 1fr auto;
+  align-items: start;
+  justify-items: start;
   min-height: clamp(168px, 24vh, 230px);
   background:
     radial-gradient(circle at 78% 18%, rgba(235, 239, 196, .2), transparent 20%),
@@ -6279,6 +6282,8 @@ body.impostor-active .content {
 }
 
 .wolf-home-card .wolf-home-icon {
+  display: block;
+  box-sizing: border-box;
   width: 42px;
   height: 42px;
   margin-bottom: 14px;
@@ -6287,6 +6292,11 @@ body.impostor-active .content {
   border-radius: 8px;
   background: rgba(255, 255, 255, .12);
   color: #dbe9cb;
+}
+
+.wolf-home-card strong {
+  align-self: end;
+  max-width: 10ch;
 }
 
 .wolf-home-card small,
@@ -6840,6 +6850,7 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
   .home-menu-card,
   .home-menu-card[data-view-target="gameView"],
   .home-menu-card[data-view-target="impostorView"],
+  .home-menu-card[data-view-target="wolfView"],
   .home-menu-card[data-view-target="scoreboardView"],
   .home-menu-card[data-view-target="generatorView"],
   .home-menu-card[data-view-target="converterView"],
@@ -9594,6 +9605,7 @@ body.resistance-active .content {
 
 .resistance-mission-popup-card {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
   width: min(760px, 100%);
   max-height: calc(100dvh - var(--title-bar-height, 72px) - 36px);
@@ -9638,8 +9650,11 @@ body.resistance-active .content {
   display: grid;
   gap: 12px;
   min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding-right: 4px;
   scrollbar-width: thin;
 }
@@ -10921,6 +10936,7 @@ body.masterword-active .content {
   .home-menu-card[data-view-target="gameView"],
   .home-menu-card[data-view-target="impostorView"],
   .home-menu-card[data-view-target="resistanceView"],
+  .home-menu-card[data-view-target="wolfView"],
   .home-menu-card[data-view-target="masterWordView"],
   .home-menu-card[data-view-target="scoreboardView"],
   .home-menu-card[data-view-target="generatorView"],

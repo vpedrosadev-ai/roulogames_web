@@ -2342,6 +2342,7 @@ let resistanceTeamDraftIds = new Set();
 let resistanceTeamDraftKey = "";
 let resistanceSelectedMissionIndex = -1;
 let resistanceCompletedMissionCount = 0;
+let resistanceMissionPopupPointer = null;
 let resistanceOutcomeEventId = "";
 let wolfSession = null;
 let wolfRoom = null;
@@ -2591,8 +2592,20 @@ resistanceSuccessButton?.addEventListener("click", () => voteResistanceMission(f
 resistanceSabotageButton?.addEventListener("click", () => voteResistanceMission(true));
 resistanceMissionTrack?.addEventListener("click", selectResistanceMissionSummary);
 resistanceMissionPopupClose?.addEventListener("click", hideResistanceMissionPopup);
+resistanceMissionPopup?.addEventListener("pointerdown", (event) => {
+  resistanceMissionPopupPointer = { x: event.clientX, y: event.clientY, id: event.pointerId };
+});
+resistanceMissionPopup?.addEventListener("pointerup", (event) => {
+  if (!resistanceMissionPopupPointer || resistanceMissionPopupPointer.id !== event.pointerId) return;
+  const moved = Math.hypot(event.clientX - resistanceMissionPopupPointer.x, event.clientY - resistanceMissionPopupPointer.y);
+  resistanceMissionPopupPointer = null;
+  if (moved < 8) hideResistanceMissionPopup();
+});
+resistanceMissionPopup?.addEventListener("pointercancel", () => {
+  resistanceMissionPopupPointer = null;
+});
 resistanceMissionPopup?.addEventListener("click", (event) => {
-  if (event.target === resistanceMissionPopup) hideResistanceMissionPopup();
+  if (event.target === resistanceMissionPopupClose) hideResistanceMissionPopup();
 });
 window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
 wolfCreateForm?.addEventListener("submit", createWolfRoomClient);
@@ -5887,11 +5900,31 @@ function selectResistanceMissionSummary(event) {
   const button = event.target.closest("[data-resistance-round-index]");
   if (!button || !resistanceRoom) return;
   resistanceSelectedMissionIndex = Number(button.dataset.resistanceRoundIndex);
+  renderResistanceMissionSummary(resistanceRoom);
   showResistanceMissionPopup(resistanceRoom, resistanceSelectedMissionIndex);
 }
 
 function renderResistanceMissionSummary(room) {
-  if (resistanceMissionSummary) resistanceMissionSummary.hidden = true;
+  if (!resistanceMissionSummary || !resistanceMissionSummaryBody || !resistanceMissionSummaryTitle) return;
+  const results = room.missionResults || [];
+  if (!results.length) {
+    resistanceMissionSummary.hidden = true;
+    resistanceSelectedMissionIndex = -1;
+    resistanceCompletedMissionCount = 0;
+    hideResistanceMissionPopup();
+    return;
+  }
+  if (results.length !== resistanceCompletedMissionCount) {
+    resistanceCompletedMissionCount = results.length;
+    resistanceSelectedMissionIndex = results.length - 1;
+  }
+  if (!results[resistanceSelectedMissionIndex]) resistanceSelectedMissionIndex = results.length - 1;
+  const index = resistanceSelectedMissionIndex;
+  const result = results[index];
+  const missionNumber = Number(result.missionNumber || index + 1);
+  resistanceMissionSummaryTitle.textContent = `Misión ${missionNumber}: ${result.failed ? "fracaso" : "éxito"}`;
+  resistanceMissionSummaryBody.replaceChildren(...buildResistanceMissionReportNodes(room, result, index));
+  resistanceMissionSummary.hidden = false;
   if (resistanceMissionPopup && !resistanceMissionPopup.hidden) renderResistanceMissionPopup(room, resistanceSelectedMissionIndex);
 }
 
@@ -5938,7 +5971,21 @@ function renderResistanceMissionPopup(room, index) {
   resistanceMissionPopupTitle.textContent = `Misión ${missionNumber}: ${result.failed ? "fracaso" : "éxito"}`;
   resistanceMissionPopupTitle.classList.toggle("is-failed", Boolean(result.failed));
   resistanceMissionPopupTitle.classList.toggle("is-success", !result.failed);
-  resistanceMissionPopupBody.replaceChildren(
+  resistanceMissionPopupBody.replaceChildren(...buildResistanceMissionReportNodes(room, result, index));
+}
+
+function buildResistanceMissionReportNodes(room, result, index) {
+  const playersById = new Map((room.players || []).map((player) => [player.id, player]));
+  const supportIds = Object.entries(result.teamVotes || {}).filter(([, approved]) => approved).map(([id]) => id);
+  const rejectIds = Object.entries(result.teamVotes || {}).filter(([, approved]) => !approved).map(([id]) => id);
+  const missionIds = result.teamIds || [];
+  const sabotages = Number(result.sabotages || 0);
+  const successes = Number.isFinite(Number(result.successes)) ? Number(result.successes) : Math.max(0, missionIds.length - sabotages);
+  const requiredFails = Number(result.requiredFails || 1);
+  const requiredSuccesses = Math.max(0, missionIds.length - requiredFails + 1);
+  const neededLabel = result.failed ? "Fracasos necesarios" : "Aciertos necesarios";
+  const neededValue = result.failed ? `${sabotages}/${requiredFails}` : `${successes}/${requiredSuccesses}`;
+  return [
     renderResistanceRoundStatGrid([
       { label: "Aciertos", value: String(successes) },
       { label: "Fracasos", value: String(sabotages) },
@@ -5947,7 +5994,7 @@ function renderResistanceMissionPopup(room, index) {
     renderResistanceRoundList("Formaban parte de la misión", missionIds, playersById),
     renderResistanceRoundList("Apoyaron el equipo", supportIds, playersById),
     renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById)
-  );
+  ];
 }
 
 function renderResistanceCurrentTeam(room, players) {
