@@ -9575,6 +9575,79 @@ body.resistance-active .content {
   font-weight: 850;
 }
 
+.resistance-mission-popup {
+  position: fixed;
+  inset: calc(var(--title-bar-height, 72px) + 8px) 0 0;
+  z-index: 120;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 14px;
+  background: rgba(2, 9, 7, .68);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.resistance-mission-popup[hidden] {
+  display: none !important;
+}
+
+.resistance-mission-popup-card {
+  display: grid;
+  gap: 14px;
+  width: min(760px, 100%);
+  max-height: calc(100dvh - var(--title-bar-height, 72px) - 36px);
+  padding: 18px;
+  border: 1px solid rgba(126, 255, 170, .28);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(8, 25, 18, .98), rgba(15, 13, 25, .98));
+  color: #ecfff3;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .46);
+  overflow: hidden;
+}
+
+.resistance-mission-popup-card > header {
+  display: grid;
+  gap: 4px;
+}
+
+.resistance-mission-popup-card > header span {
+  color: rgba(236, 255, 243, .62);
+  font-size: .72rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.resistance-mission-popup-card h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 5vw, 3.2rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.resistance-mission-popup-card h2.is-success {
+  color: #6af094;
+}
+
+.resistance-mission-popup-card h2.is-failed {
+  color: #ff5161;
+}
+
+.resistance-mission-popup-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.resistance-mission-popup-card > button {
+  justify-self: end;
+}
+
 @media (max-width: 760px) {
   body.impostor-active:has(#impostorGame:not([hidden])) {
     overflow: auto !important;

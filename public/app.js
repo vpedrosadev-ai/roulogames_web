@@ -269,6 +269,10 @@ const resistanceBackButtons = document.querySelectorAll("[data-resistance-back]"
 const resistanceMissionSummary = document.querySelector("#resistanceMissionSummary");
 const resistanceMissionSummaryTitle = document.querySelector("#resistanceMissionSummaryTitle");
 const resistanceMissionSummaryBody = document.querySelector("#resistanceMissionSummaryBody");
+const resistanceMissionPopup = document.querySelector("#resistanceMissionPopup");
+const resistanceMissionPopupTitle = document.querySelector("#resistanceMissionPopupTitle");
+const resistanceMissionPopupBody = document.querySelector("#resistanceMissionPopupBody");
+const resistanceMissionPopupClose = document.querySelector("#resistanceMissionPopupClose");
 const wolfLobby = document.querySelector("#wolfLobby");
 const wolfChoice = document.querySelector("#wolfChoice");
 const wolfChooseCreate = document.querySelector("#wolfChooseCreate");
@@ -2338,11 +2342,13 @@ let resistanceTeamDraftIds = new Set();
 let resistanceTeamDraftKey = "";
 let resistanceSelectedMissionIndex = -1;
 let resistanceCompletedMissionCount = 0;
+let resistanceOutcomeEventId = "";
 let wolfSession = null;
 let wolfRoom = null;
 let wolfPollTimer = null;
 let wolfCountdownTimer = null;
 let wolfShownEventId = "";
+let wolfOutcomeEventId = "";
 let wolfSoundedPhaseKey = "";
 let wolfSpokenPhaseKey = "";
 let wolfSpokenCountdownSecond = 0;
@@ -2358,6 +2364,7 @@ let masterWordRoom = null;
 let masterWordPollTimer = null;
 let masterWordShownEventId = "";
 let masterWordShownResultKey = "";
+let masterWordOutcomeEventId = "";
 let masterWordKnownPlayerIds = new Set();
 let scoreboardSession = null;
 let scoreboardRoom = null;
@@ -2369,6 +2376,7 @@ let scoreboardEditingPlayerId = "";
 let scoreboardEditingRoundIndex = -1;
 let scoreboardBulkRole = "";
 let scoreboardShownResultId = "";
+let scoreboardOutcomeResultId = "";
 let scoreboardKnownScoreEventIds = new Set();
 let gameCompleteFlybyPending = false;
 let inviteRoomName = "";
@@ -2510,6 +2518,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && hostConfigPopup && !hostConfigPopup.hidden) hideHostConfigPopup();
   if (event.key === "Escape" && !customPlaylistPopup.hidden) hideCustomPlaylistPopup();
   if (event.key === "Escape" && !multiplayerPodiumPopup.hidden) hideMultiplayerPodium();
+  if (event.key === "Escape" && resistanceMissionPopup && !resistanceMissionPopup.hidden) hideResistanceMissionPopup();
   if (event.key === "Escape") closeScoreboardPopups();
 });
 
@@ -2581,6 +2590,10 @@ resistanceRejectButton?.addEventListener("click", () => voteResistanceTeam(false
 resistanceSuccessButton?.addEventListener("click", () => voteResistanceMission(false));
 resistanceSabotageButton?.addEventListener("click", () => voteResistanceMission(true));
 resistanceMissionTrack?.addEventListener("click", selectResistanceMissionSummary);
+resistanceMissionPopupClose?.addEventListener("click", hideResistanceMissionPopup);
+resistanceMissionPopup?.addEventListener("click", (event) => {
+  if (event.target === resistanceMissionPopup) hideResistanceMissionPopup();
+});
 window.addEventListener("pagehide", () => releaseResistanceRoomIfHost({ useBeacon: true }));
 wolfCreateForm?.addEventListener("submit", createWolfRoomClient);
 wolfJoinForm?.addEventListener("submit", joinWolfRoomClient);
@@ -4408,7 +4421,7 @@ function triggerImpostorOutcomeEffects(room) {
   const won = Boolean(room.player?.won);
   window.setTimeout(() => {
     playimpostorAlarmSound(won ? "winner" : "loser");
-    triggerGameCompleteFlyby(won ? "/images/game-complete.jpeg" : "/images/you-tried.png");
+    triggerOutcomeFlyby(won);
   }, 380);
 }
 
@@ -4717,6 +4730,7 @@ async function restartMasterWordGame() {
     masterWordRoom = payload;
     masterWordShownEventId = payload.eventId || "";
     masterWordShownResultKey = getMasterWordResultKey(payload.lastRoundResult);
+    masterWordOutcomeEventId = "";
     hideMasterWordResultPopup();
     renderMasterWordRoom(payload);
     maybeShowMasterWordResultPopup(payload);
@@ -4812,6 +4826,7 @@ function renderMasterWordRoom(room = masterWordRoom) {
   renderMasterWordPlayers(players, player, room);
   renderMasterWordRole(room, player);
   renderMasterWordActions(room, player, players, isHost);
+  triggerMasterWordOutcomeEffects(room);
 }
 
 function renderMasterWordPlayers(players, currentPlayer, room) {
@@ -5028,6 +5043,15 @@ function maybeShowMasterWordResultPopup(room) {
   showMasterWordResultPopup(room, result);
 }
 
+function triggerMasterWordOutcomeEffects(room) {
+  if (room?.status !== "finished") return;
+  const key = room.eventId || getMasterWordResultKey(room.lastRoundResult) || `${room.roomName}:${room.score}:${room.maxRounds}`;
+  if (!key || key === masterWordOutcomeEventId) return;
+  masterWordOutcomeEventId = key;
+  const won = Number(room.score || 0) > 0;
+  window.setTimeout(() => triggerOutcomeFlyby(won), 380);
+}
+
 function showMasterWordResultPopup(room, result) {
   if (!masterWordResultPopup || !masterWordResultCard || !masterWordResultTitle || !masterWordResultBody) return;
   const isCorrect = result.result === "correct";
@@ -5109,6 +5133,7 @@ function leaveMasterWordRoom() {
   masterWordRoom = null;
   masterWordShownEventId = "";
   masterWordShownResultKey = "";
+  masterWordOutcomeEventId = "";
   masterWordKnownPlayerIds = new Set();
   hideMasterWordResultPopup();
 }
@@ -5329,6 +5354,7 @@ async function restartResistanceGame() {
     if (!response.ok) throw new Error(payload.error || "No se pudo reiniciar");
     resistanceRoom = payload;
     resistanceShownEventId = payload.eventId || "";
+    resistanceOutcomeEventId = "";
     renderResistanceRoom(payload);
   } catch (error) {
     resistanceGameMessage.textContent = error.message;
@@ -5558,6 +5584,7 @@ function renderResistanceRoom(room = resistanceRoom) {
   renderResistanceActions(room, player, players, isHost);
   renderResistanceCurrentTeam(room, players);
   renderResistanceMissionSummary(room);
+  triggerResistanceOutcomeEffects(room, player);
 }
 
 function renderResistanceMissionTrack(room) {
@@ -5848,28 +5875,54 @@ function formatResistanceEvent(event) {
   return "";
 }
 
+function triggerResistanceOutcomeEffects(room, player) {
+  if (room?.status !== "finished") return;
+  const key = room.eventId || `${room.roomName}:${room.winner}:${room.missionResults?.length || 0}`;
+  if (!key || key === resistanceOutcomeEventId) return;
+  resistanceOutcomeEventId = key;
+  window.setTimeout(() => triggerOutcomeFlyby(Boolean(player?.won)), 380);
+}
+
 function selectResistanceMissionSummary(event) {
   const button = event.target.closest("[data-resistance-round-index]");
   if (!button || !resistanceRoom) return;
   resistanceSelectedMissionIndex = Number(button.dataset.resistanceRoundIndex);
-  renderResistanceMissionSummary(resistanceRoom);
+  showResistanceMissionPopup(resistanceRoom, resistanceSelectedMissionIndex);
 }
 
 function renderResistanceMissionSummary(room) {
-  if (!resistanceMissionSummary || !resistanceMissionSummaryBody || !resistanceMissionSummaryTitle) return;
+  if (resistanceMissionSummary) resistanceMissionSummary.hidden = true;
+  if (resistanceMissionPopup && !resistanceMissionPopup.hidden) renderResistanceMissionPopup(room, resistanceSelectedMissionIndex);
+}
+
+function showResistanceMissionPopup(room, index) {
+  if (!resistanceMissionPopup) return;
+  resistanceSelectedMissionIndex = index;
+  renderResistanceMissionPopup(room, index);
+  resistanceMissionPopup.hidden = false;
+}
+
+function hideResistanceMissionPopup() {
+  if (resistanceMissionPopup) resistanceMissionPopup.hidden = true;
+}
+
+function renderResistanceMissionPopup(room, index) {
+  if (!resistanceMissionPopupTitle || !resistanceMissionPopupBody) return;
   const results = room.missionResults || [];
   if (!results.length) {
-    resistanceMissionSummary.hidden = true;
     resistanceSelectedMissionIndex = -1;
     resistanceCompletedMissionCount = 0;
+    hideResistanceMissionPopup();
     return;
   }
   if (results.length !== resistanceCompletedMissionCount) {
     resistanceCompletedMissionCount = results.length;
-    resistanceSelectedMissionIndex = results.length - 1;
   }
-  if (!results[resistanceSelectedMissionIndex]) resistanceSelectedMissionIndex = results.length - 1;
-  const index = resistanceSelectedMissionIndex;
+  if (!results[index]) {
+    hideResistanceMissionPopup();
+    return;
+  }
+  resistanceSelectedMissionIndex = index;
   const result = results[index];
   const missionNumber = Number(result.missionNumber || index + 1);
   const playersById = new Map((room.players || []).map((player) => [player.id, player]));
@@ -5882,18 +5935,19 @@ function renderResistanceMissionSummary(room) {
   const requiredSuccesses = Math.max(0, missionIds.length - requiredFails + 1);
   const neededLabel = result.failed ? "Fracasos necesarios" : "Aciertos necesarios";
   const neededValue = result.failed ? `${sabotages}/${requiredFails}` : `${successes}/${requiredSuccesses}`;
-  resistanceMissionSummaryTitle.textContent = `Misión ${missionNumber}: ${result.failed ? "fracaso" : "éxito"}`;
-  resistanceMissionSummaryBody.replaceChildren(
+  resistanceMissionPopupTitle.textContent = `Misión ${missionNumber}: ${result.failed ? "fracaso" : "éxito"}`;
+  resistanceMissionPopupTitle.classList.toggle("is-failed", Boolean(result.failed));
+  resistanceMissionPopupTitle.classList.toggle("is-success", !result.failed);
+  resistanceMissionPopupBody.replaceChildren(
     renderResistanceRoundStatGrid([
       { label: "Aciertos", value: String(successes) },
       { label: "Fracasos", value: String(sabotages) },
       { label: neededLabel, value: neededValue }
     ]),
+    renderResistanceRoundList("Formaban parte de la misión", missionIds, playersById),
     renderResistanceRoundList("Apoyaron el equipo", supportIds, playersById),
-    renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById),
-    renderResistanceRoundList("Participaron en la mision", missionIds, playersById)
+    renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById)
   );
-  resistanceMissionSummary.hidden = false;
 }
 
 function renderResistanceCurrentTeam(room, players) {
@@ -5979,6 +6033,8 @@ function leaveResistanceRoom() {
   resistanceTeamDraftKey = "";
   resistanceSelectedMissionIndex = -1;
   resistanceCompletedMissionCount = 0;
+  resistanceOutcomeEventId = "";
+  hideResistanceMissionPopup();
 }
 
 function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {
@@ -6185,11 +6241,20 @@ function renderWolfRoom(room = wolfRoom) {
   renderWolfVoteSummary(room);
   syncWolfNarration(room, player);
   syncWolfCountdown(room);
+  triggerWolfOutcomeEffects(room, player);
 
   const setupOpen = !wolfRoleSetup.hidden;
   if (room.status !== "lobby" || !isHost) closeWolfRoleSetup();
   else if (setupOpen) syncWolfRoleDraft();
   renderWolfPrimaryButtonOnly();
+}
+
+function triggerWolfOutcomeEffects(room, player) {
+  if (room?.phase !== "finished") return;
+  const key = room.eventId || `${room.roomName}:${room.winner}:${room.dayNumber}`;
+  if (!key || key === wolfOutcomeEventId) return;
+  wolfOutcomeEventId = key;
+  window.setTimeout(() => triggerOutcomeFlyby(Boolean(player?.won)), 380);
 }
 
 function renderWolfTestTools(room, player, players) {
@@ -6810,6 +6875,7 @@ async function restartWolfGameClient() {
   try {
     const payload = await wolfPost("restart");
     wolfRoom = payload;
+    wolfOutcomeEventId = "";
     renderWolfRoom(payload);
     window.scrollTo(0, 0);
   } catch (error) {
@@ -6849,6 +6915,7 @@ function leaveWolfRoomClient({ notify = false, forget = false } = {}) {
   wolfSession = null;
   wolfRoom = null;
   wolfShownEventId = "";
+  wolfOutcomeEventId = "";
   wolfSoundedPhaseKey = "";
   wolfSpokenPhaseKey = "";
   wolfSpokenCountdownSecond = 0;
@@ -7927,6 +7994,7 @@ async function startNewScoreboardGame() {
   try {
     await scoreboardAction("new-game", {});
     scoreboardShownResultId = "";
+    scoreboardOutcomeResultId = "";
     hideScoreboardPopup(scoreboardPodiumPopup);
   } catch (error) {
     scoreboardGameMessage.textContent = error.message;
@@ -7937,6 +8005,7 @@ async function restartScoreboardGame() {
   try {
     await scoreboardAction("reset", {});
     scoreboardShownResultId = "";
+    scoreboardOutcomeResultId = "";
     hideScoreboardPopup(scoreboardPodiumPopup);
   } catch (error) {
     scoreboardGameMessage.textContent = error.message;
@@ -8015,6 +8084,16 @@ function showScoreboardPodium(room) {
   scoreboardShownResultId = room.resultId;
   showScoreboardPopup(scoreboardPodiumPopup);
   playMultiplayerPodiumFanfare();
+  triggerScoreboardOutcomeEffects(room, rankedPlayers);
+}
+
+function triggerScoreboardOutcomeEffects(room, rankedPlayers) {
+  const key = room.resultId || `${room.roomName}:${room.status}:${room.gameNumber}:${room.updatedAt || ""}`;
+  if (!key || key === scoreboardOutcomeResultId) return;
+  scoreboardOutcomeResultId = key;
+  const playerId = scoreboardSession?.playerId || "";
+  const won = playerId ? rankedPlayers.some(({ player, rank }) => player.id === playerId && rank === 1) : true;
+  window.setTimeout(() => triggerOutcomeFlyby(won), 380);
 }
 
 function createScoreboardTraitorStats(room, playerId, isOverall) {
@@ -8317,6 +8396,7 @@ function leaveScoreboardRoom() {
   scoreboardEditingPlayerId = "";
   scoreboardEditingRoundIndex = -1;
   scoreboardShownResultId = "";
+  scoreboardOutcomeResultId = "";
   scoreboardKnownScoreEventIds = new Set();
   closeScoreboardPopups();
 }
@@ -10259,11 +10339,7 @@ function triggerPendingGameCompleteFlyby() {
   if (!gameCompleteFlybyPending) return;
   if (playerMode === "multiplayer" && runComplete && multiplayerRoom?.status !== "finished") return;
   gameCompleteFlybyPending = false;
-  if (playerMode !== "multiplayer" || isCurrentMultiplayerWinner()) {
-    triggerGameCompleteFlyby();
-  } else {
-    triggerGameCompleteFlyby("/images/you-tried.png");
-  }
+  triggerOutcomeFlyby(playerMode !== "multiplayer" || isCurrentMultiplayerWinner());
 }
 
 function isCurrentMultiplayerWinner() {
@@ -10271,6 +10347,10 @@ function isCurrentMultiplayerWinner() {
   const winner = [...multiplayerRoom.players]
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))[0];
   return winner?.id === multiplayerSession.playerId;
+}
+
+function triggerOutcomeFlyby(success) {
+  triggerGameCompleteFlyby(success ? "/images/game-complete.jpeg" : "/images/you-tried.png");
 }
 
 function triggerGameCompleteFlyby(imageSource = "/images/game-complete.jpeg") {
