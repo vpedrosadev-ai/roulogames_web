@@ -14043,6 +14043,17 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
   white-space: normal;
 }
 
+#resistanceTeamVoteActions #resistanceRejectButton {
+  color: #fff;
+  border-color: rgba(255, 81, 97, .72);
+  background: #bd2038;
+}
+
+#resistanceTeamVoteActions #resistanceRejectButton:hover,
+#resistanceTeamVoteActions #resistanceRejectButton:focus-visible {
+  background: #98192d;
+}
+
 #resistanceTeamVoteActions button small {
   color: currentColor;
   font-size: .66rem;
@@ -14056,6 +14067,17 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
   width: 100%;
   min-height: 40px;
   margin-top: 6px;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-action-panel {
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-team-picker:not([hidden]),
+body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-summary:not([hidden]) {
+  flex: 0 0 auto !important;
 }
 
 @media (max-width: 760px) {
@@ -14076,8 +14098,11 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
   }
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-action-panel {
-    max-height: 100%;
-    gap: 4px !important;
+    max-height: calc(100dvh - var(--title-bar-height, 72px) - 58px);
+    gap: 6px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
   }
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-operation-brief {
@@ -14087,6 +14112,25 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-players {
     grid-auto-rows: minmax(44px, auto) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-team-picker:not([hidden]) {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) #resistanceTeamOptions {
+    height: auto !important;
+    max-height: 38dvh !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-summary:not([hidden]) {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
   }
 
   .resistance-round-stat-grid article {
