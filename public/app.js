@@ -2337,6 +2337,7 @@ let resistanceTestAutoFollowEnabled = true;
 let resistanceTeamDraftIds = new Set();
 let resistanceTeamDraftKey = "";
 let resistanceSelectedMissionIndex = -1;
+let resistanceCompletedMissionCount = 0;
 let wolfSession = null;
 let wolfRoom = null;
 let wolfPollTimer = null;
@@ -3777,8 +3778,13 @@ function renderimpostorActions(room, currentPlayer) {
   if (!impostorVoteList || !impostorGuessForm) return;
   const status = room.status || "lobby";
   const votingPhase = ["playing", "tiebreak"].includes(status);
+  const eventType = room.lastEvent?.type || "";
   if (impostorPhaseTitle) {
-    impostorPhaseTitle.textContent = status === "lobby"
+    impostorPhaseTitle.textContent = eventType === "eliminated"
+      ? "Se ha expulsado:"
+      : eventType === "tie"
+        ? "Empate en la votación"
+        : status === "lobby"
       ? "Sala de espera"
       : status === "finished"
         ? "Final del juego"
@@ -3786,6 +3792,7 @@ function renderimpostorActions(room, currentPlayer) {
           ? "Desempate"
           : "Votación";
   }
+  if (impostorGameMessage) impostorGameMessage.hidden = status === "finished" || ["eliminated", "tie"].includes(eventType);
   const canVote = ["playing", "tiebreak"].includes(status) && currentPlayer && !currentPlayer.eliminated && !currentPlayer.hasVoted;
   const voteLabel = `${t("impostor.vote")} (${room.votesCast || 0}/${room.activeCount || 0})`;
   const votersByTarget = new Map();
@@ -3817,8 +3824,12 @@ function renderimpostorActions(room, currentPlayer) {
     empty.textContent = status === "lobby" ? t("impostor.voteAfterStart") : t("impostor.noVoteTargets");
     impostorVoteList.replaceChildren(empty);
   }
-  if (impostorVotePopup) impostorVotePopup.hidden = status === "lobby";
-  if (impostorVotePopupTitle) impostorVotePopupTitle.hidden = !votingPhase;
+  if (impostorVotePopup) {
+    impostorVotePopup.hidden = status === "lobby";
+    impostorVotePopup.classList.toggle("is-final", status === "finished");
+    impostorVotePopup.classList.toggle("is-tiebreak", status === "tiebreak");
+  }
+  if (impostorVotePopupTitle) impostorVotePopupTitle.hidden = !votingPhase || status === "tiebreak";
   if (impostorVoteList) impostorVoteList.hidden = !votingPhase;
   if (impostorVoteButton) {
     impostorVoteButton.hidden = !["playing", "tiebreak"].includes(status);
@@ -3872,6 +3883,7 @@ function showImpostorEventPopup(title, message, detail = {}) {
     heading.textContent = title;
     impostorEventMessage.append(heading);
   }
+  if (detail.voteResultsFirst && detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
   if (detail.hero) impostorEventMessage.append(renderImpostorEventHero(detail.hero));
   if (message) {
     const text = document.createElement("p");
@@ -3894,9 +3906,26 @@ function showImpostorEventPopup(title, message, detail = {}) {
     });
     impostorEventMessage.append(grid);
   }
-  if (detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
+  if (!detail.voteResultsFirst && detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
+  if (detail.outcomeCards?.length) impostorEventMessage.append(renderImpostorOutcomeCards(detail.outcomeCards));
   impostorEventMessage.hidden = !impostorEventMessage.childElementCount;
   if (impostorVotePopup) impostorVotePopup.hidden = false;
+}
+
+function renderImpostorOutcomeCards(cards) {
+  const section = document.createElement("section");
+  section.className = "impostor-outcome-cards";
+  cards.forEach((card) => {
+    const item = document.createElement("article");
+    item.className = `impostor-outcome-card${card.kind ? ` is-${card.kind}` : ""}`;
+    const label = document.createElement("span");
+    const value = document.createElement("strong");
+    label.textContent = card.label;
+    value.textContent = card.value;
+    item.append(label, value);
+    section.append(item);
+  });
+  return section;
 }
 
 function renderImpostorEventHero(hero) {
@@ -4089,16 +4118,15 @@ function renderImpostorPermanentEvent(room) {
     impostorEventMessage.replaceChildren();
     return;
   }
-  const title = getImpostorEventTitle(room);
   const eventMessage = formatimpostorEvent(room.lastEvent);
   const guessResult = formatimpostorGuessResult(room.lastEvent);
   const roleDetails = getImpostorPopupDetails(room);
   const isVoteResult = ["eliminated", "tie"].includes(room.lastEvent?.type);
-  const message = isVoteResult ? "" : room.status === "finished"
+  const message = roleDetails.message ?? (isVoteResult ? "" : room.status === "finished"
     ? [eventMessage, guessResult, getimpostorStatusMessage(room, room.player)].filter(Boolean).join(" ")
-    : [eventMessage, guessResult].filter(Boolean).join(" ");
-  if (message || roleDetails.rows?.length || roleDetails.hero || roleDetails.voteResults?.length) {
-    showImpostorEventPopup(title, message, roleDetails);
+    : [eventMessage, guessResult].filter(Boolean).join(" "));
+  if (message || roleDetails.rows?.length || roleDetails.hero || roleDetails.voteResults?.length || roleDetails.outcomeCards?.length) {
+    showImpostorEventPopup("", message, roleDetails);
   } else {
     impostorEventMessage.hidden = true;
     impostorEventMessage.replaceChildren();
@@ -4106,13 +4134,13 @@ function renderImpostorPermanentEvent(room) {
 }
 
 function getImpostorEventTitle(room) {
-  if (room.status === "finished") return t("impostor.popup.finished");
+  if (room.lastEvent?.type === "eliminated") return "Se ha expulsado:";
+  if (room.lastEvent?.type === "tie") return "Empate en la votación";
+  if (room.status === "finished") return "Final del juego";
   if (room.lastEvent?.type === "start") {
     return Number(room.roundIndex || 0) > 1 ? t("impostor.popup.restarted") : t("impostor.popup.started");
   }
-  if (room.lastEvent?.type === "eliminated") return `${room.lastEvent.emoji || ""} ${room.lastEvent.playerName || t("impostor.popup.eliminated")}`.trim();
   if (room.lastEvent?.type === "guess-fail") return t("impostor.popup.eliminated");
-  if (room.lastEvent?.type === "tie") return t("impostor.popup.tieHeadline");
   return t("impostor.notice");
 }
 
@@ -4150,19 +4178,20 @@ function getImpostorPopupDetails(room) {
 
   if (event.type === "eliminated") {
     accentRole = event.role || accentRole;
-    const expelledMessage = event.role === "impostor" ? t("impostor.expelledImpostor") : t("impostor.expelledCrew");
-    rows.push({ label: t("impostor.popup.nextStepHeading"), value: expelledMessage, emphasis: true });
-    if (room.status === "finished") {
-      rows.push(
-        { label: t("impostor.popup.winnerHeading"), value: getImpostorWinnerText(room), emphasis: true },
-        { label: t("impostor.popup.yourResultHeading"), value: player?.won ? t("impostor.youWon") : t("impostor.youLost"), emphasis: true }
-      );
-    }
+    const finalWord = player?.word || room.players?.find((candidate) => candidate.word)?.word || "";
+    const outcomeCards = room.status === "finished"
+      ? [
+          { kind: "winner", label: "Ganadores", value: getImpostorWinnerText(room) },
+          { kind: "word", label: "La palabra era", value: finalWord || "-" }
+        ]
+      : [];
     return {
       role: accentRole,
       hero: { emoji: event.emoji, name: event.playerName || "-", role: event.role },
-      rows,
-      voteResults: event.voteResults || []
+      voteResults: event.voteResults || [],
+      voteResultsFirst: true,
+      outcomeCards,
+      message: ""
     };
   }
 
@@ -4171,41 +4200,55 @@ function getImpostorPopupDetails(room) {
     const tieVoteCandidates = (room.players || [])
       .filter((candidate) => tiedIds.has(candidate.id) && !candidate.eliminated && candidate.id !== player?.id)
       .map((candidate) => ({ id: candidate.id, name: candidate.name, emoji: candidate.emoji }));
-    rows.push(
-      { label: t("impostor.popup.nextStepHeading"), value: t("impostor.tieStatus", { votes: room.votesCast || 0, total: room.activeCount || 0 }) }
-    );
     return {
       role: accentRole,
-      hero: { title: t("impostor.popup.tieHeadline") },
-      rows,
       voteResults: event.voteResults || [],
-      tieVoteCandidates
+      voteResultsFirst: true,
+      tieVoteCandidates,
+      message: ""
     };
   }
 
   if (event.type === "guess-fail") {
     accentRole = event.role || "impostor";
-    rows.push(
-      { label: t("impostor.popup.playerHeading"), value: event.playerName || "-", emphasis: true },
-      { label: t("impostor.popup.guessHeading"), value: event.guess || "-" }
-    );
+    const finalWord = player?.word || room.players?.find((candidate) => candidate.word)?.word || "";
+    return {
+      role: accentRole,
+      hero: { emoji: event.emoji, name: event.playerName || "-", role: event.role || "impostor" },
+      message: `${event.playerName || "El impostor"} no ha acertado: ${event.guess || "-"}.`,
+      outcomeCards: room.status === "finished"
+        ? [
+            { kind: "winner", label: "Ganadores", value: getImpostorWinnerText(room) },
+            { kind: "word", label: "La palabra era", value: finalWord || "-" }
+          ]
+        : []
+    };
   }
 
   if (event.type === "guess-win") {
     accentRole = "impostor";
-    rows.push(
-      { label: t("impostor.popup.playerHeading"), value: event.playerName || "-", emphasis: true },
-      { label: t("impostor.popup.guessHeading"), value: event.guess || "-", emphasis: true },
-      { label: t("impostor.popup.winnerHeading"), value: t("impostor.impostorsWin"), emphasis: true }
-    );
+    const finalWord = player?.word || event.guess || room.players?.find((candidate) => candidate.word)?.word || "";
+    return {
+      role: accentRole,
+      hero: { emoji: event.emoji, name: event.playerName || "-", role: "impostor" },
+      message: `${event.playerName || "El impostor"} ha acertado la palabra.`,
+      outcomeCards: [
+        { kind: "winner", label: "Ganadores", value: getImpostorWinnerText(room) },
+        { kind: "word", label: "La palabra era", value: finalWord || "-" }
+      ]
+    };
   }
 
   if (room.status === "finished") {
-    rows.push(
-      { label: t("impostor.popup.winnerHeading"), value: getImpostorWinnerText(room), emphasis: true },
-      { label: t("impostor.popup.yourResultHeading"), value: player?.won ? t("impostor.youWon") : t("impostor.youLost"), emphasis: true }
-    );
-    if (player?.word) rows.push({ label: t("impostor.popup.finalWordHeading"), value: player.word });
+    const finalWord = player?.word || room.players?.find((candidate) => candidate.word)?.word || "";
+    return {
+      role: accentRole,
+      message: "",
+      outcomeCards: [
+        { kind: "winner", label: "Ganadores", value: getImpostorWinnerText(room) },
+        { kind: "word", label: "La palabra era", value: finalWord || "-" }
+      ]
+    };
   } else if (event.type && event.type !== "start" && event.type !== "tie") {
     rows.push({
       label: t("impostor.popup.nextStepHeading"),
@@ -5352,7 +5395,7 @@ function renderResistanceRoom(room = resistanceRoom) {
   const player = room.player || players.find((item) => item.id === resistanceSession?.playerId);
   const isHost = Boolean(player?.isHost || resistanceSession?.isHost);
   resistanceSession.isHost = isHost;
-  resistanceRoomLabel.textContent = room.roomName || "";
+  if (resistanceRoomLabel) resistanceRoomLabel.textContent = room.roomName || "";
   resistanceMissionNumber.textContent = room.status === "lobby" ? `${players.length}/${room.config?.playerLimit || "?"}` : String(room.missionNumber || 1);
   resistanceTeamSize.textContent = String(room.teamSize || 0);
   resistanceRejectCount.textContent = `${room.rejectCount || 0}/5`;
@@ -5542,9 +5585,9 @@ function renderResistanceRole(room, player) {
   if (!showRole) return;
   const isSpy = player.role === "spy";
   resistanceRoleCard.classList.toggle("is-spy", isSpy);
-  resistanceRoleLabel.textContent = player.viewingAs ? "Rol del agente seleccionado" : "Tu rol";
+  resistanceRoleLabel.textContent = "TU ROL";
   resistanceRoleName.textContent = isSpy ? "Espia" : "Resistencia";
-  resistanceRoleHint.textContent = isSpy ? `Otros espias: ${(player.spyNames || []).join(", ") || "solo tu"}` : "Aprueba buenos equipos y evita sabotajes.";
+  if (resistanceRoleHint) resistanceRoleHint.textContent = "";
 }
 
 function renderResistanceActions(room, player, players, isHost) {
@@ -5655,7 +5698,12 @@ function renderResistanceMissionSummary(room) {
   if (!results.length) {
     resistanceMissionSummary.hidden = true;
     resistanceSelectedMissionIndex = -1;
+    resistanceCompletedMissionCount = 0;
     return;
+  }
+  if (results.length !== resistanceCompletedMissionCount) {
+    resistanceCompletedMissionCount = results.length;
+    resistanceSelectedMissionIndex = results.length - 1;
   }
   if (!results[resistanceSelectedMissionIndex]) resistanceSelectedMissionIndex = results.length - 1;
   const index = resistanceSelectedMissionIndex;
@@ -5672,7 +5720,7 @@ function renderResistanceMissionSummary(room) {
     renderResistanceRoundStatGrid([
       { label: "Aciertos", value: String(successes) },
       { label: "Fracasos", value: String(sabotages) },
-      { label: "Necesarios", value: `${sabotages}/${result.requiredFails || 1}` }
+      { label: "Necesarios", value: `${successes}/${result.requiredFails || 1}` }
     ]),
     renderResistanceRoundList("Apoyaron el equipo", supportIds, playersById),
     renderResistanceRoundList("Rechazaron el equipo", rejectIds, playersById),
@@ -5763,6 +5811,7 @@ function leaveResistanceRoom() {
   resistanceTeamDraftIds = new Set();
   resistanceTeamDraftKey = "";
   resistanceSelectedMissionIndex = -1;
+  resistanceCompletedMissionCount = 0;
 }
 
 function releaseResistanceRoomIfHost({ useBeacon = false } = {}) {
@@ -5979,7 +6028,25 @@ function renderWolfPlayers(players, currentPlayer, room) {
     .map((card) => [card.dataset.playerId, card]));
   const activeIds = new Set(players.map((player) => player.id));
   existing.forEach((card, id) => { if (!activeIds.has(id)) card.remove(); });
-  wolfPlayers.querySelectorAll('.test-phase-control').forEach((control) => control.remove());
+  const needsPhaseControl = Boolean(room.test?.enabled || room.canHostSkip);
+  let phaseControl = wolfPlayers.querySelector(":scope > .wolf-test-phase-control");
+  if (needsPhaseControl) {
+    const detail = room.canHostSkip
+      ? (room.test?.enabled ? "Avanza la secuencia de prueba" : "Fuerza el avance si alguien no responde")
+      : "Disponible cuando haya una fase activa";
+    if (!phaseControl) {
+      phaseControl = createTestPhaseControl("wolf", detail, !room.canHostSkip);
+      wolfPlayers.prepend(phaseControl);
+    } else {
+      phaseControl.disabled = !room.canHostSkip;
+      phaseControl.querySelector("strong").textContent = "Saltar fase";
+      phaseControl.querySelector("small").textContent = detail;
+    }
+  } else if (phaseControl) {
+    phaseControl.remove();
+    phaseControl = null;
+  }
+  let insertionPoint = phaseControl ? phaseControl.nextElementSibling : wolfPlayers.firstElementChild;
   players.forEach((item) => {
     let card = existing.get(item.id);
     if (!card) {
@@ -6028,14 +6095,9 @@ function renderWolfPlayers(players, currentPlayer, room) {
       badge.textContent = "Anfitrión";
       card.append(badge);
     }
-    wolfPlayers.append(card);
+    if (card !== insertionPoint) wolfPlayers.insertBefore(card, insertionPoint);
+    insertionPoint = card.nextElementSibling;
   });
-  if (room.test?.enabled || room.canHostSkip) {
-    const detail = room.canHostSkip
-      ? (room.test?.enabled ? "Avanza la secuencia de prueba" : "Fuerza el avance si alguien no responde")
-      : "Disponible cuando haya una fase activa";
-    wolfPlayers.prepend(createTestPhaseControl("wolf", detail, !room.canHostSkip));
-  }
 }
 
 function getWolfPlayerStatus(player, room) {
