@@ -232,7 +232,11 @@
               </div>
               <label class="solo-test-create-toggle">
                 <input id="impostorCreateTestMode" type="checkbox">
-                <span><strong>Modo de prueba individual</strong><small>Añade 2 jugadores virtuales para completar el mínimo de 3. Podrás cambiar de punto de vista y realizar todas sus acciones.</small></span>
+                <span><strong>Modo de prueba individual</strong><small>Añade jugadores virtuales. Podrás cambiar de punto de vista y realizar todas sus acciones.</small></span>
+              </label>
+              <label id="impostorTestBotCountField" class="test-bot-count-field" hidden>
+                <span><strong>Número de bots</strong><small>De 2 a 19 jugadores virtuales.</small></span>
+                <input id="impostorCreateBotCount" type="number" min="2" max="19" step="1" inputmode="numeric" value="2" aria-label="Número de bots de prueba">
               </label>
               <section class="impostor-wordset-section" aria-labelledby="impostorWordSetTitle">
                 <div class="section-heading">
@@ -294,7 +298,7 @@
                 </div>
                 <div id="impostorStartingPlayerChip" class="impostor-starting-player-chip" hidden></div>
                 <section id="impostorRoleCard" class="impostor-role-card" hidden>
-                  <span>Tu rol</span>
+                  <span>TU ROL</span>
                   <strong id="impostorRoleLabel">Esperando...</strong>
                 </section>
                 <section id="impostorClueCard" class="impostor-clue-card" hidden>
@@ -306,11 +310,10 @@
                   <button type="button" id="impostorGuessButton" class="secondary impostor-guess-button" hidden>Intentar adivinar</button>
                 </section>
                 <section class="impostor-stage">
-                  <header class="impostor-stage-header">
+                  <section id="impostorVotePopup" class="impostor-inline-panel impostor-inline-vote" hidden>
                     <h2 id="impostorPhaseTitle">Sala de espera</h2>
                     <p id="impostorGameMessage" class="message"></p>
-                  </header>
-                  <section id="impostorVotePopup" class="impostor-inline-panel impostor-inline-vote" hidden>
+                    <div id="impostorEventMessage" class="impostor-event-content" hidden></div>
                     <h3 id="impostorVotePopupTitle">Elige a quién expulsar</h3>
                     <div id="impostorVoteList" class="impostor-vote-list"></div>
                   </section>
@@ -351,7 +354,11 @@
               <label><span>Jugadores</span><input id="resistanceCreatePlayerLimit" type="number" min="5" max="10" step="1" inputmode="numeric" value="5"></label>
               <label class="solo-test-create-toggle">
                 <input id="resistanceCreateTestMode" type="checkbox">
-                <span><strong>Modo de prueba individual</strong><small>Añade 4 agentes virtuales para completar el mínimo de 5. Podrás cambiar de punto de vista y realizar todas sus acciones.</small></span>
+                <span><strong>Modo de prueba individual</strong><small>Añade agentes virtuales. Podrás cambiar de punto de vista y realizar todas sus acciones.</small></span>
+              </label>
+              <label id="resistanceTestBotCountField" class="test-bot-count-field" hidden>
+                <span><strong>Número de bots</strong><small>De 4 a 9 agentes virtuales.</small></span>
+                <input id="resistanceCreateBotCount" type="number" min="4" max="9" step="1" inputmode="numeric" value="4" aria-label="Número de bots de prueba">
               </label>
               <div class="resistance-form-actions">
                 <button type="button" class="secondary" data-resistance-back>Atras</button>
@@ -446,9 +453,13 @@
               <input id="wolfCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
               <label class="wolf-test-create-toggle">
                 <input id="wolfCreateTestMode" type="checkbox">
-                <span><strong>Modo de prueba individual</strong><small>Añade 6 jugadores virtuales. Cambia de punto de vista y prueba todas las acciones, incluido el Cazador.</small></span>
+                <span><strong>Modo de prueba individual</strong><small>Añade jugadores virtuales. Cambia de punto de vista y prueba todas sus acciones.</small></span>
               </label>
-              <p>La sala se abre al instante. El anfitrión puede configurarla y empezar cuando haya 5 jugadores.</p>
+              <label id="wolfTestBotCountField" class="test-bot-count-field wolf-test-bot-count-field" hidden>
+                <span><strong>Número de bots</strong><small>De 4 a 19 jugadores virtuales.</small></span>
+                <input id="wolfCreateBotCount" type="number" min="4" max="19" step="1" inputmode="numeric" value="6" aria-label="Número de bots de prueba">
+              </label>
+              <p>La sala se abre al instante. El anfitrión puede configurarla desde 5 jugadores y admite hasta 20.</p>
               <div class="wolf-form-actions">
                 <button type="button" class="secondary" data-wolf-back>Volver</button>
                 <button type="submit">Crear sala</button>
@@ -478,7 +489,7 @@
             </div>
             <div class="wolf-table">
               <aside class="wolf-players-panel" aria-label="Jugadores">
-                <header><span>Jugadores</span><strong id="wolfPlayerCount">0/5</strong></header>
+                <header><span>Jugadores</span><strong id="wolfPlayerCount">0/20</strong></header>
                 <div id="wolfPlayers" class="wolf-players"></div>
               </aside>
               <main class="wolf-narrator" aria-live="polite">
@@ -500,6 +511,8 @@
                     <label class="wolf-role-option"><input id="wolfUseSeer" type="checkbox" checked><svg aria-hidden="true"><use href="/images/wolf-icons.svg#seer"></use></svg><div><strong>Vidente</strong><small>Investiga a un jugador cada noche.</small></div></label>
                     <label class="wolf-role-option"><input id="wolfUseDoctor" type="checkbox" checked><svg aria-hidden="true"><use href="/images/wolf-icons.svg#doctor"></use></svg><div><strong>Doctor</strong><small>Protege a un jugador cada noche.</small></div></label>
                     <label class="wolf-role-option"><input id="wolfUseHunter" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#hunter"></use></svg><div><strong>Cazador</strong><small>Desde 7 jugadores: elimina a alguien al morir.</small></div></label>
+                    <label class="wolf-role-option"><input id="wolfUseElder" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#elder"></use></svg><div><strong>Anciano</strong><small>Desde 10 jugadores: sobrevive al primer ataque de los Lobos.</small></div></label>
+                    <label class="wolf-role-option"><input id="wolfUseIdiot" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#idiot"></use></svg><div><strong>Tonto del pueblo</strong><small>Desde 13 jugadores: sobrevive a la primera expulsión, pero pierde su voto.</small></div></label>
                   </div>
                   <p id="wolfRoleSummary"></p>
                   <div class="wolf-setup-actions"><button type="button" id="wolfCancelSetup" class="secondary">Cancelar</button><button type="button" id="wolfConfirmStart">Asignar roles y empezar</button></div>
@@ -510,14 +523,14 @@
                 <p id="wolfGameMessage" class="message"></p>
                 <button type="button" id="wolfPrimaryButton" class="wolf-primary-button" hidden>Continuar</button>
 
-                <section id="wolfRoleCard" class="wolf-role-card" hidden>
-                  <svg id="wolfRoleIcon" aria-hidden="true"><use href="/images/wolf-icons.svg#villager"></use></svg>
-                  <div><span id="wolfRoleEyebrow">Tu rol secreto</span><strong id="wolfRoleName">Aldeano</strong><p id="wolfRoleHint"></p></div>
-                </section>
-
                 <section id="wolfKnowledge" class="wolf-knowledge" hidden>
                   <h3>Descubrimientos de la Vidente</h3>
                   <div id="wolfKnowledgeList"></div>
+                </section>
+
+                <section id="wolfRoleCard" class="wolf-role-card" hidden>
+                  <svg id="wolfRoleIcon" aria-hidden="true"><use href="/images/wolf-icons.svg#villager"></use></svg>
+                  <div><strong id="wolfRoleName">Aldeano</strong><p id="wolfRoleHint"></p></div>
                 </section>
               </main>
             </div>

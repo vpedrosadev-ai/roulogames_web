@@ -1,5 +1,5 @@
 export const WOLF_MIN_PLAYERS = 5;
-export const WOLF_MAX_PLAYERS = 18;
+export const WOLF_MAX_PLAYERS = 20;
 export const WOLF_CLOSE_EYES_MS = 7000;
 export const WOLF_OPEN_EYES_MS = 15000;
 export const WOLF_ROLE_OPEN_MS = 15000;
@@ -11,7 +11,20 @@ const WOLF_TEST_IDENTITIES = [
   { name: "Bot Brasa" },
   { name: "Bot Búho" },
   { name: "Bot Musgo" },
-  { name: "Bot Nube" }
+  { name: "Bot Nube" },
+  { name: "Bot Sauce" },
+  { name: "Bot Hiedra" },
+  { name: "Bot Tejo" },
+  { name: "Bot Cuervo" },
+  { name: "Bot Niebla" },
+  { name: "Bot Brezo" },
+  { name: "Bot Risco" },
+  { name: "Bot Arroyo" },
+  { name: "Bot Bellota" },
+  { name: "Bot Helecho" },
+  { name: "Bot Zarza" },
+  { name: "Bot Piedra" },
+  { name: "Bot Aurora" }
 ];
 
 export class WolfGameError extends Error {
@@ -29,10 +42,12 @@ export function createWolfRoom(value) {
   if (!key || !roomName || !identity) return null;
   const host = createWolfPlayer(identity, 1);
   const testMode = Boolean(value?.testMode);
+  const testBotCount = testMode ? Math.max(WOLF_MIN_PLAYERS - 1, Math.min(WOLF_MAX_PLAYERS - 1, Math.floor(Number(value?.testBotCount) || 6))) : 0;
   const room = {
     key,
     roomName,
     testMode,
+    testBotCount,
     status: "lobby",
     phase: "lobby",
     hostId: host.id,
@@ -61,7 +76,7 @@ export function createWolfRoom(value) {
     updatedAt: Date.now()
   };
   if (testMode) {
-    WOLF_TEST_IDENTITIES.forEach((testIdentity, index) => {
+    WOLF_TEST_IDENTITIES.slice(0, testBotCount).forEach((testIdentity, index) => {
       const duplicate = room.players.some((player) => player.name.toLocaleLowerCase() === testIdentity.name.toLocaleLowerCase());
       const uniqueIdentity = duplicate ? { ...testIdentity, name: `${testIdentity.name} 2`.slice(0, 16) } : testIdentity;
       const player = createWolfPlayer({ ...uniqueIdentity, isTestPlayer: true }, index + 2);
@@ -90,7 +105,10 @@ export function createWolfPlayer(identity, seatNumber) {
     alive: true,
     lastSeen: Date.now(),
     lastProtectedId: "",
-    seerDiscoveries: []
+    seerDiscoveries: [],
+    wolfAttackHits: 0,
+    idiotRevealed: false,
+    voteDisabled: false
   };
 }
 
@@ -143,7 +161,9 @@ export function recommendedWolfRoles(playerCount) {
     werewolf: Math.max(1, Math.floor(count / 4)),
     seer: true,
     doctor: true,
-    hunter: count >= 7
+    hunter: count >= 7,
+    elder: count >= 10,
+    idiot: count >= 13
   };
 }
 
@@ -153,8 +173,17 @@ export function normalizeWolfRoleConfig(value, playerCount) {
   const maxWerewolves = Math.max(1, Math.floor((count - 1) / 2));
   if (!Number.isFinite(werewolf) || werewolf < 1 || werewolf > maxWerewolves) return null;
   if (Boolean(value?.hunter) && count < 7) return null;
-  const config = { werewolf, seer: Boolean(value?.seer), doctor: Boolean(value?.doctor), hunter: Boolean(value?.hunter) };
-  const assigned = werewolf + Number(config.seer) + Number(config.doctor) + Number(config.hunter);
+  if (Boolean(value?.elder) && count < 10) return null;
+  if (Boolean(value?.idiot) && count < 13) return null;
+  const config = {
+    werewolf,
+    seer: Boolean(value?.seer),
+    doctor: Boolean(value?.doctor),
+    hunter: Boolean(value?.hunter),
+    elder: Boolean(value?.elder),
+    idiot: Boolean(value?.idiot)
+  };
+  const assigned = werewolf + Number(config.seer) + Number(config.doctor) + Number(config.hunter) + Number(config.elder) + Number(config.idiot);
   if (assigned >= count) return null;
   return { ...config, villager: count - assigned };
 }
@@ -170,7 +199,9 @@ export function startWolfGame(room, player, roleConfig) {
     ...Array(config.villager).fill("villager"),
     ...(config.seer ? ["seer"] : []),
     ...(config.doctor ? ["doctor"] : []),
-    ...(config.hunter ? ["hunter"] : [])
+    ...(config.hunter ? ["hunter"] : []),
+    ...(config.elder ? ["elder"] : []),
+    ...(config.idiot ? ["idiot"] : [])
   ];
   shuffleWolfItems(roles);
   room.players.forEach((item, index) => {
@@ -178,6 +209,9 @@ export function startWolfGame(room, player, roleConfig) {
     item.alive = true;
     item.lastProtectedId = "";
     item.seerDiscoveries = [];
+    item.wolfAttackHits = 0;
+    item.idiotRevealed = false;
+    item.voteDisabled = false;
     delete item.won;
   });
   room.roleConfig = config;
@@ -218,6 +252,9 @@ export function restartWolfGame(room, player) {
     item.alive = true;
     item.lastProtectedId = "";
     item.seerDiscoveries = [];
+    item.wolfAttackHits = 0;
+    item.idiotRevealed = false;
+    item.voteDisabled = false;
     delete item.won;
   });
   room.roleConfig = null;
@@ -309,8 +346,10 @@ export function submitWolfVote(room, player, targetId) {
   advanceWolfTimedPhases(room);
   requireAliveWolfPlayer(player);
   if (room.phase !== "day_vote") throw new WolfGameError("La votación está cerrada", 409);
+  if (player.voteDisabled) throw new WolfGameError("Has perdido el derecho a voto", 403);
   const target = getAliveWolfPlayer(room, targetId);
   if (!target || target.id === player.id) throw new WolfGameError("Elige otro jugador activo");
+  if (target.idiotRevealed) throw new WolfGameError("El Tonto del pueblo ya revelado no puede volver a ser expulsado");
   if (room.tieCandidates?.length && !room.tieCandidates.includes(target.id)) throw new WolfGameError("Elige uno de los candidatos empatados");
   room.votes[player.id] = target.id;
   player.lastSeen = Date.now();
@@ -341,7 +380,7 @@ export function resolveWolfTestViewPlayer(room, sessionPlayer, requestedPlayerId
   const requested = room.players.find((player) => player.id === String(requestedPlayerId || ""));
   if (autoFollow) {
     const actors = room.phase === "day_vote"
-      ? room.players.filter((player) => player.alive && !room.votes?.[player.id])
+      ? room.players.filter((player) => player.alive && !player.voteDisabled && !room.votes?.[player.id])
       : getWolfActionActors(room).filter((player) => !room.actions?.[player.id]);
     if (actors.length) return actors[0];
   }
@@ -380,7 +419,7 @@ export function wolfRoomResponse(room, privatePlayer = null, sessionPlayer = pri
   const revealAllRoles = revealAll || Boolean(room.testMode && isWolfHost(room, sessionPlayer));
   const alivePlayers = room.players.filter((player) => player.alive);
   const actionActors = getWolfActionActors(room);
-  const aliveVoters = room.phase === "day_vote" ? alivePlayers : [];
+  const aliveVoters = room.phase === "day_vote" ? alivePlayers.filter((player) => !player.voteDisabled) : [];
   const privateHasActed = Boolean(privatePlayer && room.actions?.[privatePlayer.id]);
   const privateHasVoted = Boolean(privatePlayer && room.votes?.[privatePlayer.id]);
   const wolfNames = privatePlayer?.role === "werewolf" || revealAll
@@ -426,6 +465,7 @@ export function wolfRoomResponse(room, privatePlayer = null, sessionPlayer = pri
         : null;
       const roleKnown = revealAllRoles
         || !player.alive
+        || player.idiotRevealed
         || player.id === privatePlayer?.id
         || (privatePlayer?.role === "werewolf" && player.role === "werewolf")
         || Boolean(seerDiscovery?.isWerewolf);
@@ -439,6 +479,7 @@ export function wolfRoomResponse(room, privatePlayer = null, sessionPlayer = pri
         isTestPlayer: Boolean(player.isTestPlayer),
         hasActed: player.id === privatePlayer?.id && Boolean(room.actions?.[player.id]),
         hasVoted: Boolean(room.votes?.[player.id]),
+        voteDisabled: Boolean(player.voteDisabled),
         role: roleKnown ? player.role : "",
         won: revealAll ? Boolean(player.won) : undefined
       };
@@ -456,6 +497,8 @@ export function wolfRoomResponse(room, privatePlayer = null, sessionPlayer = pri
       wolfNames,
       seerDiscoveries: privatePlayer.seerDiscoveries || [],
       lastProtectedId: privatePlayer.role === "doctor" ? privatePlayer.lastProtectedId || "" : "",
+      wolfAttackHits: privatePlayer.role === "elder" ? Number(privatePlayer.wolfAttackHits || 0) : 0,
+      voteDisabled: Boolean(privatePlayer.voteDisabled),
       won: revealAll ? Boolean(privatePlayer.won) : undefined
     } : null,
     test: room.testMode && isWolfHost(room, sessionPlayer) ? {
@@ -572,6 +615,11 @@ function resolveWolfNight(room) {
     beginWolfDayVote(room, { type: "night-peaceful", dayNumber: room.dayNumber });
     return;
   }
+  if (victim.role === "elder" && Number(victim.wolfAttackHits || 0) < 1) {
+    victim.wolfAttackHits = Number(victim.wolfAttackHits || 0) + 1;
+    beginWolfDayVote(room, { type: "night-peaceful", dayNumber: room.dayNumber });
+    return;
+  }
   victim.alive = false;
   appendWolfElimination(room, victim, "night");
   if (victim.role === "hunter") {
@@ -593,7 +641,7 @@ function beginWolfDayVote(room, event) {
 }
 
 function resolveWolfDayVotes(room, force = false) {
-  const voters = room.players.filter((player) => player.alive);
+  const voters = room.players.filter((player) => player.alive && !player.voteDisabled);
   if (!force && voters.some((player) => !room.votes?.[player.id])) return;
   const voteDetails = getWolfVoteDetails(room, room.votes);
   room.lastVoteDetails = voteDetails;
@@ -629,6 +677,17 @@ function resolveWolfDayVotes(room, force = false) {
     targetNames: [target.name]
   };
   room.lastEliminations = [];
+  if (target.role === "idiot" && !target.idiotRevealed) {
+    target.idiotRevealed = true;
+    target.voteDisabled = true;
+    room.lastVoteOutcome = {
+      type: "spared",
+      targetPlayerIds: [target.id],
+      targetNames: [target.name]
+    };
+    setWolfPhase(room, "day_result", { type: "idiot-spared", playerName: target.name, role: target.role });
+    return;
+  }
   target.alive = false;
   appendWolfElimination(room, target, "vote");
   if (target.role === "hunter") {

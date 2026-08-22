@@ -1905,7 +1905,24 @@ const impostor_WORD_SETS = {
 
 const IMPOSTOR_TEST_IDENTITIES = [
   { name: "Bot Brújula", emoji: "🧭" },
-  { name: "Bot Cometa", emoji: "☄️" }
+  { name: "Bot Cometa", emoji: "☄️" },
+  { name: "Bot Prisma", emoji: "🔷" },
+  { name: "Bot Órbita", emoji: "🪐" },
+  { name: "Bot Radar", emoji: "📡" },
+  { name: "Bot Neón", emoji: "💡" },
+  { name: "Bot Vector", emoji: "📐" },
+  { name: "Bot Pixel", emoji: "🟪" },
+  { name: "Bot Turbo", emoji: "🚀" },
+  { name: "Bot Quásar", emoji: "✨" },
+  { name: "Bot Cobalto", emoji: "🔵" },
+  { name: "Bot Voltio", emoji: "⚡" },
+  { name: "Bot Sonda", emoji: "🛰️" },
+  { name: "Bot Cifra", emoji: "🔢" },
+  { name: "Bot Eco", emoji: "📢" },
+  { name: "Bot Delta", emoji: "🔺" },
+  { name: "Bot Nova", emoji: "🌟" },
+  { name: "Bot Pulso", emoji: "💫" },
+  { name: "Bot Cromo", emoji: "⚙️" }
 ];
 
 async function createimpostorRoom(req, res) {
@@ -2035,12 +2052,14 @@ function normalizeNewimpostorRoom(value) {
   const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
   const identity = normalizeimpostorIdentity(value);
   const testMode = Boolean(value?.testMode);
-  const config = normalizeimpostorConfig(testMode ? { ...(value?.config || {}), playerLimit: 3, impostorCount: 1 } : value?.config);
+  const testBotCount = testMode ? Math.max(2, Math.min(IMPOSTOR_TEST_IDENTITIES.length, Math.floor(Number(value?.testBotCount) || 2))) : 0;
+  const testPlayerLimit = testBotCount + 1;
+  const config = normalizeimpostorConfig(testMode ? { ...(value?.config || {}), playerLimit: testPlayerLimit, impostorCount: Math.max(1, Math.floor(testPlayerLimit / 4)) } : value?.config);
   if (!key || !roomName || !identity || !config) return null;
   const host = createimpostorPlayer(identity, 1);
-  const room = { key, roomName, testMode, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  const room = { key, roomName, testMode, testBotCount, config, roundIndex: 0, eventId: "", status: "lobby", hostId: host.id, startingPlayerId: "", word: "", hint: "", votes: {}, tieCandidates: [], winner: "", players: [host], createdAt: Date.now(), updatedAt: Date.now() };
   if (testMode) {
-    IMPOSTOR_TEST_IDENTITIES.forEach((bot, index) => room.players.push(createimpostorPlayer({ ...bot, isTestPlayer: true }, index + 2)));
+    IMPOSTOR_TEST_IDENTITIES.slice(0, testBotCount).forEach((bot, index) => room.players.push(createimpostorPlayer({ ...bot, isTestPlayer: true }, index + 2)));
     assignimpostorRoles(room);
   }
   return room;
@@ -2758,7 +2777,12 @@ const RESISTANCE_TEST_IDENTITIES = [
   { name: "Bot Ámbar", emoji: "🟠" },
   { name: "Bot Niebla", emoji: "🌫️" },
   { name: "Bot Faro", emoji: "🔦" },
-  { name: "Bot Cuervo", emoji: "🐦" }
+  { name: "Bot Cuervo", emoji: "🐦" },
+  { name: "Bot Acero", emoji: "🛡️" },
+  { name: "Bot Sombra", emoji: "🌑" },
+  { name: "Bot Clave", emoji: "🔑" },
+  { name: "Bot Lince", emoji: "🐾" },
+  { name: "Bot Daga", emoji: "🗡️" }
 ];
 
 async function createResistanceRoom(req, res) {
@@ -2912,13 +2936,14 @@ function normalizeNewResistanceRoom(value) {
   const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
   const identity = normalizeResistanceIdentity(value);
   const testMode = Boolean(value?.testMode);
-  const playerLimit = testMode ? 5 : Math.floor(Number(value?.config?.playerLimit || value?.playerLimit));
+  const testBotCount = testMode ? Math.max(4, Math.min(RESISTANCE_TEST_IDENTITIES.length, Math.floor(Number(value?.testBotCount) || 4))) : 0;
+  const playerLimit = testMode ? testBotCount + 1 : Math.floor(Number(value?.config?.playerLimit || value?.playerLimit));
   if (!key || !roomName || !identity || !RESISTANCE_RULES[playerLimit]) return null;
   const host = createResistancePlayer(identity, 1);
   const players = testMode
-    ? [host, ...RESISTANCE_TEST_IDENTITIES.map((bot, index) => createResistancePlayer({ ...bot, isTestPlayer: true }, index + 2))]
+    ? [host, ...RESISTANCE_TEST_IDENTITIES.slice(0, testBotCount).map((bot, index) => createResistancePlayer({ ...bot, isTestPlayer: true }, index + 2))]
     : [host];
-  return { key, roomName, testMode, config: { playerLimit }, status: "lobby", hostId: host.id, leaderIndex: 0, missionIndex: 0, rejectCount: 0, currentTeam: [], teamVotes: {}, missionVotes: {}, missionResults: [], winner: "", eventId: "", lastEvent: null, players, createdAt: Date.now(), updatedAt: Date.now() };
+  return { key, roomName, testMode, testBotCount, config: { playerLimit }, status: "lobby", hostId: host.id, leaderIndex: 0, missionIndex: 0, rejectCount: 0, currentTeam: [], teamVotes: {}, missionVotes: {}, missionResults: [], winner: "", eventId: "", lastEvent: null, players, createdAt: Date.now(), updatedAt: Date.now() };
 }
 
 function normalizeResistanceIdentity(value) {

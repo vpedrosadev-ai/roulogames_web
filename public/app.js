@@ -172,6 +172,8 @@ const impostorCreatePlayerLimit = document.querySelector("#impostorCreatePlayerL
 const impostorCreateimpostorCount = document.querySelector("#impostorCreateimpostorCount");
 const impostorCreateHint = document.querySelector("#impostorCreateHint");
 const impostorCreateTestMode = document.querySelector("#impostorCreateTestMode");
+const impostorCreateBotCount = document.querySelector("#impostorCreateBotCount");
+const impostorTestBotCountField = document.querySelector("#impostorTestBotCountField");
 const impostorCreateWordSet = document.querySelector("#impostorCreateWordSet");
 const impostorWordSetCards = document.querySelector("#impostorWordSetCards");
 const impostorJoinForm = document.querySelector("#impostorJoinForm");
@@ -226,6 +228,8 @@ const resistanceCreateEmoji = document.querySelector("#resistanceCreateEmoji");
 const resistanceCreatePlayerName = document.querySelector("#resistanceCreatePlayerName");
 const resistanceCreatePlayerLimit = document.querySelector("#resistanceCreatePlayerLimit");
 const resistanceCreateTestMode = document.querySelector("#resistanceCreateTestMode");
+const resistanceCreateBotCount = document.querySelector("#resistanceCreateBotCount");
+const resistanceTestBotCountField = document.querySelector("#resistanceTestBotCountField");
 const resistanceJoinForm = document.querySelector("#resistanceJoinForm");
 const resistanceJoinRoomName = document.querySelector("#resistanceJoinRoomName");
 const resistanceJoinEmoji = document.querySelector("#resistanceJoinEmoji");
@@ -273,6 +277,8 @@ const wolfCreateForm = document.querySelector("#wolfCreateForm");
 const wolfCreateRoomName = document.querySelector("#wolfCreateRoomName");
 const wolfCreatePlayerName = document.querySelector("#wolfCreatePlayerName");
 const wolfCreateTestMode = document.querySelector("#wolfCreateTestMode");
+const wolfCreateBotCount = document.querySelector("#wolfCreateBotCount");
+const wolfTestBotCountField = document.querySelector("#wolfTestBotCountField");
 const wolfJoinForm = document.querySelector("#wolfJoinForm");
 const wolfJoinRoomName = document.querySelector("#wolfJoinRoomName");
 const wolfJoinPlayerName = document.querySelector("#wolfJoinPlayerName");
@@ -313,6 +319,8 @@ const wolfWerewolfCount = document.querySelector("#wolfWerewolfCount");
 const wolfUseSeer = document.querySelector("#wolfUseSeer");
 const wolfUseDoctor = document.querySelector("#wolfUseDoctor");
 const wolfUseHunter = document.querySelector("#wolfUseHunter");
+const wolfUseElder = document.querySelector("#wolfUseElder");
+const wolfUseIdiot = document.querySelector("#wolfUseIdiot");
 const wolfRoleSummary = document.querySelector("#wolfRoleSummary");
 const wolfCancelSetup = document.querySelector("#wolfCancelSetup");
 const wolfConfirmStart = document.querySelector("#wolfConfirmStart");
@@ -2337,7 +2345,7 @@ let wolfShownEventId = "";
 let wolfSoundedPhaseKey = "";
 let wolfSpokenPhaseKey = "";
 let wolfSpokenCountdownSecond = 0;
-let wolfRoleDraft = { werewolf: 1, seer: true, doctor: true, hunter: false };
+let wolfRoleDraft = { werewolf: 1, seer: true, doctor: true, hunter: false, elder: false, idiot: false };
 let wolfActionRenderKey = "";
 let wolfVoteSummaryRenderKey = "";
 let wolfAudioContext = null;
@@ -2428,6 +2436,8 @@ populateMasterWordEmojis();
 syncMasterWordCreateOptions();
 syncimpostorWordSetCards();
 syncimpostorConfigLimits();
+syncResistanceTestCreateMode();
+syncWolfTestCreateMode();
 renderClipWaveTrack();
 window.addEventListener("resize", syncClipTrackWidth);
 window.addEventListener("resize", syncSongsPopupPosition);
@@ -2544,6 +2554,7 @@ impostorCreatePlayerLimit?.addEventListener("input", syncimpostorConfigLimits);
 impostorCreatePlayerLimit?.addEventListener("blur", syncimpostorConfigLimits);
 impostorCreateimpostorCount?.addEventListener("input", syncimpostorConfigLimits);
 impostorCreateTestMode?.addEventListener("change", syncImpostorTestCreateMode);
+impostorCreateBotCount?.addEventListener("change", syncimpostorConfigLimits);
 impostorTestAutoFollow?.addEventListener("change", toggleImpostorTestAutoFollow);
 impostorWordSetCards?.addEventListener("click", chooseimpostorWordSet);
 window.addEventListener("pagehide", () => releaseimpostorRoomIfHost({ useBeacon: true }));
@@ -2559,6 +2570,7 @@ resistanceStartButton?.addEventListener("click", startResistanceGame);
 resistancePlayers?.addEventListener("click", kickResistancePlayer);
 resistancePlayers?.addEventListener("keydown", handleResistancePlayerKeydown);
 resistanceCreateTestMode?.addEventListener("change", syncResistanceTestCreateMode);
+resistanceCreateBotCount?.addEventListener("change", syncResistanceTestCreateMode);
 resistanceTestAutoFollow?.addEventListener("change", toggleResistanceTestAutoFollow);
 resistanceTeamOptions?.addEventListener("input", updateResistanceTeamDraft);
 resistanceProposeButton?.addEventListener("click", proposeResistanceTeam);
@@ -2578,13 +2590,15 @@ wolfRestartButton?.addEventListener("click", restartWolfGameClient);
 wolfLeaveButton?.addEventListener("click", leaveWolfToMenu);
 wolfPlayers?.addEventListener("click", kickWolfPlayerClient);
 wolfPlayers?.addEventListener("keydown", handleWolfPlayerKeydown);
+wolfCreateTestMode?.addEventListener("change", syncWolfTestCreateMode);
+wolfCreateBotCount?.addEventListener("change", syncWolfTestCreateMode);
 wolfTestAutoFollow?.addEventListener("change", toggleWolfTestAutoFollow);
 wolfTestSkipButton?.addEventListener("click", skipWolfTestPhaseClient);
 wolfPrimaryButton?.addEventListener("click", handleWolfPrimaryAction);
 wolfRecommendRoles?.addEventListener("click", applyRecommendedWolfRoles);
 wolfMinusWerewolf?.addEventListener("click", () => changeWolfCount(-1));
 wolfPlusWerewolf?.addEventListener("click", () => changeWolfCount(1));
-[wolfUseSeer, wolfUseDoctor, wolfUseHunter].filter(Boolean).forEach((input) => input.addEventListener("change", syncWolfRoleDraft));
+[wolfUseSeer, wolfUseDoctor, wolfUseHunter, wolfUseElder, wolfUseIdiot].filter(Boolean).forEach((input) => input.addEventListener("change", syncWolfRoleDraft));
 wolfCancelSetup?.addEventListener("click", closeWolfRoleSetup);
 wolfConfirmStart?.addEventListener("click", startWolfGameClient);
 wolfActionList?.addEventListener("click", submitWolfTarget);
@@ -3111,14 +3125,25 @@ function readimpostorInteger(input) {
   return Math.floor(number);
 }
 
+function normalizeTestBotCount(input, min, max, fallback) {
+  const value = Math.floor(Number(input?.value));
+  return Math.max(min, Math.min(max, Number.isFinite(value) ? value : fallback));
+}
+
 function syncimpostorConfigLimits() {
   if (!impostorCreatePlayerLimit || !impostorCreateimpostorCount) return;
-  if (impostorCreateTestMode?.checked) {
-    impostorCreatePlayerLimit.value = "3";
-    impostorCreateimpostorCount.value = "1";
+  const testMode = Boolean(impostorCreateTestMode?.checked);
+  if (impostorTestBotCountField) impostorTestBotCountField.hidden = !testMode;
+  if (impostorCreateBotCount) impostorCreateBotCount.disabled = !testMode;
+  if (testMode) {
+    const botCount = normalizeTestBotCount(impostorCreateBotCount, 2, 19, 2);
+    impostorCreateBotCount.value = String(botCount);
+    const playerLimit = botCount + 1;
+    impostorCreatePlayerLimit.value = String(playerLimit);
+    impostorCreateimpostorCount.value = String(Math.max(1, Math.floor(playerLimit / 4)));
   }
-  impostorCreatePlayerLimit.disabled = Boolean(impostorCreateTestMode?.checked);
-  impostorCreateimpostorCount.disabled = Boolean(impostorCreateTestMode?.checked);
+  impostorCreatePlayerLimit.disabled = testMode;
+  impostorCreateimpostorCount.disabled = testMode;
   const playerLimit = readimpostorInteger(impostorCreatePlayerLimit);
   impostorCreatePlayerLimit.setCustomValidity("");
   impostorCreateimpostorCount.setCustomValidity("");
@@ -3221,6 +3246,7 @@ async function createimpostorRoom(event) {
         playerName,
         emoji: impostorCreateEmoji.value,
         testMode: Boolean(impostorCreateTestMode?.checked),
+        testBotCount: normalizeTestBotCount(impostorCreateBotCount, 2, 19, 2),
         config: {
           playerLimit: configInput.playerLimit,
           impostorCount: configInput.impostorCount,
@@ -3584,6 +3610,7 @@ function renderimpostorRoom(room = impostorRoom, options = {}) {
   renderimpostorRoleCard(room, currentPlayer);
   renderimpostorPlayers(players, currentPlayer, status, room.liveVotes || []);
   renderimpostorActions(room, currentPlayer);
+  renderImpostorPermanentEvent(room);
   if (impostorStartButton) {
     const canStart = isHost && status === "lobby" && players.length === Number(config.playerLimit || 0);
     impostorStartButton.hidden = status !== "lobby" || !isHost;
@@ -3754,7 +3781,7 @@ function renderimpostorActions(room, currentPlayer) {
     impostorPhaseTitle.textContent = status === "lobby"
       ? "Sala de espera"
       : status === "finished"
-        ? "Resultado final"
+        ? "Final del juego"
         : status === "tiebreak"
           ? "Desempate"
           : "Votación";
@@ -3790,7 +3817,9 @@ function renderimpostorActions(room, currentPlayer) {
     empty.textContent = status === "lobby" ? t("impostor.voteAfterStart") : t("impostor.noVoteTargets");
     impostorVoteList.replaceChildren(empty);
   }
-  if (impostorVotePopup && impostorEventPopup?.hidden !== false) impostorVotePopup.hidden = !votingPhase;
+  if (impostorVotePopup) impostorVotePopup.hidden = status === "lobby";
+  if (impostorVotePopupTitle) impostorVotePopupTitle.hidden = !votingPhase;
+  if (impostorVoteList) impostorVoteList.hidden = !votingPhase;
   if (impostorVoteButton) {
     impostorVoteButton.hidden = !["playing", "tiebreak"].includes(status);
     impostorVoteButton.disabled = !currentPlayer || currentPlayer.eliminated || !candidates.length;
@@ -3823,7 +3852,7 @@ function showImpostorGuessPopup() {
   if (!["playing", "tiebreak"].includes(impostorRoom?.status) || player?.role !== "impostor" || player?.eliminated) return;
   impostorGuessPopup.hidden = false;
   document.body.classList.add("songs-popup-open");
-  impostorGuessInput.focus();
+  if (!window.matchMedia?.("(max-width: 760px)")?.matches) impostorGuessInput.focus();
 }
 
 function hideImpostorGuessPopup() {
@@ -3833,11 +3862,16 @@ function hideImpostorGuessPopup() {
 }
 
 function showImpostorEventPopup(title, message, detail = {}) {
-  if (!impostorEventPopup || !impostorEventTitle || !impostorEventMessage) return;
-  impostorEventTitle.textContent = title || t("impostor.notice");
+  if (!impostorEventMessage) return;
   impostorEventMessage.replaceChildren();
-  impostorEventPopup.classList.toggle("is-crew", detail.role === "crew");
-  impostorEventPopup.classList.toggle("is-impostor", detail.role === "impostor");
+  impostorEventMessage.classList.toggle("is-crew", detail.role === "crew");
+  impostorEventMessage.classList.toggle("is-impostor", detail.role === "impostor");
+  if (title) {
+    const heading = document.createElement("strong");
+    heading.className = "impostor-permanent-event-title";
+    heading.textContent = title;
+    impostorEventMessage.append(heading);
+  }
   if (detail.hero) impostorEventMessage.append(renderImpostorEventHero(detail.hero));
   if (message) {
     const text = document.createElement("p");
@@ -3861,9 +3895,8 @@ function showImpostorEventPopup(title, message, detail = {}) {
     impostorEventMessage.append(grid);
   }
   if (detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
-  if (detail.tieVoteCandidates?.length) impostorEventMessage.append(renderImpostorTieVoteChoices(detail.tieVoteCandidates));
-  if (impostorVotePopup) impostorVotePopup.hidden = true;
-  impostorEventPopup.hidden = false;
+  impostorEventMessage.hidden = !impostorEventMessage.childElementCount;
+  if (impostorVotePopup) impostorVotePopup.hidden = false;
 }
 
 function renderImpostorEventHero(hero) {
@@ -3929,9 +3962,8 @@ function renderImpostorTieVoteChoices(candidates) {
 }
 
 function hideImpostorEventPopup() {
-  if (impostorEventPopup) impostorEventPopup.hidden = true;
   if (impostorRoom) renderimpostorActions(impostorRoom, impostorRoom.player);
-  if (impostorVotePopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
+  if (impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
 function renderImpostorTestTools(room, currentPlayer, players) {
@@ -4031,8 +4063,6 @@ function dismissImpostorPopupOnClick(event, hidePopup) {
 }
 
 function closeAllImpostorPopups() {
-  if (impostorVotePopup) impostorVotePopup.hidden = true;
-  if (impostorEventPopup) impostorEventPopup.hidden = true;
   if (impostorGuessPopup) impostorGuessPopup.hidden = true;
   const kickPopup = document.querySelector("#impostorKickPopup");
   if (kickPopup) kickPopup.hidden = true;
@@ -4044,6 +4074,21 @@ function announceImpostorEvent(room, { force = false } = {}) {
   if (!room?.eventId || (!force && room.eventId === impostorShownEventId)) return;
   impostorShownEventId = room.eventId;
   if (room.lastEvent?.type === "start") closeAllImpostorPopups();
+  renderImpostorPermanentEvent(room);
+  playimpostorAlarmSound(getImpostorEventSoundType(room));
+  triggerImpostorOutcomeEffects(room);
+}
+
+function renderImpostorPermanentEvent(room) {
+  if (!impostorEventMessage) return;
+  const renderKey = `${room?.eventId || ""}:${room?.player?.id || ""}`;
+  if (impostorEventMessage.dataset.renderKey === renderKey) return;
+  impostorEventMessage.dataset.renderKey = renderKey;
+  if (!room?.lastEvent?.type || room.lastEvent.type === "start") {
+    impostorEventMessage.hidden = true;
+    impostorEventMessage.replaceChildren();
+    return;
+  }
   const title = getImpostorEventTitle(room);
   const eventMessage = formatimpostorEvent(room.lastEvent);
   const guessResult = formatimpostorGuessResult(room.lastEvent);
@@ -4052,9 +4097,12 @@ function announceImpostorEvent(room, { force = false } = {}) {
   const message = isVoteResult ? "" : room.status === "finished"
     ? [eventMessage, guessResult, getimpostorStatusMessage(room, room.player)].filter(Boolean).join(" ")
     : [eventMessage, guessResult].filter(Boolean).join(" ");
-  if (message || roleDetails.rows?.length || roleDetails.hero || roleDetails.voteResults?.length || roleDetails.tieVoteCandidates?.length) showImpostorEventPopup(title, message, roleDetails);
-  playimpostorAlarmSound(getImpostorEventSoundType(room));
-  triggerImpostorOutcomeEffects(room);
+  if (message || roleDetails.rows?.length || roleDetails.hero || roleDetails.voteResults?.length) {
+    showImpostorEventPopup(title, message, roleDetails);
+  } else {
+    impostorEventMessage.hidden = true;
+    impostorEventMessage.replaceChildren();
+  }
 }
 
 function getImpostorEventTitle(room) {
@@ -4951,13 +4999,21 @@ function showResistanceForm(mode) {
 
 function syncResistanceTestCreateMode() {
   if (!resistanceCreatePlayerLimit) return;
-  if (resistanceCreateTestMode?.checked) resistanceCreatePlayerLimit.value = "5";
-  resistanceCreatePlayerLimit.disabled = Boolean(resistanceCreateTestMode?.checked);
+  const testMode = Boolean(resistanceCreateTestMode?.checked);
+  if (resistanceTestBotCountField) resistanceTestBotCountField.hidden = !testMode;
+  if (resistanceCreateBotCount) resistanceCreateBotCount.disabled = !testMode;
+  if (testMode) {
+    const botCount = normalizeTestBotCount(resistanceCreateBotCount, 4, 9, 4);
+    resistanceCreateBotCount.value = String(botCount);
+    resistanceCreatePlayerLimit.value = String(botCount + 1);
+  }
+  resistanceCreatePlayerLimit.disabled = testMode;
 }
 
 async function createResistanceRoom(event) {
   event.preventDefault();
   resistanceLobbyMessage.textContent = "";
+  syncResistanceTestCreateMode();
   const roomName = resistanceCreateRoomName.value.trim();
   const playerName = resistanceCreatePlayerName.value.trim();
   const playerLimit = Math.max(5, Math.min(10, Math.floor(Number(resistanceCreatePlayerLimit.value) || 5)));
@@ -4968,7 +5024,7 @@ async function createResistanceRoom(event) {
     const response = await fetch("/api/resistance/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName, playerName, emoji: resistanceCreateEmoji.value, testMode: Boolean(resistanceCreateTestMode?.checked), config: { playerLimit } })
+      body: JSON.stringify({ roomName, playerName, emoji: resistanceCreateEmoji.value, testMode: Boolean(resistanceCreateTestMode?.checked), testBotCount: normalizeTestBotCount(resistanceCreateBotCount, 4, 9, 4), config: { playerLimit } })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
@@ -5760,6 +5816,15 @@ function showWolfForm(mode) {
   else wolfJoinPlayerName?.focus();
 }
 
+function syncWolfTestCreateMode() {
+  const testMode = Boolean(wolfCreateTestMode?.checked);
+  if (wolfTestBotCountField) wolfTestBotCountField.hidden = !testMode;
+  if (wolfCreateBotCount) {
+    wolfCreateBotCount.disabled = !testMode;
+    if (testMode) wolfCreateBotCount.value = String(normalizeTestBotCount(wolfCreateBotCount, 4, 19, 6));
+  }
+}
+
 async function createWolfRoomClient(event) {
   event.preventDefault();
   wolfLobbyMessage.textContent = "";
@@ -5770,7 +5835,7 @@ async function createWolfRoomClient(event) {
     const response = await fetch("/api/wolf/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName, playerName, testMode: Boolean(wolfCreateTestMode?.checked) })
+      body: JSON.stringify({ roomName, playerName, testMode: Boolean(wolfCreateTestMode?.checked), testBotCount: normalizeTestBotCount(wolfCreateBotCount, 4, 19, 6) })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
@@ -5881,7 +5946,7 @@ function renderWolfRoom(room = wolfRoom) {
   wolfSession.isHost = isHost;
   wolfGame.classList.toggle("is-night", room.theme === "night");
   wolfRoomLabel.textContent = room.roomName || "";
-  wolfPlayerCount.textContent = room.status === "lobby" ? `${players.length}/${room.minPlayers}+` : `${players.filter((item) => item.alive).length} con vida`;
+  wolfPlayerCount.textContent = room.status === "lobby" ? `${players.length}/${room.maxPlayers || 20}` : `${players.filter((item) => item.alive).length} con vida`;
   wolfRestartButton.hidden = !isHost || room.status === "lobby";
   renderWolfTestTools(room, player, players);
   renderWolfPlayers(players, player, room);
@@ -5977,6 +6042,7 @@ function getWolfPlayerStatus(player, room) {
   if (!player.connected) return "Reconectando…";
   if (!player.alive) return player.role ? `Eliminado · ${wolfRoleLabel(player.role)}` : "Eliminado";
   if (room.phase === "day_vote" && player.hasVoted) return "Voto enviado";
+  if (player.voteDisabled) return "Sin derecho a voto";
   if (String(room.phase).startsWith("night_") && player.hasActed) return "Acción enviada";
   if (room.status === "finished" && player.role) return wolfRoleLabel(player.role);
   if (player.isTestPlayer) return room.status === "lobby" ? "Jugador virtual" : `Virtual · ${player.role ? wolfRoleLabel(player.role) : "Con vida"}`;
@@ -5989,7 +6055,6 @@ function renderWolfRole(room, player) {
   wolfKnowledge.hidden = true;
   if (!show) return;
   const role = player.role;
-  wolfRoleEyebrow.textContent = player.viewingAs ? "Rol del jugador seleccionado" : "Tu rol secreto";
   setWolfIcon(wolfRoleIcon, role);
   wolfRoleCard.classList.toggle("is-werewolf", role === "werewolf");
   wolfRoleName.textContent = wolfRoleLabel(role);
@@ -5998,7 +6063,9 @@ function renderWolfRole(room, player) {
     villager: "Vota durante el día. Expulsa a todos los lobos antes de que igualen en número a la aldea.",
     seer: "Investiga a un jugador con vida cada noche y descubre si es un lobo.",
     doctor: "Protege a un jugador con vida cada noche. No puedes proteger al mismo dos noches seguidas.",
-    hunter: "Si te eliminan, elige a un jugador con vida para que caiga contigo."
+    hunter: "Si te eliminan, elige a un jugador con vida para que caiga contigo.",
+    elder: player.wolfAttackHits ? "Ya resististe un ataque de los Lobos. El siguiente será mortal." : "Sobrevives al primer ataque de los Lobos. Otras formas de eliminación siguen siendo mortales.",
+    idiot: player.voteDisabled ? "La aldea reveló tu rol. Sigues con vida, pero ya no puedes votar." : "Si la aldea intenta expulsarte, revelas tu rol, sobrevives y pierdes tu voto."
   };
   wolfRoleHint.textContent = player.alive ? hints[role] || "" : "Has sido eliminado. Observa en silencio hasta el final.";
   if (role === "seer" && player.seerDiscoveries?.length) {
@@ -6088,8 +6155,10 @@ function renderWolfNarrator(room, player) {
     phaseLabel = room.tieCandidates?.length ? "Desempate" : "Votación de la aldea";
     cycle = `Día ${room.dayNumber}`;
   } else if (phase === "day_result") {
-    title = event.type === "player-banished" ? `${event.playerName} fue expulsado` : event.type === "hunter-fired" ? `${event.targetName} cayó por el Cazador` : "Termina el día";
-    text = event.role
+    title = event.type === "idiot-spared" ? `${event.playerName} es el Tonto del pueblo` : event.type === "player-banished" ? `${event.playerName} fue expulsado` : event.type === "hunter-fired" ? `${event.targetName} cayó por el Cazador` : "Termina el día";
+    text = event.type === "idiot-spared"
+      ? `${event.playerName} revela su rol y permanece con vida, pero ya no podrá votar. El anfitrión empezará la siguiente noche cuando todos estén preparados.`
+      : event.role
       ? `${event.playerName} era ${wolfRoleLabel(event.role)}. El anfitrión empezará la siguiente noche cuando todos estén preparados.`
       : "El anfitrión empezará la siguiente noche cuando todos estén preparados.";
     icon = event.role || "sun";
@@ -6151,9 +6220,9 @@ function renderWolfActions(room, player, players) {
   } else if (phase === "hunter_shot" && player.role === "hunter" && !player.alive && !player.hasActed) {
     candidates = players.filter((item) => item.alive && item.id !== player.id);
     canAct = true;
-  } else if (phase === "day_vote" && player.alive && !player.hasVoted) {
+  } else if (phase === "day_vote" && player.alive && !player.voteDisabled && !player.hasVoted) {
     const tied = new Set(room.tieCandidates || []);
-    candidates = players.filter((item) => item.alive && item.id !== player.id && (!tied.size || tied.has(item.id)));
+    candidates = players.filter((item) => item.alive && !item.voteDisabled && item.id !== player.id && (!tied.size || tied.has(item.id)));
     canAct = true;
     kind = "vote";
   }
@@ -6221,7 +6290,7 @@ function renderWolfVoteSummary(room) {
 
   const heading = document.createElement("strong");
   const grid = document.createElement("div");
-  heading.textContent = outcome.type === "tie" ? "Resultado: empate" : "Resultado de la votación";
+  heading.textContent = outcome.type === "tie" ? "Resultado: empate" : outcome.type === "spared" ? "Resultado: rol revelado" : "Resultado de la votación";
   grid.className = "wolf-vote-result-grid";
   [...results.values()]
     .sort((a, b) => b.voters.length - a.voters.length || a.targetName.localeCompare(b.targetName, "es"))
@@ -6233,7 +6302,7 @@ function renderWolfVoteSummary(room) {
       const count = document.createElement("small");
       const voters = document.createElement("span");
       card.className = "wolf-vote-result-card";
-      if (highlighted.has(result.targetPlayerId)) card.classList.add(outcome.type === "tie" ? "is-tied" : "is-eliminated");
+      if (highlighted.has(result.targetPlayerId)) card.classList.add(outcome.type === "tie" ? "is-tied" : outcome.type === "spared" ? "is-spared" : "is-eliminated");
       name.textContent = result.targetName;
       count.textContent = `${result.voters.length} ${result.voters.length === 1 ? "voto" : "votos"}`;
       voters.className = "wolf-vote-result-voters";
@@ -6243,7 +6312,7 @@ function renderWolfVoteSummary(room) {
       if (highlighted.has(result.targetPlayerId)) {
         const badge = document.createElement("b");
         badge.className = "wolf-vote-result-badge";
-        badge.textContent = outcome.type === "tie" ? "Empate" : "Expulsado";
+        badge.textContent = outcome.type === "tie" ? "Empate" : outcome.type === "spared" ? "Sobrevive" : "Expulsado";
         card.append(badge);
       }
       card.append(voters);
@@ -6326,14 +6395,18 @@ function renderWolfPrimaryButtonOnly() {
 }
 
 function applyRecommendedWolfRoles() {
-  const recommended = wolfRoom?.recommendation || { werewolf: 1, seer: true, doctor: true, hunter: false };
+  const recommended = wolfRoom?.recommendation || { werewolf: 1, seer: true, doctor: true, hunter: false, elder: false, idiot: false };
   wolfRoleDraft = { ...recommended };
   wolfWerewolfCount.value = String(wolfRoleDraft.werewolf);
   wolfWerewolfCount.textContent = String(wolfRoleDraft.werewolf);
   wolfUseSeer.checked = Boolean(wolfRoleDraft.seer);
   wolfUseDoctor.checked = Boolean(wolfRoleDraft.doctor);
   wolfUseHunter.checked = Boolean(wolfRoleDraft.hunter);
+  wolfUseElder.checked = Boolean(wolfRoleDraft.elder);
+  wolfUseIdiot.checked = Boolean(wolfRoleDraft.idiot);
   wolfUseHunter.disabled = (wolfRoom?.players?.length || 0) < 7;
+  wolfUseElder.disabled = (wolfRoom?.players?.length || 0) < 10;
+  wolfUseIdiot.disabled = (wolfRoom?.players?.length || 0) < 13;
   syncWolfRoleDraft();
 }
 
@@ -6350,19 +6423,23 @@ function changeWolfCount(delta) {
 function syncWolfRoleDraft() {
   if (!wolfRoom || !wolfWerewolfCount) return;
   if ((wolfRoom.players?.length || 0) < 7) wolfUseHunter.checked = false;
+  if ((wolfRoom.players?.length || 0) < 10) wolfUseElder.checked = false;
+  if ((wolfRoom.players?.length || 0) < 13) wolfUseIdiot.checked = false;
   wolfRoleDraft = {
     werewolf: Math.max(1, Number(wolfWerewolfCount.value || wolfWerewolfCount.textContent || 1)),
     seer: Boolean(wolfUseSeer.checked),
     doctor: Boolean(wolfUseDoctor.checked),
-    hunter: Boolean(wolfUseHunter.checked)
+    hunter: Boolean(wolfUseHunter.checked),
+    elder: Boolean(wolfUseElder.checked),
+    idiot: Boolean(wolfUseIdiot.checked)
   };
   const players = wolfRoom.players?.length || 0;
-  const assigned = wolfRoleDraft.werewolf + Number(wolfRoleDraft.seer) + Number(wolfRoleDraft.doctor) + Number(wolfRoleDraft.hunter);
+  const assigned = wolfRoleDraft.werewolf + Number(wolfRoleDraft.seer) + Number(wolfRoleDraft.doctor) + Number(wolfRoleDraft.hunter) + Number(wolfRoleDraft.elder) + Number(wolfRoleDraft.idiot);
   const villagers = players - assigned;
   const maxWolves = Math.max(1, Math.floor((players - 1) / 2));
   const valid = players >= (wolfRoom.minPlayers || 5) && wolfRoleDraft.werewolf <= maxWolves && villagers >= 1;
   wolfRoleSummary.textContent = valid
-    ? `${wolfRoleDraft.werewolf} ${wolfRoleDraft.werewolf === 1 ? "Lobo" : "Lobos"}, ${villagers} ${villagers === 1 ? "Aldeano" : "Aldeanos"}${wolfRoleDraft.seer ? ", Vidente" : ""}${wolfRoleDraft.doctor ? ", Doctor" : ""}${wolfRoleDraft.hunter ? ", Cazador" : ""}.`
+    ? `${wolfRoleDraft.werewolf} ${wolfRoleDraft.werewolf === 1 ? "Lobo" : "Lobos"}, ${villagers} ${villagers === 1 ? "Aldeano" : "Aldeanos"}${wolfRoleDraft.seer ? ", Vidente" : ""}${wolfRoleDraft.doctor ? ", Doctor" : ""}${wolfRoleDraft.hunter ? ", Cazador" : ""}${wolfRoleDraft.elder ? ", Anciano" : ""}${wolfRoleDraft.idiot ? ", Tonto del pueblo" : ""}.`
     : "Debe quedar al menos un Aldeano y los Lobos deben ser menos de la mitad.";
   wolfConfirmStart.disabled = !valid;
   wolfMinusWerewolf.disabled = wolfRoleDraft.werewolf <= 1;
@@ -6571,7 +6648,7 @@ function clearStoredWolfSession() {
 }
 
 function wolfRoleLabel(role) {
-  return ({ werewolf: "Lobo", villager: "Aldeano", seer: "Vidente", doctor: "Doctor", hunter: "Cazador" })[role] || "Rol desconocido";
+  return ({ werewolf: "Lobo", villager: "Aldeano", seer: "Vidente", doctor: "Doctor", hunter: "Cazador", elder: "Anciano", idiot: "Tonto del pueblo" })[role] || "Rol desconocido";
 }
 
 function wolfNightRoleCallLabel(role, sentenceStart = false) {
@@ -6658,7 +6735,7 @@ function getWolfNarrationClip(room, player) {
   if (room.phase === "night_open") return "village-open";
   if (room.phase === "hunter_shot") return "hunter-act";
   if (room.phase === "day_vote") return room.tieCandidates?.length ? "vote-tie" : "";
-  if (room.phase === "day_result") return event.type === "hunter-fired" ? "day-hunter" : "day-banished";
+  if (room.phase === "day_result") return event.type === "idiot-spared" ? "" : event.type === "hunter-fired" ? "day-hunter" : "day-banished";
   if (room.phase === "finished") return room.winner === "village" ? "village-wins" : "werewolves-win";
   return "";
 }
@@ -6700,7 +6777,7 @@ function createWolfPlayerIcon(icon, className) {
 function setWolfIcon(svg, icon) {
   const use = svg?.querySelector("use");
   if (!use) return;
-  const href = `/images/wolf-icons.svg#${["unknown", "werewolf", "villager", "seer", "doctor", "hunter", "sleep", "wake", "sun", "vote"].includes(icon) ? icon : "unknown"}`;
+  const href = `/images/wolf-icons.svg#${["unknown", "werewolf", "villager", "seer", "doctor", "hunter", "elder", "idiot", "sleep", "wake", "sun", "vote"].includes(icon) ? icon : "unknown"}`;
   if (use.getAttribute("href") === href) return;
   use.setAttribute("href", href);
   use.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
