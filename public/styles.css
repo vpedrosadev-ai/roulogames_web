@@ -6659,12 +6659,17 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
 .wolf-role-setup h3 { margin: .1rem 0 0; font-size: 1.35rem; }
 .wolf-role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
 .wolf-role-option { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .75rem; min-height: 5.2rem; padding: .75rem; border: 1px solid rgba(68, 57, 42, .16); border-radius: 1rem; cursor: pointer; background: rgba(65, 83, 58, .06); }
+.wolf-role-option.is-wolf-team { order: -1; border-color: rgba(163, 63, 63, .55); box-shadow: inset 0 0 0 1px rgba(163, 63, 63, .18); }
 .wolf-game.is-night .wolf-role-option { border-color: rgba(225, 237, 214, .12); }
+.wolf-game.is-night .wolf-role-option.is-wolf-team { border-color: rgba(209, 82, 82, .58); box-shadow: inset 0 0 0 1px rgba(209, 82, 82, .22); }
 .wolf-role-option > input { position: absolute; inset: .6rem .6rem auto auto; width: 1.15rem; height: 1.15rem; accent-color: #5d805d; }
 .wolf-role-option > svg { width: 2.8rem; height: 2.8rem; color: #587050; }
+.wolf-role-option.is-wolf-team > svg { color: #a33f3f; }
 .wolf-role-option div strong { display: block; }
 .wolf-role-option div small { display: block; margin-top: .16rem; opacity: .58; }
 .wolf-role-option:has(input:checked) { border-color: #638064; box-shadow: inset 0 0 0 1px rgba(99, 128, 100, .3); }
+.wolf-role-option.is-wolf-team:has(input:checked),
+.wolf-role-option.is-wolf-team.is-required { border-color: #b74242; box-shadow: inset 0 0 0 1px rgba(183, 66, 66, .28); }
 .wolf-role-option:has(input:disabled) { cursor: not-allowed; opacity: .48; }
 .wolf-role-option.is-required { cursor: default; }
 .wolf-stepper { display: flex; align-items: center; gap: .35rem; }
@@ -9749,6 +9754,50 @@ body.resistance-active .content {
 }
 
 .wolf-rules-section li {
+  line-height: 1.35;
+}
+
+.wolf-rules-role-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.wolf-rules-role-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(196, 220, 179, .18);
+  border-radius: 8px;
+  background: rgba(240, 245, 233, .06);
+}
+
+.wolf-rules-role-card.is-wolf-team {
+  border-color: rgba(209, 82, 82, .62);
+  background: rgba(183, 66, 66, .1);
+}
+
+.wolf-rules-role-card > svg {
+  width: 46px;
+  height: 46px;
+  color: #dbe9cb;
+}
+
+.wolf-rules-role-card.is-wolf-team > svg {
+  color: #ff7777;
+}
+
+.wolf-rules-role-card strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #f7fbef;
+  font-size: 1.02rem;
+}
+
+.wolf-rules-role-card p {
+  margin: 0;
+  color: rgba(240, 245, 233, .76);
   line-height: 1.35;
 }
 

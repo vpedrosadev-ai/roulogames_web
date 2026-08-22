@@ -6086,45 +6086,65 @@ function hideWolfRulesPopup() {
 }
 
 function buildWolfRulesNodes() {
-  const sections = [
-    {
-      title: "Cómo funciona",
-      items: [
-        "Cada jugador recibe un rol secreto. La partida alterna noches privadas y días públicos.",
-        "De noche actúan los roles con poder: los Lobos atacan, la Vidente investiga, el Doctor protege y la Bruja decide si usa sus pócimas.",
-        "De día todos debaten y votan para expulsar a un jugador. Los eliminados no actúan, salvo efectos especiales.",
-        "La aldea gana cuando no queda ningún Lobo vivo. Los Lobos ganan cuando igualan o superan en número al resto de la aldea."
-      ]
-    },
-    {
-      title: "Roles",
-      items: [
-        "Aldeano: no tiene acción nocturna. Su fuerza está en escuchar, deducir y votar bien durante el día.",
-        "Lobo: despierta con la manada y elige una víctima cada noche. Gana con los Lobos.",
-        "Cachorro de Lobo: cuenta como Lobo. Si muere, la siguiente noche la manada puede atacar a dos víctimas.",
-        "Vidente: cada noche mira a un jugador y descubre si pertenece al equipo de los Lobos.",
-        "Doctor: cada noche protege a un jugador. No puede proteger al mismo jugador dos noches seguidas.",
-        "Bruja: tiene una pócima de vida y una de muerte para toda la partida. Puede usar ambas en la misma noche. La pócima de vida solo puede salvar a la víctima atacada por los Lobos esa misma noche; no resucita muertes antiguas. La pócima de muerte elimina a cualquier jugador vivo.",
-        "Cazador: si muere, puede disparar inmediatamente a otro jugador antes de abandonar la partida.",
-        "Anciano: resiste la primera muerte nocturna. Si la aldea lo expulsa por votación, los poderes especiales de la aldea se pierden.",
-        "Tonto del pueblo: si la aldea lo expulsa, revela su rol y sobrevive, pero pierde el derecho a votar."
-      ]
-    }
+  const summary = createWolfRulesTextSection("Cómo funciona", [
+    "Cada jugador recibe un rol secreto. La partida alterna noches privadas y días públicos.",
+    "De noche actúan los roles con poder: los Lobos atacan, la Vidente investiga, el Doctor protege y la Bruja decide si usa sus pócimas.",
+    "De día todos debaten y votan para expulsar a un jugador. Los eliminados no actúan, salvo efectos especiales.",
+    "La aldea gana cuando no queda ningún Lobo vivo. Los Lobos ganan cuando igualan o superan en número al resto de la aldea."
+  ]);
+  const roles = [
+    ["werewolf", "Lobo", "Despierta con la manada y elige una víctima cada noche. Gana con los Lobos.", true],
+    ["wolf-cub", "Cachorro de Lobo", "Cuenta como Lobo. Si muere, la siguiente noche la manada puede atacar a dos víctimas.", true],
+    ["villager", "Aldeano", "No tiene acción nocturna. Su fuerza está en escuchar, deducir y votar bien durante el día.", false],
+    ["seer", "Vidente", "Cada noche mira a un jugador y descubre si pertenece al equipo de los Lobos.", false],
+    ["doctor", "Doctor", "Cada noche protege a un jugador. No puede proteger al mismo jugador dos noches seguidas.", false],
+    ["witch", "Bruja", "Tiene una pócima de vida y una de muerte para toda la partida. Puede usar ambas en la misma noche. La pócima de vida solo salva a la víctima atacada por los Lobos esa misma noche; no resucita muertes antiguas. La pócima de muerte elimina a cualquier jugador vivo.", false],
+    ["hunter", "Cazador", "Si muere, puede disparar inmediatamente a otro jugador antes de abandonar la partida.", false],
+    ["elder", "Anciano", "Resiste la primera muerte nocturna. Si la aldea lo expulsa por votación, los poderes especiales de la aldea se pierden.", false],
+    ["idiot", "Tonto del pueblo", "Si la aldea lo expulsa, revela su rol y sobrevive, pero pierde el derecho a votar.", false]
   ];
-  return sections.map((sectionData) => {
-    const section = document.createElement("section");
-    section.className = "wolf-rules-section";
-    const heading = document.createElement("h3");
-    heading.textContent = sectionData.title;
-    const list = document.createElement("ul");
-    list.replaceChildren(...sectionData.items.map((text) => {
-      const item = document.createElement("li");
-      item.textContent = text;
-      return item;
-    }));
-    section.append(heading, list);
-    return section;
-  });
+  const roleSection = document.createElement("section");
+  roleSection.className = "wolf-rules-section";
+  const heading = document.createElement("h3");
+  heading.textContent = "Roles";
+  const grid = document.createElement("div");
+  grid.className = "wolf-rules-role-grid";
+  grid.replaceChildren(...roles.map(([icon, title, text, isWolfTeam]) => createWolfRulesRoleCard(icon, title, text, isWolfTeam)));
+  roleSection.append(heading, grid);
+  return [summary, roleSection];
+}
+
+function createWolfRulesTextSection(title, items) {
+  const section = document.createElement("section");
+  section.className = "wolf-rules-section";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  const list = document.createElement("ul");
+  list.replaceChildren(...items.map((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    return item;
+  }));
+  section.append(heading, list);
+  return section;
+}
+
+function createWolfRulesRoleCard(icon, title, text, isWolfTeam) {
+  const card = document.createElement("article");
+  card.className = `wolf-rules-role-card${isWolfTeam ? " is-wolf-team" : ""}`;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `/images/wolf-icons.svg#${icon}`);
+  svg.append(use);
+  const copy = document.createElement("div");
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const paragraph = document.createElement("p");
+  paragraph.textContent = text;
+  copy.append(heading, paragraph);
+  card.append(svg, copy);
+  return card;
 }
 
 async function shareResistanceRoom() {

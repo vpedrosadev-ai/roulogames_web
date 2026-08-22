@@ -514,7 +514,7 @@
                 <section id="wolfRoleSetup" class="wolf-role-setup" hidden>
                   <header><div><span>Configuración del anfitrión</span><h3>Elegir roles</h3></div><button type="button" id="wolfRecommendRoles" class="secondary compact-button">Usar recomendados</button></header>
                   <div class="wolf-role-grid">
-                    <article class="wolf-role-option is-required">
+                    <article class="wolf-role-option is-required is-wolf-team">
                       <svg aria-hidden="true"><use href="/images/wolf-icons.svg#werewolf"></use></svg>
                       <div><strong>Lobos</strong><small>Eligen juntos una víctima cada noche.</small></div>
                       <div class="wolf-stepper"><button type="button" id="wolfMinusWerewolf" class="secondary" aria-label="Menos lobos">-</button><output id="wolfWerewolfCount">1</output><button type="button" id="wolfPlusWerewolf" class="secondary" aria-label="Más lobos">+</button></div>
@@ -523,7 +523,7 @@
                     <label class="wolf-role-option"><input id="wolfUseDoctor" type="checkbox" checked><svg aria-hidden="true"><use href="/images/wolf-icons.svg#doctor"></use></svg><div><strong>Doctor</strong><small>Protege a un jugador cada noche.</small></div></label>
                     <label class="wolf-role-option"><input id="wolfUseWitch" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#witch"></use></svg><div><strong>Bruja</strong><small>Desde 7 jugadores: una pócima salva y otra elimina una vez por partida.</small></div></label>
                     <label class="wolf-role-option"><input id="wolfUseHunter" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#hunter"></use></svg><div><strong>Cazador</strong><small>Desde 7 jugadores: elimina a alguien al morir.</small></div></label>
-                    <label class="wolf-role-option"><input id="wolfUseWolfCub" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#wolf-cub"></use></svg><div><strong>Cachorro de Lobo</strong><small>Desde 12 jugadores: si muere, los Lobos atacan dos veces la noche siguiente.</small></div></label>
+                    <label class="wolf-role-option is-wolf-team"><input id="wolfUseWolfCub" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#wolf-cub"></use></svg><div><strong>Cachorro de Lobo</strong><small>Desde 12 jugadores: si muere, los Lobos atacan dos veces la noche siguiente.</small></div></label>
                     <label class="wolf-role-option"><input id="wolfUseElder" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#elder"></use></svg><div><strong>Anciano</strong><small>Desde 10 jugadores: sobrevive al primer ataque de los Lobos.</small></div></label>
                     <label class="wolf-role-option"><input id="wolfUseIdiot" type="checkbox"><svg aria-hidden="true"><use href="/images/wolf-icons.svg#idiot"></use></svg><div><strong>Tonto del pueblo</strong><small>Desde 13 jugadores: sobrevive a la primera expulsión, pero pierde su voto.</small></div></label>
                   </div>
