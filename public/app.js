@@ -294,6 +294,10 @@ const wolfShareButton = document.querySelector("#wolfShareButton");
 const wolfRestartButton = document.querySelector("#wolfRestartButton");
 const wolfLeaveButton = document.querySelector("#wolfLeaveButton");
 const wolfPlayerCount = document.querySelector("#wolfPlayerCount");
+const wolfRulesButton = document.querySelector("#wolfRulesButton");
+const wolfRulesPopup = document.querySelector("#wolfRulesPopup");
+const wolfRulesPopupBody = document.querySelector("#wolfRulesPopupBody");
+const wolfRulesPopupClose = document.querySelector("#wolfRulesPopupClose");
 const wolfPlayers = document.querySelector("#wolfPlayers");
 const wolfTestTools = document.querySelector("#wolfTestTools");
 const wolfTestViewControls = document.querySelector("#wolfTestViewControls");
@@ -2351,6 +2355,7 @@ let wolfRoom = null;
 let wolfPollTimer = null;
 let wolfCountdownTimer = null;
 let wolfShownEventId = "";
+let wolfRulesPopupPointer = null;
 let wolfOutcomeEventId = "";
 let wolfSoundedPhaseKey = "";
 let wolfSpokenPhaseKey = "";
@@ -2522,6 +2527,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !customPlaylistPopup.hidden) hideCustomPlaylistPopup();
   if (event.key === "Escape" && !multiplayerPodiumPopup.hidden) hideMultiplayerPodium();
   if (event.key === "Escape" && resistanceMissionPopup && !resistanceMissionPopup.hidden) hideResistanceMissionPopup();
+  if (event.key === "Escape" && wolfRulesPopup && !wolfRulesPopup.hidden) hideWolfRulesPopup();
   if (event.key === "Escape") closeScoreboardPopups();
 });
 
@@ -2616,6 +2622,23 @@ wolfChooseCreate?.addEventListener("click", () => showWolfForm("create"));
 wolfChooseJoin?.addEventListener("click", () => showWolfForm("join"));
 wolfBackButtons.forEach((button) => button.addEventListener("click", showWolfChoice));
 wolfShareButton?.addEventListener("click", shareWolfRoom);
+wolfRulesButton?.addEventListener("click", showWolfRulesPopup);
+wolfRulesPopupClose?.addEventListener("click", hideWolfRulesPopup);
+wolfRulesPopup?.addEventListener("pointerdown", (event) => {
+  wolfRulesPopupPointer = { x: event.clientX, y: event.clientY, id: event.pointerId };
+});
+wolfRulesPopup?.addEventListener("pointerup", (event) => {
+  if (!wolfRulesPopupPointer || wolfRulesPopupPointer.id !== event.pointerId) return;
+  const moved = Math.hypot(event.clientX - wolfRulesPopupPointer.x, event.clientY - wolfRulesPopupPointer.y);
+  wolfRulesPopupPointer = null;
+  if (moved < 8) hideWolfRulesPopup();
+});
+wolfRulesPopup?.addEventListener("pointercancel", () => {
+  wolfRulesPopupPointer = null;
+});
+wolfRulesPopup?.addEventListener("click", (event) => {
+  if (event.target === wolfRulesPopupClose) hideWolfRulesPopup();
+});
 wolfRestartButton?.addEventListener("click", restartWolfGameClient);
 wolfLeaveButton?.addEventListener("click", leaveWolfToMenu);
 wolfPlayers?.addEventListener("click", kickWolfPlayerClient);
@@ -6050,6 +6073,58 @@ function renderResistanceRoundList(title, ids, playersById) {
   }));
   section.append(heading, list);
   return section;
+}
+
+function showWolfRulesPopup() {
+  if (!wolfRulesPopup || !wolfRulesPopupBody) return;
+  wolfRulesPopupBody.replaceChildren(...buildWolfRulesNodes());
+  wolfRulesPopup.hidden = false;
+}
+
+function hideWolfRulesPopup() {
+  if (wolfRulesPopup) wolfRulesPopup.hidden = true;
+}
+
+function buildWolfRulesNodes() {
+  const sections = [
+    {
+      title: "Cómo funciona",
+      items: [
+        "Cada jugador recibe un rol secreto. La partida alterna noches privadas y días públicos.",
+        "De noche actúan los roles con poder: los Lobos atacan, la Vidente investiga, el Doctor protege y la Bruja decide si usa sus pócimas.",
+        "De día todos debaten y votan para expulsar a un jugador. Los eliminados no actúan, salvo efectos especiales.",
+        "La aldea gana cuando no queda ningún Lobo vivo. Los Lobos ganan cuando igualan o superan en número al resto de la aldea."
+      ]
+    },
+    {
+      title: "Roles",
+      items: [
+        "Aldeano: no tiene acción nocturna. Su fuerza está en escuchar, deducir y votar bien durante el día.",
+        "Lobo: despierta con la manada y elige una víctima cada noche. Gana con los Lobos.",
+        "Cachorro de Lobo: cuenta como Lobo. Si muere, la siguiente noche la manada puede atacar a dos víctimas.",
+        "Vidente: cada noche mira a un jugador y descubre si pertenece al equipo de los Lobos.",
+        "Doctor: cada noche protege a un jugador. No puede proteger al mismo jugador dos noches seguidas.",
+        "Bruja: tiene una pócima de vida y una de muerte para toda la partida. Puede usar ambas en la misma noche. La pócima de vida solo puede salvar a la víctima atacada por los Lobos esa misma noche; no resucita muertes antiguas. La pócima de muerte elimina a cualquier jugador vivo.",
+        "Cazador: si muere, puede disparar inmediatamente a otro jugador antes de abandonar la partida.",
+        "Anciano: resiste la primera muerte nocturna. Si la aldea lo expulsa por votación, los poderes especiales de la aldea se pierden.",
+        "Tonto del pueblo: si la aldea lo expulsa, revela su rol y sobrevive, pero pierde el derecho a votar."
+      ]
+    }
+  ];
+  return sections.map((sectionData) => {
+    const section = document.createElement("section");
+    section.className = "wolf-rules-section";
+    const heading = document.createElement("h3");
+    heading.textContent = sectionData.title;
+    const list = document.createElement("ul");
+    list.replaceChildren(...sectionData.items.map((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      return item;
+    }));
+    section.append(heading, list);
+    return section;
+  });
 }
 
 async function shareResistanceRoom() {

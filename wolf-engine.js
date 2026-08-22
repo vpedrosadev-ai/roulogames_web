@@ -378,6 +378,11 @@ export function submitWolfAction(room, player, targetId) {
       if (!victim || !target || target.id !== victim.id) throw new WolfGameError("Solo puedes salvar a la victima de los Lobos");
       player.witchHealUsed = true;
       room.pendingWitchHealId = target.id;
+      if (witchCanUseAnotherPotion(room, player)) {
+        player.lastSeen = Date.now();
+        room.updatedAt = Date.now();
+        return;
+      }
       room.actions[player.id] = rawTargetId;
       completeWolfNightRole(room, "witch");
     } else {
@@ -385,6 +390,11 @@ export function submitWolfAction(room, player, targetId) {
       if (!target) throw new WolfGameError("Elige un jugador activo");
       player.witchPoisonUsed = true;
       room.pendingWitchPoisonId = target.id;
+      if (witchCanUseAnotherPotion(room, player)) {
+        player.lastSeen = Date.now();
+        room.updatedAt = Date.now();
+        return;
+      }
       room.actions[player.id] = rawTargetId;
       completeWolfNightRole(room, "witch");
     }
@@ -875,13 +885,19 @@ function getWolfActionActors(room) {
   if (room.phase === "night_wolves") return room.players.filter((player) => player.alive && isWolfTeamRole(player.role));
   if (room.phase === "night_seer") return room.players.filter((player) => player.alive && player.role === "seer");
   if (room.phase === "night_doctor") return room.players.filter((player) => player.alive && player.role === "doctor");
-  if (room.phase === "night_witch") return room.players.filter((player) => player.alive && player.role === "witch" && (!player.witchHealUsed || !player.witchPoisonUsed));
+  if (room.phase === "night_witch") return room.players.filter((player) => player.alive && player.role === "witch" && witchCanUseAnotherPotion(room, player));
   if (room.phase === "hunter_shot") return room.players.filter((player) => player.id === room.pendingHunterId);
   return [];
 }
 
 function getAliveWolfPlayer(room, id) {
   return room.players.find((player) => player.id === String(id || "") && player.alive) || null;
+}
+
+function witchCanUseAnotherPotion(room, player) {
+  const canHeal = !player.witchHealUsed && Boolean(getAliveWolfPlayer(room, room.pendingVictimId));
+  const canPoison = !player.witchPoisonUsed && room.players.some((item) => item.alive);
+  return canHeal || canPoison;
 }
 
 function isWolfTeamRole(role) {

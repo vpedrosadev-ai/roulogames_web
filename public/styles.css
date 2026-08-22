@@ -6270,38 +6270,11 @@ body.impostor-active .content {
 
 .wolf-home-card {
   grid-column: span 3;
-  grid-template-rows: auto 1fr auto;
-  align-items: start;
-  justify-items: start;
-  min-height: clamp(168px, 24vh, 230px);
   background:
     radial-gradient(circle at 78% 18%, rgba(235, 239, 196, .2), transparent 20%),
     linear-gradient(145deg, rgba(21, 50, 63, .97), rgba(8, 24, 31, .98)) !important;
   color: #f0f5e9;
   border-color: rgba(196, 220, 179, .35) !important;
-}
-
-.wolf-home-card .wolf-home-icon {
-  display: grid;
-  box-sizing: border-box;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  margin-bottom: 14px;
-  border: 1px solid rgba(255, 255, 255, .24);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, .12);
-  color: #dbe9cb;
-}
-
-.wolf-home-card .wolf-home-icon svg {
-  width: 24px;
-  height: 24px;
-}
-
-.wolf-home-card strong {
-  align-self: end;
-  max-width: 10ch;
 }
 
 .wolf-home-card small,
@@ -6506,7 +6479,7 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
   border-right: 1px solid rgba(45, 37, 29, .15);
   background: rgba(41, 48, 37, .12);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: .8rem;
 }
 
@@ -6514,6 +6487,25 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
 .wolf-players-panel > header { display: flex; justify-content: space-between; align-items: center; padding: 0 .25rem; }
 .wolf-players-panel > header span { font-size: .72rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; opacity: .6; }
 .wolf-player-count { font-variant-numeric: tabular-nums; }
+.wolf-rules-button {
+  width: 100%;
+  min-height: 2.55rem;
+  border: 1px solid rgba(89, 133, 102, .28);
+  border-radius: 8px;
+  background: rgba(89, 133, 102, .14);
+  color: #264c3c;
+  font-weight: 950;
+}
+.wolf-rules-button:hover,
+.wolf-rules-button:focus-visible {
+  border-color: rgba(89, 133, 102, .48);
+  background: rgba(89, 133, 102, .22);
+}
+.wolf-game.is-night .wolf-rules-button {
+  border-color: rgba(216, 232, 207, .18);
+  background: rgba(216, 232, 207, .08);
+  color: #dbe9cb;
+}
 
 .wolf-players {
   min-height: 0;
@@ -9668,6 +9660,99 @@ body.resistance-active .content {
 }
 
 .resistance-mission-popup-card > button {
+  justify-self: end;
+}
+
+.wolf-rules-popup {
+  position: fixed;
+  inset: calc(var(--title-bar-height, 72px) + 8px) 0 0;
+  z-index: 120;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 14px;
+  background: rgba(2, 9, 12, .68);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.wolf-rules-popup[hidden] {
+  display: none !important;
+}
+
+.wolf-rules-popup-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  width: min(760px, 100%);
+  max-height: calc(100dvh - var(--title-bar-height, 72px) - 36px);
+  padding: 18px;
+  border: 1px solid rgba(196, 220, 179, .3);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(11, 31, 39, .98), rgba(7, 16, 23, .98));
+  color: #f0f5e9;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .46);
+  overflow: hidden;
+}
+
+.wolf-rules-popup-card > header {
+  display: grid;
+  gap: 4px;
+}
+
+.wolf-rules-popup-card > header span {
+  color: rgba(240, 245, 233, .62);
+  font-size: .72rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.wolf-rules-popup-card h2 {
+  margin: 0;
+  color: #dbe9cb;
+  font-size: clamp(1.6rem, 5vw, 3.2rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.wolf-rules-popup-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.wolf-rules-section {
+  display: grid;
+  gap: 8px;
+}
+
+.wolf-rules-section h3 {
+  margin: 0;
+  color: #f5e2b6;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.wolf-rules-section ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.wolf-rules-section li {
+  line-height: 1.35;
+}
+
+.wolf-rules-popup-card > button {
   justify-self: end;
 }
 
@@ -14335,5 +14420,37 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
   .impostor-vote-result-summary {
     justify-items: center;
     text-align: center;
+  }
+}
+
+@media (max-width: 760px) {
+  #multiplayerSetup input,
+  #multiplayerSetup select,
+  #multiplayerSetup textarea,
+  .multiplayer-form input,
+  .multiplayer-form select,
+  .multiplayer-form textarea,
+  .impostor-form input,
+  .impostor-form select,
+  .impostor-form textarea,
+  .resistance-form input,
+  .resistance-form select,
+  .resistance-form textarea,
+  .wolf-form input,
+  .wolf-form select,
+  .wolf-form textarea,
+  .masterword-form input,
+  .masterword-form select,
+  .masterword-form textarea,
+  .scoreboard-form input,
+  .scoreboard-form select,
+  .scoreboard-form textarea,
+  .scoreboard-nickname-form input,
+  .scoreboard-nickname-form select,
+  .scoreboard-nickname-form textarea,
+  .scoreboard-popup-card input,
+  .scoreboard-popup-card select,
+  .scoreboard-popup-card textarea {
+    font-size: 16px !important;
   }
 }

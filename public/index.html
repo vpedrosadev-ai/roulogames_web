@@ -108,7 +108,7 @@
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeResistancePlayers">Min. 5 players</small></em>
             </button>
             <button type="button" class="home-menu-card wolf-home-card" data-view-target="wolfView">
-              <span class="wolf-home-icon" aria-hidden="true"><svg><use href="/images/wolf-icons.svg#werewolf"></use></svg></span>
+              <span aria-hidden="true">W</span>
               <strong>Hombres Lobo</strong>
               <small>Una aldea de roles ocultos, ataques nocturnos y votaciones diurnas</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small>Mín. 5 jugadores</small></em>
@@ -500,6 +500,7 @@
             <div class="wolf-table">
               <aside class="wolf-players-panel" aria-label="Jugadores">
                 <header><span>Jugadores</span><strong id="wolfPlayerCount">0/20</strong></header>
+                <button type="button" id="wolfRulesButton" class="wolf-rules-button">Reglas</button>
                 <div id="wolfPlayers" class="wolf-players"></div>
               </aside>
               <main class="wolf-narrator" aria-live="polite">
@@ -547,6 +548,17 @@
               </main>
             </div>
           </section>
+        </section>
+
+        <section id="wolfRulesPopup" class="wolf-rules-popup" hidden aria-modal="true" role="dialog" aria-labelledby="wolfRulesPopupTitle">
+          <article class="wolf-rules-popup-card">
+            <header>
+              <span>Reglas</span>
+              <h2 id="wolfRulesPopupTitle">Hombres Lobo</h2>
+            </header>
+            <div id="wolfRulesPopupBody" class="wolf-rules-popup-body"></div>
+            <button type="button" id="wolfRulesPopupClose" class="secondary">Cerrar</button>
+          </article>
         </section>
 
         <section id="masterWordView" class="view masterword-view" aria-labelledby="masterWordTitle" hidden>
