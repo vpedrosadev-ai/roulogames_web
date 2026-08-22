@@ -3998,6 +3998,14 @@ function renderImpostorVoteResults(results) {
     list.append(item);
   });
   section.append(title, list);
+  if (impostorRoom?.status === "round-result" && (impostorRoom.player?.isHost || impostorSession?.isHost)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary impostor-advance-round-button";
+    button.dataset.impostorAdvanceRound = "1";
+    button.textContent = "Siguiente ronda";
+    section.append(button);
+  }
   return section;
 }
 
@@ -5656,7 +5664,7 @@ function setResistanceVoteButtonContent(button, label, voters) {
   const text = document.createElement("span");
   text.textContent = label;
   const details = document.createElement("small");
-  details.textContent = voters.length ? voters.join(", ") : "";
+  details.textContent = voters.length ? `Han votado: ${voters.join(", ")}` : "";
   button.replaceChildren(text, details);
 }
 

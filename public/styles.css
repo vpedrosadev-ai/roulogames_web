@@ -13992,7 +13992,8 @@ body.impostor-active:has(#impostorGame:not([hidden])) .impostor-clue-card > div 
 
 body.impostor-active:has(#impostorGame:not([hidden])) #impostorSecretWord {
   width: 100%;
-  text-align: center;
+  justify-self: center;
+  text-align: center !important;
 }
 
 body.impostor-active:has(#impostorGame:not([hidden])) #impostorEventMessage {
@@ -14051,6 +14052,12 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
   overflow-wrap: anywhere;
 }
 
+.impostor-advance-round-button {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 6px;
+}
+
 @media (max-width: 760px) {
   body.impostor-active:has(#impostorGame:not([hidden])) .content,
   body.resistance-active:has(#resistanceGame:not([hidden])) .content {
@@ -14058,7 +14065,28 @@ body.impostor-active:has(#impostorGame:not([hidden])) #impostorVoteList {
   }
 
   body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-game {
-    height: 100% !important;
+    height: auto !important;
+    max-height: calc(100dvh - var(--title-bar-height, 72px) - 8px);
+    overflow: hidden;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+    min-height: 0 !important;
+    height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-action-panel {
+    max-height: 100%;
+    gap: 4px !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-operation-brief {
+    min-height: 54px !important;
+    padding: 5px 6px !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-players {
+    grid-auto-rows: minmax(44px, auto) !important;
   }
 
   .resistance-round-stat-grid article {
