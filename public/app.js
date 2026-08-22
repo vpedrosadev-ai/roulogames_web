@@ -198,8 +198,11 @@ const impostorGameMessage = document.querySelector("#impostorGameMessage");
 const impostorBackButtons = document.querySelectorAll("[data-impostor-back]");
 const impostorRoleCard = document.querySelector("#impostorRoleCard");
 const impostorRoleLabel = document.querySelector("#impostorRoleLabel");
+const impostorClueCard = document.querySelector("#impostorClueCard");
+const impostorClueLabel = document.querySelector("#impostorClueLabel");
 const impostorSecretWord = document.querySelector("#impostorSecretWord");
 const impostorHintText = document.querySelector("#impostorHintText");
+const impostorPhaseTitle = document.querySelector("#impostorPhaseTitle");
 const impostorVoteList = document.querySelector("#impostorVoteList");
 const impostorGuessButton = document.querySelector("#impostorGuessButton");
 const impostorGuessForm = document.querySelector("#impostorGuessForm");
@@ -2534,6 +2537,9 @@ impostorVoteList?.addEventListener("click", voteimpostorPlayer);
 impostorEventMessage?.addEventListener("click", voteimpostorPlayer);
 impostorGuessButton?.addEventListener("click", showImpostorGuessPopup);
 impostorGuessForm?.addEventListener("submit", guessimpostorWord);
+impostorGuessPopup?.addEventListener("click", (event) => {
+  if (event.target === impostorGuessPopup) hideImpostorGuessPopup();
+});
 impostorCreatePlayerLimit?.addEventListener("input", syncimpostorConfigLimits);
 impostorCreatePlayerLimit?.addEventListener("blur", syncimpostorConfigLimits);
 impostorCreateimpostorCount?.addEventListener("input", syncimpostorConfigLimits);
@@ -2554,7 +2560,7 @@ resistancePlayers?.addEventListener("click", kickResistancePlayer);
 resistancePlayers?.addEventListener("keydown", handleResistancePlayerKeydown);
 resistanceCreateTestMode?.addEventListener("change", syncResistanceTestCreateMode);
 resistanceTestAutoFollow?.addEventListener("change", toggleResistanceTestAutoFollow);
-resistanceTeamOptions?.addEventListener("change", updateResistanceTeamDraft);
+resistanceTeamOptions?.addEventListener("input", updateResistanceTeamDraft);
 resistanceProposeButton?.addEventListener("click", proposeResistanceTeam);
 resistanceApproveButton?.addEventListener("click", () => voteResistanceTeam(true));
 resistanceRejectButton?.addEventListener("click", () => voteResistanceTeam(false));
@@ -3381,6 +3387,12 @@ async function restartimpostorGame() {
 }
 
 async function kickimpostorPlayer(event) {
+  const testControl = event.target.closest('[data-test-phase-action="impostor"]');
+  if (testControl) {
+    event.preventDefault();
+    await skipImpostorTestPhase(testControl);
+    return;
+  }
   const button = event.target.closest("[data-kick-player-id]");
   if (!impostorSession?.isHost) return;
   const chip = event.target.closest(".impostor-chip[data-player-id]");
@@ -3619,19 +3631,36 @@ function formatimpostorGuessResult(event) {
 }
 
 function renderimpostorRoleCard(room, currentPlayer) {
-  if (!impostorRoleCard || !impostorRoleLabel || !impostorSecretWord || !impostorHintText) return;
+  if (!impostorRoleCard || !impostorClueCard || !impostorRoleLabel || !impostorClueLabel || !impostorSecretWord || !impostorHintText) return;
   const showRole = room.status !== "lobby" && currentPlayer?.role;
   impostorRoleCard.hidden = !showRole;
+  impostorClueCard.hidden = !showRole;
   if (!showRole) return;
   impostorRoleCard.classList.toggle("is-impostor", currentPlayer.role === "impostor");
   impostorRoleCard.classList.toggle("is-eliminated", Boolean(currentPlayer.eliminated));
+  impostorClueCard.classList.toggle("is-impostor", currentPlayer.role === "impostor");
+  impostorClueCard.classList.toggle("is-eliminated", Boolean(currentPlayer.eliminated));
   const isImpostor = currentPlayer.role === "impostor";
-  const detail = isImpostor
-    ? t("impostor.hintPrefix", { value: currentPlayer.hint || t("impostor.popup.noHint") })
-    : t("impostor.wordPrefix", { value: currentPlayer.word || t("impostor.secretWord") });
   impostorRoleLabel.textContent = isImpostor ? t("impostor.role.impostor") : t("impostor.role.crew");
-  impostorSecretWord.textContent = detail;
-  impostorHintText.textContent = currentPlayer.eliminated ? t("impostor.youAreOut") : currentPlayer.starts ? t("impostor.youStart") : "";
+  impostorClueLabel.textContent = isImpostor ? "Tu pista" : "La palabra";
+  impostorSecretWord.textContent = isImpostor
+    ? (currentPlayer.hint || t("impostor.popup.noHint"))
+    : (currentPlayer.word || t("impostor.secretWord"));
+  impostorHintText.textContent = currentPlayer.eliminated ? t("impostor.youAreOut") : "";
+}
+
+function createTestPhaseControl(kind, detail, disabled = false) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `test-phase-control ${kind}-test-phase-control`;
+  button.dataset.testPhaseAction = kind;
+  button.disabled = disabled;
+  const title = document.createElement("strong");
+  const hint = document.createElement("small");
+  title.textContent = "Saltar fase";
+  hint.textContent = detail;
+  button.append(title, hint);
+  return button;
 }
 
 function renderimpostorPlayers(players, currentPlayer, status, liveVotes = []) {
@@ -3639,7 +3668,7 @@ function renderimpostorPlayers(players, currentPlayer, status, liveVotes = []) {
   const canKick = impostorSession?.isHost && status === "lobby" && !impostorRoom?.test?.enabled;
   const canSwitchView = Boolean(impostorRoom?.test?.enabled);
   const voteByVoter = new Map(liveVotes.map((vote) => [vote.voterId, vote]));
-  impostorCircle.replaceChildren(...players.map((player) => {
+  const chips = players.map((player) => {
     const chip = document.createElement("article");
     chip.className = "impostor-chip";
     chip.dataset.playerId = player.id;
@@ -3671,7 +3700,11 @@ function renderimpostorPlayers(players, currentPlayer, status, liveVotes = []) {
     chip.querySelector("small").textContent = roleText;
     chip.querySelector("b").textContent = voteText;
     return chip;
-  }));
+  });
+  const controls = impostorRoom?.test?.enabled
+    ? [createTestPhaseControl("impostor", status === "lobby" ? "Inicia la partida de prueba" : "Completa la votación actual", status === "finished")]
+    : [];
+  impostorCircle.replaceChildren(...controls, ...chips);
   observeimpostorChipSizing();
   syncimpostorChipContentScale();
 }
@@ -3716,6 +3749,16 @@ function syncimpostorChipContentScale() {
 function renderimpostorActions(room, currentPlayer) {
   if (!impostorVoteList || !impostorGuessForm) return;
   const status = room.status || "lobby";
+  const votingPhase = ["playing", "tiebreak"].includes(status);
+  if (impostorPhaseTitle) {
+    impostorPhaseTitle.textContent = status === "lobby"
+      ? "Sala de espera"
+      : status === "finished"
+        ? "Resultado final"
+        : status === "tiebreak"
+          ? "Desempate"
+          : "Votación";
+  }
   const canVote = ["playing", "tiebreak"].includes(status) && currentPlayer && !currentPlayer.eliminated && !currentPlayer.hasVoted;
   const voteLabel = `${t("impostor.vote")} (${room.votesCast || 0}/${room.activeCount || 0})`;
   const votersByTarget = new Map();
@@ -3747,6 +3790,7 @@ function renderimpostorActions(room, currentPlayer) {
     empty.textContent = status === "lobby" ? t("impostor.voteAfterStart") : t("impostor.noVoteTargets");
     impostorVoteList.replaceChildren(empty);
   }
+  if (impostorVotePopup && impostorEventPopup?.hidden !== false) impostorVotePopup.hidden = !votingPhase;
   if (impostorVoteButton) {
     impostorVoteButton.hidden = !["playing", "tiebreak"].includes(status);
     impostorVoteButton.disabled = !currentPlayer || currentPlayer.eliminated || !candidates.length;
@@ -3779,13 +3823,14 @@ function showImpostorGuessPopup() {
   const player = impostorRoom?.player;
   if (!["playing", "tiebreak"].includes(impostorRoom?.status) || player?.role !== "impostor" || player?.eliminated) return;
   impostorGuessPopup.hidden = false;
+  document.body.classList.add("songs-popup-open");
   impostorGuessInput.focus();
 }
 
 function hideImpostorGuessPopup() {
   if (!impostorGuessPopup) return;
   impostorGuessPopup.hidden = true;
-  if (impostorVotePopup?.hidden && impostorEventPopup?.hidden) document.body.classList.remove("songs-popup-open");
+  document.body.classList.remove("songs-popup-open");
 }
 
 function showImpostorEventPopup(title, message, detail = {}) {
@@ -3818,6 +3863,7 @@ function showImpostorEventPopup(title, message, detail = {}) {
   }
   if (detail.voteResults?.length) impostorEventMessage.append(renderImpostorVoteResults(detail.voteResults));
   if (detail.tieVoteCandidates?.length) impostorEventMessage.append(renderImpostorTieVoteChoices(detail.tieVoteCandidates));
+  if (impostorVotePopup) impostorVotePopup.hidden = true;
   impostorEventPopup.hidden = false;
 }
 
@@ -3886,21 +3932,17 @@ function renderImpostorTieVoteChoices(candidates) {
 function hideImpostorEventPopup() {
   if (!impostorEventPopup) return;
   impostorEventPopup.hidden = true;
+  if (impostorRoom) renderimpostorActions(impostorRoom, impostorRoom.player);
   if (impostorVotePopup?.hidden && impostorGuessPopup?.hidden) document.body.classList.remove("songs-popup-open");
 }
 
 function renderImpostorTestTools(room, currentPlayer, players) {
-  if (!impostorTestTools) return;
   const enabled = Boolean(room.test?.enabled);
-  impostorTestTools.hidden = !enabled;
   if (!enabled) {
     impostorTestViewId = currentPlayer?.id || "";
     return;
   }
   impostorTestViewId = room.test.viewPlayerId || currentPlayer?.id || impostorTestViewId;
-  const viewed = players.find((player) => player.id === impostorTestViewId);
-  impostorTestViewLabel.textContent = `Viendo como ${viewed?.name || "anfitrión"}`;
-  impostorTestAutoFollow.checked = impostorTestAutoFollowEnabled;
 }
 
 function impostorTestActionBody(extra = {}) {
@@ -3932,6 +3974,57 @@ function handleImpostorPlayerKeydown(event) {
 function toggleImpostorTestAutoFollow() {
   impostorTestAutoFollowEnabled = Boolean(impostorTestAutoFollow?.checked);
   void pollimpostorRoom();
+}
+
+async function skipImpostorTestPhase(control = null) {
+  if (!impostorRoom?.test?.enabled || !impostorSession?.isHost) return;
+  if (control) control.disabled = true;
+  impostorTestAutoFollowEnabled = true;
+  try {
+    if (impostorRoom.status === "lobby") {
+      await startimpostorGame();
+      return;
+    }
+    if (!["playing", "tiebreak"].includes(impostorRoom.status)) return;
+    let snapshot = impostorRoom;
+    const pendingVoters = (snapshot.players || []).filter((player) => !player.eliminated && !player.hasVoted);
+    for (const voter of pendingVoters) {
+      if (!["playing", "tiebreak"].includes(snapshot.status)) break;
+      const tiedIds = new Set(snapshot.tieCandidates || []);
+      const target = (snapshot.players || []).find((player) => (
+        !player.eliminated
+        && player.id !== voter.id
+        && (snapshot.status !== "tiebreak" || tiedIds.has(player.id))
+      ));
+      if (!target) continue;
+      const response = await fetch(`/api/impostor/rooms/${encodeURIComponent(impostorSession.roomName)}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerId: impostorSession.playerId,
+          token: impostorSession.token,
+          asPlayerId: voter.id,
+          autoFollow: true,
+          targetPlayerId: target.id
+        })
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok) throw new Error(payload.error || "No se pudo saltar la votación");
+      snapshot = payload;
+    }
+    const eventChanged = Boolean(snapshot.eventId && snapshot.eventId !== impostorLastAssignmentId);
+    impostorRoom = snapshot;
+    impostorLastVotesCast = Number(snapshot.votesCast || 0);
+    renderimpostorRoom(snapshot, { flash: eventChanged });
+    if (eventChanged) {
+      impostorLastAssignmentId = snapshot.eventId;
+      announceImpostorEvent(snapshot);
+    }
+  } catch (error) {
+    if (impostorGameMessage) impostorGameMessage.textContent = error.message;
+  } finally {
+    if (control?.isConnected) control.disabled = false;
+  }
 }
 
 function dismissImpostorPopupOnClick(event, hidePopup) {
@@ -4998,6 +5091,12 @@ async function restartResistanceGame() {
 }
 
 async function kickResistancePlayer(event) {
+  const testControl = event.target.closest('[data-test-phase-action="resistance"]');
+  if (testControl) {
+    event.preventDefault();
+    await skipResistanceTestPhase(testControl);
+    return;
+  }
   const button = event.target.closest("[data-resistance-kick-id]");
   if (!resistanceSession?.isHost) return;
   const card = event.target.closest(".resistance-player-card[data-player-id]");
@@ -5192,6 +5291,9 @@ async function voteResistanceMission(sabotage) {
 
 function renderResistanceRoom(room = resistanceRoom) {
   if (!room || !resistancePlayers) return;
+  if (!resistanceTeamPicker?.hidden && resistanceTeamOptions) {
+    resistanceTeamDraftIds = new Set([...resistanceTeamOptions.querySelectorAll("input:checked")].map((input) => input.value));
+  }
   const players = [...(room.players || [])].sort((a, b) => a.seatNumber - b.seatNumber);
   const player = room.player || players.find((item) => item.id === resistanceSession?.playerId);
   const isHost = Boolean(player?.isHost || resistanceSession?.isHost);
@@ -5250,7 +5352,7 @@ function renderResistancePlayers(players, currentPlayer, room) {
   const canSwitchView = Boolean(room.test?.enabled);
   const teamVoteByPlayer = new Map((room.teamVoteDetails || []).map((vote) => [vote.voterId, vote]));
   const missionVoters = new Set((room.missionVoters || []).map((vote) => vote.voterId));
-  resistancePlayers.replaceChildren(...players.map((item) => {
+  const cards = players.map((item) => {
     const card = document.createElement("article");
     card.className = "resistance-player-card";
     card.dataset.playerId = item.id;
@@ -5278,21 +5380,20 @@ function renderResistancePlayers(players, currentPlayer, room) {
       ? (teamVote.approve ? "Aprobo el equipo" : "Rechazo el equipo")
       : missionVoters.has(item.id) ? "Accion secreta enviada" : "";
     return card;
-  }));
+  });
+  const controls = room.test?.enabled
+    ? [createTestPhaseControl("resistance", room.status === "lobby" ? "Inicia la partida de prueba" : "Completa la fase actual", room.status === "finished")]
+    : [];
+  resistancePlayers.replaceChildren(...controls, ...cards);
 }
 
 function renderResistanceTestTools(room, currentPlayer, players) {
-  if (!resistanceTestTools) return;
   const enabled = Boolean(room.test?.enabled);
-  resistanceTestTools.hidden = !enabled;
   if (!enabled) {
     resistanceTestViewId = currentPlayer?.id || "";
     return;
   }
   resistanceTestViewId = room.test.viewPlayerId || currentPlayer?.id || resistanceTestViewId;
-  const viewed = players.find((player) => player.id === resistanceTestViewId);
-  resistanceTestViewLabel.textContent = `Viendo como ${viewed?.name || "anfitrión"}`;
-  resistanceTestAutoFollow.checked = resistanceTestAutoFollowEnabled;
 }
 
 function resistanceTestActionBody(extra = {}) {
@@ -5324,6 +5425,61 @@ function handleResistancePlayerKeydown(event) {
 function toggleResistanceTestAutoFollow() {
   resistanceTestAutoFollowEnabled = Boolean(resistanceTestAutoFollow?.checked);
   void pollResistanceRoom();
+}
+
+async function skipResistanceTestPhase(control = null) {
+  if (!resistanceRoom?.test?.enabled || !resistanceSession?.isHost) return;
+  if (control) control.disabled = true;
+  resistanceTestAutoFollowEnabled = true;
+  try {
+    if (resistanceRoom.status === "lobby") {
+      await startResistanceGame();
+      return;
+    }
+    let snapshot = resistanceRoom;
+    if (snapshot.status === "team") {
+      const leader = (snapshot.players || []).find((player) => player.isLeader);
+      const teamIds = (snapshot.currentTeam?.length === Number(snapshot.teamSize)
+        ? snapshot.currentTeam
+        : (snapshot.players || []).slice(0, Number(snapshot.teamSize || 0)).map((player) => player.id));
+      const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, asPlayerId: leader?.id, autoFollow: true, teamIds })
+      });
+      snapshot = await readJsonResponse(response);
+      if (!response.ok) throw new Error(snapshot.error || "No se pudo saltar la propuesta");
+    } else if (snapshot.status === "voting") {
+      const pending = (snapshot.players || []).filter((player) => !player.hasTeamVoted);
+      for (const voter of pending) {
+        const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/team-vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, asPlayerId: voter.id, autoFollow: true, approve: true })
+        });
+        snapshot = await readJsonResponse(response);
+        if (!response.ok) throw new Error(snapshot.error || "No se pudo saltar la votación");
+      }
+    } else if (snapshot.status === "mission") {
+      const pending = (snapshot.players || []).filter((player) => player.onTeam && !player.hasMissionVoted);
+      for (const agent of pending) {
+        const response = await fetch(`/api/resistance/rooms/${encodeURIComponent(resistanceSession.roomName)}/mission-vote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerId: resistanceSession.playerId, token: resistanceSession.token, asPlayerId: agent.id, autoFollow: true, sabotage: false })
+        });
+        snapshot = await readJsonResponse(response);
+        if (!response.ok) throw new Error(snapshot.error || "No se pudo saltar la misión");
+      }
+    }
+    resistanceRoom = snapshot;
+    resistanceShownEventId = snapshot.eventId || resistanceShownEventId;
+    renderResistanceRoom(snapshot);
+  } catch (error) {
+    if (resistanceGameMessage) resistanceGameMessage.textContent = error.message;
+  } finally {
+    if (control?.isConnected) control.disabled = false;
+  }
 }
 
 function renderResistanceRole(room, player) {
@@ -5364,7 +5520,8 @@ function renderResistanceActions(room, player, players, isHost) {
 
 function renderResistanceTeamPicker(room, players) {
   const draftKey = [room.roomName, room.status, room.missionIndex, room.rejectCount, room.leaderId].join(":");
-  if (draftKey !== resistanceTeamDraftKey) {
+  const draftChanged = draftKey !== resistanceTeamDraftKey;
+  if (draftChanged) {
     resistanceTeamDraftKey = draftKey;
     resistanceTeamDraftIds = new Set(room.currentTeam || []);
   }
@@ -5374,6 +5531,7 @@ function renderResistanceTeamPicker(room, players) {
   existing.forEach((label, id) => { if (!activeIds.has(id)) label.remove(); });
   players.forEach((item) => {
     let label = existing.get(item.id);
+    const isNew = !label;
     if (!label) {
       label = document.createElement("label");
       label.className = "resistance-team-option";
@@ -5385,7 +5543,7 @@ function renderResistanceTeamPicker(room, players) {
       const name = document.createElement("strong");
       label.append(input, avatar, name);
     }
-    label.querySelector("input").checked = resistanceTeamDraftIds.has(item.id);
+    if (draftChanged || isNew) label.querySelector("input").checked = resistanceTeamDraftIds.has(item.id);
     label.querySelector("span").textContent = item.emoji || "";
     label.querySelector("strong").textContent = item.name || "";
     resistanceTeamOptions.append(label);
@@ -5743,23 +5901,12 @@ function renderWolfRoom(room = wolfRoom) {
 }
 
 function renderWolfTestTools(room, player, players) {
-  if (!wolfTestTools) return;
   const testEnabled = Boolean(room.test?.enabled);
-  const canSkip = Boolean(room.canHostSkip);
-  wolfTestTools.hidden = !testEnabled && !canSkip;
-  wolfTestTools.classList.toggle("is-host-only", !testEnabled);
-  if (wolfTestViewControls) wolfTestViewControls.hidden = !testEnabled;
-  if (wolfTestAutoFollowLabel) wolfTestAutoFollowLabel.hidden = !testEnabled;
-  wolfTestSkipButton.hidden = !canSkip;
-  wolfTestSkipButton.disabled = false;
   if (!testEnabled) {
     wolfTestViewId = player?.sessionPlayerId || player?.id || "";
     return;
   }
   wolfTestViewId = room.test.viewPlayerId || player?.id || wolfTestViewId;
-  const viewed = players.find((item) => item.id === wolfTestViewId);
-  wolfTestViewLabel.textContent = `Viendo como ${viewed?.name || "anfitrión"}`;
-  wolfTestAutoFollow.checked = wolfTestAutoFollowEnabled;
 }
 
 function renderWolfPlayers(players, currentPlayer, room) {
@@ -5769,6 +5916,7 @@ function renderWolfPlayers(players, currentPlayer, room) {
     .map((card) => [card.dataset.playerId, card]));
   const activeIds = new Set(players.map((player) => player.id));
   existing.forEach((card, id) => { if (!activeIds.has(id)) card.remove(); });
+  wolfPlayers.querySelectorAll('.test-phase-control').forEach((control) => control.remove());
   players.forEach((item) => {
     let card = existing.get(item.id);
     if (!card) {
@@ -5819,6 +5967,12 @@ function renderWolfPlayers(players, currentPlayer, room) {
     }
     wolfPlayers.append(card);
   });
+  if (room.test?.enabled || room.canHostSkip) {
+    const detail = room.canHostSkip
+      ? (room.test?.enabled ? "Avanza la secuencia de prueba" : "Fuerza el avance si alguien no responde")
+      : "Disponible cuando haya una fase activa";
+    wolfPlayers.prepend(createTestPhaseControl("wolf", detail, !room.canHostSkip));
+  }
 }
 
 function getWolfPlayerStatus(player, room) {
@@ -6266,6 +6420,11 @@ async function submitWolfTarget(event) {
 }
 
 function kickWolfPlayerClient(event) {
+  const testControl = event.target.closest('[data-test-phase-action="wolf"]');
+  if (testControl) {
+    void skipWolfTestPhaseClient(testControl);
+    return;
+  }
   const button = event.target.closest("[data-wolf-kick-id]");
   if (button) {
     if (wolfSession?.isHost) showRoomKickPopup("wolf", button.dataset.wolfKickId);
@@ -6297,9 +6456,10 @@ function toggleWolfTestAutoFollow() {
   void pollWolfRoom();
 }
 
-async function skipWolfTestPhaseClient() {
+async function skipWolfTestPhaseClient(control = null) {
   if (!wolfRoom?.canHostSkip) return;
-  wolfTestSkipButton.disabled = true;
+  if (control) control.disabled = true;
+  if (wolfRoom.test?.enabled) wolfTestAutoFollowEnabled = true;
   try {
     const skippedPhase = wolfRoom.phase;
     stopWolfNarrationAudio();
@@ -6309,7 +6469,7 @@ async function skipWolfTestPhaseClient() {
     renderWolfRoom(payload);
   } catch (error) {
     wolfGameMessage.textContent = error.message;
-    wolfTestSkipButton.disabled = false;
+    if (control?.isConnected) control.disabled = false;
   }
 }
 

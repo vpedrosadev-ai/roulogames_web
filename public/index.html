@@ -292,46 +292,49 @@
                   <span id="impostorRoundLabel">Round</span>
                   <strong id="impostorRound">0</strong>
                 </div>
-                <div id="impostorStartingPlayerChip" class="impostor-starting-player-chip" hidden></div>
-                <section id="impostorTestTools" class="solo-test-tools" hidden>
-                  <div><span>Modo de prueba individual</span><strong id="impostorTestViewLabel">Viendo como anfitrión</strong></div>
-                  <label><input id="impostorTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
-                </section>
-                <p id="impostorGameMessage" class="message"></p>
-                <section id="impostorEventPopup" class="impostor-inline-panel impostor-inline-event" hidden>
-                  <header>
-                    <h2 id="impostorEventTitle">Notice</h2>
-                    <button type="button" id="impostorEventClose" class="secondary compact-button">Close</button>
-                  </header>
-                  <div id="impostorEventMessage" class="impostor-event-content"></div>
-                </section>
-                <section id="impostorVotePopup" class="impostor-inline-panel impostor-inline-vote" hidden>
-                  <header>
-                    <h2 id="impostorVotePopupTitle">Vote</h2>
-                    <button type="button" id="impostorVotePopupClose" class="secondary compact-button">Close</button>
-                  </header>
-                  <div id="impostorVoteList" class="impostor-vote-list"></div>
-                </section>
-                <section id="impostorGuessPopup" class="impostor-inline-panel impostor-inline-guess" hidden>
-                  <form id="impostorGuessForm" class="impostor-guess-form">
-                    <header>
-                      <h2 id="impostorGuessPopupTitle">Impostor guess</h2>
-                      <button type="button" id="impostorGuessPopupClose" class="secondary compact-button">Close</button>
-                    </header>
-                    <input id="impostorGuessInput" maxlength="40" placeholder="Secret word">
-                    <button type="submit">Adivinar palabra</button>
-                  </form>
-                </section>
-                <button type="button" id="impostorStartButton" class="impostor-main-button">Iniciar partida</button>
-                <button type="button" id="impostorVoteButton" class="impostor-main-button">Vote</button>
                 <section id="impostorRoleCard" class="impostor-role-card" hidden>
-                  <span id="impostorRoleLabel">Your role</span>
-                  <strong id="impostorSecretWord">Waiting...</strong>
+                  <span>Tu rol</span>
+                  <strong id="impostorRoleLabel">Esperando...</strong>
+                </section>
+                <section id="impostorClueCard" class="impostor-clue-card" hidden>
+                  <div>
+                    <span id="impostorClueLabel">Palabra</span>
+                    <strong id="impostorSecretWord">Esperando...</strong>
+                  </div>
                   <p id="impostorHintText"></p>
-                  <button type="button" id="impostorGuessButton" class="secondary impostor-guess-button" hidden>Adivinar palabra</button>
+                  <button type="button" id="impostorGuessButton" class="secondary impostor-guess-button" hidden>Intentar adivinar</button>
+                </section>
+                <div id="impostorStartingPlayerChip" class="impostor-starting-player-chip" hidden></div>
+                <section class="impostor-stage">
+                  <header class="impostor-stage-header">
+                    <h2 id="impostorPhaseTitle">Sala de espera</h2>
+                    <p id="impostorGameMessage" class="message"></p>
+                  </header>
+                  <section id="impostorEventPopup" class="impostor-inline-panel impostor-inline-event" hidden>
+                    <header>
+                      <h2 id="impostorEventTitle">Aviso</h2>
+                      <button type="button" id="impostorEventClose" class="secondary compact-button">Cerrar</button>
+                    </header>
+                    <div id="impostorEventMessage" class="impostor-event-content"></div>
+                  </section>
+                  <section id="impostorVotePopup" class="impostor-inline-panel impostor-inline-vote" hidden>
+                    <h3 id="impostorVotePopupTitle">Elige a quién expulsar</h3>
+                    <div id="impostorVoteList" class="impostor-vote-list"></div>
+                  </section>
+                  <button type="button" id="impostorStartButton" class="impostor-main-button">Iniciar partida</button>
                 </section>
               </section>
             </div>
+          </section>
+          <section id="impostorGuessPopup" class="impostor-popup" role="dialog" aria-modal="true" aria-labelledby="impostorGuessPopupTitle" hidden>
+            <form id="impostorGuessForm" class="impostor-popup-card impostor-guess-form">
+              <header>
+                <h2 id="impostorGuessPopupTitle">Adivinar la palabra</h2>
+                <button type="button" id="impostorGuessPopupClose" class="secondary compact-button">Cerrar</button>
+              </header>
+              <input id="impostorGuessInput" maxlength="40" placeholder="Palabra secreta">
+              <button type="submit">Adivinar palabra</button>
+            </form>
           </section>
         </section>
 
@@ -396,10 +399,6 @@
             <section class="resistance-table">
               <div id="resistancePlayers" class="resistance-players" aria-label="Jugadores"></div>
               <section class="resistance-action-panel">
-                <section id="resistanceTestTools" class="solo-test-tools" hidden>
-                  <div><span>Modo de prueba individual</span><strong id="resistanceTestViewLabel">Viendo como anfitrión</strong></div>
-                  <label><input id="resistanceTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
-                </section>
                 <section class="resistance-operation-brief" aria-live="polite">
                   <span id="resistancePhaseLabel">Sala de espera</span>
                   <p id="resistanceGameMessage" class="message"></p>
@@ -492,11 +491,6 @@
               </aside>
               <main class="wolf-narrator" aria-live="polite">
                 <div class="wolf-sky" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
-                <section id="wolfTestTools" class="wolf-test-tools" hidden>
-                  <div id="wolfTestViewControls"><span>Modo de prueba individual</span><strong id="wolfTestViewLabel">Viendo como anfitrión</strong></div>
-                  <label id="wolfTestAutoFollowLabel"><input id="wolfTestAutoFollow" type="checkbox" checked><span>Seguir turnos automáticamente</span></label>
-                  <button type="button" id="wolfTestSkipButton" class="secondary">Saltar fase</button>
-                </section>
                 <div class="wolf-phase-kicker"><span id="wolfCycleLabel">Sala de espera</span><strong id="wolfPhaseLabel">La aldea se reúne</strong></div>
                 <svg id="wolfNarratorIcon" class="wolf-narrator-icon" aria-hidden="true"><use href="/images/wolf-icons.svg#werewolf"></use></svg>
                 <div id="wolfCountdown" class="wolf-countdown" hidden><strong id="wolfCountdownValue">7</strong><span>segundos</span></div>
