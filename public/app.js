@@ -7236,8 +7236,8 @@ function syncWolfNarration(room, player) {
 
 function getWolfNarrationClip(room, player) {
   const event = room.lastEvent || {};
-  if (room.phase === "night_close") return event.completedRole === "witch" ? "" : `${event.completedRole || "all"}-close`;
-  if (room.phase === "night_role_open") return event.nextRole === "witch" ? "" : `${event.nextRole || "werewolf"}-open`;
+  if (room.phase === "night_close") return `${event.completedRole || "all"}-close`;
+  if (room.phase === "night_role_open") return `${event.nextRole || "werewolf"}-open`;
   if (room.phase === "night_open") return "village-open";
   if (room.phase === "hunter_shot") return "hunter-act";
   if (room.phase === "day_vote") return room.tieCandidates?.length ? "vote-tie" : "";
