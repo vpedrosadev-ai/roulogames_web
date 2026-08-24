@@ -2377,6 +2377,7 @@ let wolfTestAutoFollowEnabled = true;
 let masterWordSession = null;
 let masterWordRoom = null;
 let masterWordPollTimer = null;
+let masterWordClueTimer = null;
 let masterWordShownEventId = "";
 let masterWordShownResultKey = "";
 let masterWordOutcomeEventId = "";
@@ -4941,7 +4942,8 @@ function renderMasterWordPlayers(players, currentPlayer, room) {
   const phaseControl = room.test?.enabled
     ? [createTestPhaseControl("masterword", room.status === "lobby" ? "Inicia la partida de prueba" : "Completa la fase actual", room.status === "finished")]
     : [];
-  masterWordPlayers.replaceChildren(...phaseControl, ...players.map((item) => {
+  const timerCard = createMasterWordClueTimerCard(room);
+  masterWordPlayers.replaceChildren(...(timerCard ? [timerCard] : []), ...phaseControl, ...players.map((item) => {
     const card = document.createElement("article");
     card.className = "masterword-player-card";
     card.dataset.playerId = item.id;
@@ -4964,6 +4966,37 @@ function renderMasterWordPlayers(players, currentPlayer, room) {
     card.querySelector("b").textContent = item.isActive ? "Jugador activo" : item.hasSubmitted ? "Enviado" : "";
     return card;
   }));
+}
+
+function createMasterWordClueTimerCard(room) {
+  clearInterval(masterWordClueTimer);
+  masterWordClueTimer = null;
+  const deadlineAt = Number(room.clueDeadlineAt || 0);
+  if (!deadlineAt || !["clue", "reclue"].includes(room.status)) return null;
+  const card = document.createElement("article");
+  const icon = document.createElement("span");
+  const copy = document.createElement("div");
+  const label = document.createElement("small");
+  const value = document.createElement("strong");
+  const offset = Number(room.serverTime || Date.now()) - Date.now();
+  card.className = "masterword-clue-timer-card";
+  card.setAttribute("aria-live", "polite");
+  icon.textContent = "⏰";
+  label.textContent = "Tiempo restante";
+  const update = () => {
+    const seconds = Math.max(0, Math.ceil((deadlineAt - (Date.now() + offset)) / 1000));
+    value.textContent = `${seconds} s`;
+    card.classList.toggle("is-ending", seconds > 0 && seconds <= 10);
+    if (seconds > 0) return;
+    clearInterval(masterWordClueTimer);
+    masterWordClueTimer = null;
+    void pollMasterWordRoom();
+  };
+  copy.append(label, value);
+  card.append(icon, copy);
+  update();
+  if (masterWordClueTimer === null && deadlineAt > Date.now() + offset) masterWordClueTimer = window.setInterval(update, 1000);
+  return card;
 }
 
 function renderMasterWordRole(room, player) {
@@ -4996,9 +5029,9 @@ function renderMasterWordActions(room, player, players, isHost) {
   masterWordStartButton.textContent = players.length < 3 ? `Esperando ${players.length}/3` : "Iniciar partida";
   masterWordClueForm.hidden = !player?.canClue;
   masterWordGuessForm.hidden = !player?.canGuess;
-  const noVisibleCluesForGuesser = player?.isActive && ["guessing", "finished"].includes(status) && !(room.validClues?.length || 0);
+  const noVisibleCluesForGuesser = player?.isActive && ["guessing", "finished"].includes(status) && !((room.validClues?.length || 0) + (room.duplicateClues?.length || 0));
   const submittedClues = ["clue", "reclue"].includes(room.status) && player?.hasSubmitted ? (player.submittedClues?.length || 0) : 0;
-  const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0) + submittedClues + (noVisibleCluesForGuesser ? 1 : 0);
+  const visibleClues = (room.validClues?.length || 0) + (room.duplicateClues?.length || 0) + (room.removedClues?.length || 0) + submittedClues + (noVisibleCluesForGuesser ? 1 : 0);
   masterWordClueBoard.hidden = !["clue", "reclue", "guessing", "finished"].includes(status) || !visibleClues;
   if (!masterWordClueForm.hidden) renderMasterWordClueInputs(room, player);
   renderMasterWordValidClues(room);
@@ -5077,8 +5110,10 @@ function renderMasterWordValidClues(room) {
     item.className = "masterword-clue-chip is-submitted";
     item.style.setProperty("--player-color", room.player?.color || "#ffdf6b");
     const word = document.createElement("strong");
+    const author = document.createElement("small");
     word.textContent = clue.text || "";
-    item.append(word);
+    author.textContent = room.player?.name || "Tu pista";
+    item.append(word, author);
     return item;
   });
   validClueNodes.push(...(room.validClues || []).map((clue) => {
@@ -5090,12 +5125,23 @@ function renderMasterWordValidClues(room) {
     const word = document.createElement("strong");
     const author = buildMasterWordClueAuthorNode(clueAuthor);
     word.textContent = clue.text || "";
-    item.append(author, word);
+    item.append(word, author);
     if (clue.isRetry) {
       const consensus = document.createElement("em");
       consensus.textContent = `Nueva pista · ${clue.votes || 1} voto${Number(clue.votes || 1) === 1 ? "" : "s"}`;
       item.append(consensus);
     }
+    return item;
+  }));
+  validClueNodes.push(...(room.duplicateClues || []).map((clue) => {
+    const item = document.createElement("span");
+    const message = document.createElement("strong");
+    const detail = document.createElement("small");
+    const count = Math.max(2, Number(clue.count || 2));
+    item.className = "masterword-clue-chip is-duplicate";
+    message.textContent = `${count} personas han coincidido`;
+    detail.textContent = "Pista repetida oculta";
+    item.append(message, detail);
     return item;
   }));
   if (!validClueNodes.length && room.player?.isActive && ["guessing", "finished"].includes(room.status || "")) {
@@ -5124,11 +5170,7 @@ function renderMasterWordValidClues(room) {
 
 function buildMasterWordClueAuthorNode(clueAuthor) {
   const author = document.createElement("small");
-  const emoji = document.createElement("span");
-  const name = document.createElement("b");
-  emoji.textContent = clueAuthor.emoji || "";
-  name.textContent = clueAuthor.name || "Jugador";
-  author.append(emoji, name);
+  author.textContent = clueAuthor.name || "Jugador";
   return author;
 }
 
@@ -5232,6 +5274,25 @@ function buildMasterWordResultNodes(room, result, isFinished) {
   const points = document.createElement("p");
   points.textContent = result.result === "correct" ? "Puntos sumados: 1" : "Puntos sumados: 0";
   nodes.push(points);
+  if ((result.duplicateClues || []).length) {
+    const duplicates = document.createElement("section");
+    const title = document.createElement("h3");
+    const list = document.createElement("div");
+    duplicates.className = "masterword-revealed-duplicates";
+    list.className = "masterword-revealed-duplicate-list";
+    title.textContent = "Pistas repetidas";
+    list.append(...result.duplicateClues.map((clue) => {
+      const card = document.createElement("article");
+      const word = document.createElement("strong");
+      const count = document.createElement("small");
+      word.textContent = clue.text || "";
+      count.textContent = `${Math.max(2, Number(clue.count || 2))} personas coincidieron`;
+      card.append(word, count);
+      return card;
+    }));
+    duplicates.append(title, list);
+    nodes.push(duplicates);
+  }
   if (isFinished) {
     const summary = document.createElement("section");
     summary.className = "masterword-final-summary";
@@ -5299,7 +5360,9 @@ function leaveMasterWordToMenu() {
 function leaveMasterWordRoom() {
   releaseMasterWordRoomIfHost();
   clearInterval(masterWordPollTimer);
+  clearInterval(masterWordClueTimer);
   masterWordPollTimer = null;
+  masterWordClueTimer = null;
   masterWordSession = null;
   masterWordRoom = null;
   masterWordShownEventId = "";
@@ -6795,8 +6858,8 @@ function renderWolfNarrator(room, player) {
     phaseLabel = "Actúa la Bruja";
     cycle = `Noche ${room.nightNumber}`;
   } else if (phase === "night_open") {
-    title = "Se hace de día";
-    text = "Todos abren los ojos. Después comienza la votación, sin límite de tiempo.";
+    title = "Amanece un nuevo día";
+    text = "Todos abrís los ojos.";
     icon = "wake";
     phaseLabel = "Despertar";
     cycle = `Noche ${room.nightNumber}`;

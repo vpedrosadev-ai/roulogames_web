@@ -2809,9 +2809,16 @@ function reviewMasterWordClues(room) {
     const duplicate = counts.get(entry.normalized) > 1;
     return { ...entry, valid: !invalidReason && !duplicate, reason: invalidReason || (duplicate ? "duplicada" : "") };
   });
+  const duplicates = [...counts.entries()]
+    .filter(([, count]) => count >= 2)
+    .map(([normalized, count]) => {
+      const first = entries.find((entry) => entry.normalized === normalized);
+      return { id: `duplicate:${normalized}`, text: first?.text || "", count };
+    });
   return {
     valid: reviewed.filter((entry) => entry.valid).map(({ id, text, playerName, emoji, color }) => ({ id, text, playerName, emoji, color })),
     removed: reviewed.filter((entry) => !entry.valid).map(({ id, text, reason, playerName, emoji, color }) => ({ id, text, reason, playerName, emoji, color })),
+    duplicates,
     all: reviewed
   };
 }
@@ -2834,17 +2841,21 @@ function getMasterWordInvalidReason(clue, word) {
 function finishMasterWordRound(room, result, guess) {
   const correct = result === "correct";
   const maxRounds = getMasterWordMaxRounds(room);
-  const activePlayerName = getMasterWordActivePlayer(room)?.name || "";
+  const activePlayer = getMasterWordActivePlayer(room);
+  const activePlayerName = activePlayer?.name || "";
+  const duplicateClues = room.clueReview?.duplicates || [];
   room.opportunitiesUsed = Math.min(maxRounds, Number(room.opportunitiesUsed || 0) + 1);
   if (correct) room.score = Number(room.score || 0) + 1;
   room.lastRoundResult = {
     roundNumber: room.roundIndex,
+    activePlayerId: activePlayer?.id || room.activePlayerId || "",
     activePlayerName,
     word: room.word,
     guess,
     result,
     score: room.score,
-    maxRounds
+    maxRounds,
+    duplicateClues
   };
   room.history = [...(room.history || []), {
     roundNumber: room.roundIndex,
@@ -2856,7 +2867,8 @@ function finishMasterWordRound(room, result, guess) {
     attempts: room.roundGuesses || [],
     score: room.score,
     validClues: room.clueReview?.valid || [],
-    removedClues: room.clueReview?.removed || []
+    removedClues: room.clueReview?.removed || [],
+    duplicateClues
   }];
   if (room.opportunitiesUsed >= maxRounds || room.usedWords.length >= MASTER_WORDS.length) {
     finishMasterWordGame(room, { type: result, guess });
@@ -2946,12 +2958,18 @@ function masterWordRoomResponse(room, privatePlayer = null, sessionPlayer = priv
   const activePlayer = getMasterWordActivePlayer(room);
   const isActive = privatePlayer?.id === room.activePlayerId;
   const clueSlots = getMasterWordClueSlots(room);
-  const clueReview = room.clueReview || { valid: [], removed: [] };
+  const clueReview = room.clueReview || { valid: [], removed: [], duplicates: [] };
   const showClues = ["reclue", "guessing", "finished"].includes(room.status);
   const clueSource = room.status === "reclue" ? room.retryClues || {} : room.clues || {};
   const maxRounds = getMasterWordMaxRounds(room);
   const guessLimit = getMasterWordGuessLimit(room);
   const guessAttempts = Number(room.currentGuessAttempts || 0);
+  const lastRoundResult = room.lastRoundResult ? {
+    ...room.lastRoundResult,
+    duplicateClues: privatePlayer?.id === room.lastRoundResult.activePlayerId && ["correct", "wrong"].includes(room.lastRoundResult.result)
+      ? room.lastRoundResult.duplicateClues || []
+      : []
+  } : null;
   return {
     roomName: room.roomName,
     testMode: Boolean(room.testMode),
@@ -2960,7 +2978,7 @@ function masterWordRoomResponse(room, privatePlayer = null, sessionPlayer = priv
     status: room.status,
     eventId: room.eventId || "",
     lastEvent: room.lastEvent || null,
-    lastRoundResult: room.lastRoundResult || null,
+    lastRoundResult,
     roundIndex: Number(room.roundIndex || 0),
     roundNumber: Math.min(Number(room.roundIndex || 0), maxRounds),
     maxRounds,
@@ -2978,7 +2996,8 @@ function masterWordRoomResponse(room, privatePlayer = null, sessionPlayer = priv
     cluesCast: Object.keys(clueSource).length,
     clueGivers: Math.max(0, room.players.length - 1),
     validClues: showClues ? clueReview.valid.map(({ id, text, playerName, emoji, color, votes, isRetry }) => ({ id, text, playerName, emoji, color, votes, isRetry })) : [],
-    removedClues: showClues && !isActive ? clueReview.removed.map(({ id, text, reason, playerName, emoji, color }) => ({ id, text, reason, playerName, emoji, color })) : [],
+    duplicateClues: showClues ? (clueReview.duplicates || []).map(({ id, count }) => ({ id, count })) : [],
+    removedClues: showClues && !isActive ? clueReview.removed.filter((clue) => clue.reason !== "duplicada").map(({ id, text, reason, playerName, emoji, color }) => ({ id, text, reason, playerName, emoji, color })) : [],
     history: room.status === "finished" ? room.history || [] : (room.history || []).map(({ word, ...item }) => item),
     players: room.players.map((player) => ({
       id: player.id,

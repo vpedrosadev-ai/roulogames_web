@@ -5053,6 +5053,147 @@ body[data-language="es"] .guess-list:empty::before {
   }
 }
 
+/* Master Word countdown and single-column clue cards. */
+.masterword-clue-timer-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 212, 59, .58);
+  border-radius: 8px;
+  color: #fff8dd;
+  background: linear-gradient(145deg, rgba(79, 54, 15, .96), rgba(35, 25, 49, .96));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .24);
+}
+
+.masterword-clue-timer-card > span {
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.masterword-clue-timer-card > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.masterword-clue-timer-card small {
+  color: rgba(255, 248, 221, .74);
+  font-size: .62rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.masterword-clue-timer-card strong {
+  color: #ffd43b;
+  font-size: 1.24rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.masterword-clue-timer-card.is-ending {
+  border-color: rgba(255, 107, 107, .8);
+  background: linear-gradient(145deg, rgba(112, 35, 40, .96), rgba(42, 22, 44, .96));
+}
+
+.masterword-clue-timer-card.is-ending strong { color: #ff8787; }
+
+#masterWordValidClues > .masterword-clue-chip,
+#masterWordValidClues > .masterword-clue-chip.is-empty {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-items: start !important;
+  gap: 4px !important;
+  text-align: left !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip > strong {
+  grid-row: 1 !important;
+  width: 100%;
+  font-size: 1.02rem !important;
+  line-height: 1.08 !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip > small {
+  display: block !important;
+  grid-row: 2 !important;
+  width: 100%;
+  color: rgba(27, 22, 48, .68) !important;
+  font-size: .7rem !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-duplicate {
+  border-color: rgba(255, 212, 59, .58) !important;
+  background: linear-gradient(145deg, rgba(255, 228, 128, .96), rgba(255, 187, 92, .94)) !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-duplicate > strong { color: #352313 !important; }
+
+.masterword-revealed-duplicates {
+  display: grid;
+  gap: 7px;
+}
+
+.masterword-revealed-duplicates h3 { margin: 0; }
+
+.masterword-revealed-duplicate-list {
+  display: grid;
+  gap: 6px;
+}
+
+.masterword-revealed-duplicate-list article {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 212, 59, .46);
+  border-radius: 8px;
+  background: rgba(255, 212, 59, .12);
+}
+
+.masterword-revealed-duplicate-list article strong { font-size: 1rem; }
+.masterword-revealed-duplicate-list article small { opacity: .72; }
+
+/* Resistance game must always fill the mobile viewport. */
+@media (max-width: 760px) {
+  body.resistance-active:has(#resistanceGame:not([hidden])) .app-shell {
+    width: 100% !important;
+    height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content,
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-view {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+    padding: 4px 4px max(4px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-game {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    align-self: stretch !important;
+  }
+}
+
 @keyframes impostor-card-pulse {
   0% {
     transform: translateY(0);
@@ -14521,5 +14662,66 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
   .scoreboard-popup-card select,
   .scoreboard-popup-card textarea {
     font-size: 16px !important;
+  }
+}
+
+/* Final overrides: clue cards stay stacked and Resistance fills mobile screens. */
+#masterWordValidClues > .masterword-clue-chip,
+#masterWordValidClues > .masterword-clue-chip.is-empty {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-items: start !important;
+  gap: 4px !important;
+  text-align: left !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip > strong {
+  grid-row: 1 !important;
+  width: 100%;
+  text-align: left !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip > small {
+  display: block !important;
+  grid-row: 2 !important;
+  width: 100%;
+  color: rgba(27, 22, 48, .68) !important;
+  font-size: .7rem !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 760px) {
+  body.resistance-active:has(#resistanceGame:not([hidden])) .app-shell {
+    width: 100% !important;
+    height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+    min-height: calc(100dvh - var(--title-bar-height, 72px)) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content,
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-view {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .content {
+    padding: 4px 4px max(4px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-game {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    align-self: stretch !important;
   }
 }
