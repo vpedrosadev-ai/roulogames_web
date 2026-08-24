@@ -1,4 +1,6 @@
-﻿const navLinks = document.querySelectorAll(".nav-link");
+﻿import { createMindController } from "./mind/mind.js";
+
+const navLinks = document.querySelectorAll(".nav-link");
 const homeMenuCards = document.querySelectorAll(".home-menu-card");
 const views = document.querySelectorAll(".view");
 const mobileNavMoreButton = document.querySelector("#mobileNavMoreButton");
@@ -2405,6 +2407,13 @@ let categoryAudio = null;
 let pendingCuePromise = null;
 let currentLanguage = readStoredLanguage();
 
+// Sincronía vive en su propio módulo (public/mind/) en lugar de seguir engordando
+// este archivo. Aquí solo se le avisa de entrar/salir de la vista y del idioma.
+const mindController = createMindController({
+  getLanguage: () => currentLanguage,
+  showView: (targetId) => showView(targetId)
+});
+
 prepareGameSetupLayout();
 
 navLinks.forEach((button) => {
@@ -2424,6 +2433,7 @@ titleHomeLinks.forEach((link) => {
     url.searchParams.delete("wolf");
     url.searchParams.delete("masterword");
     url.searchParams.delete("scoreboard");
+    url.searchParams.delete("mind");
     window.history.replaceState({}, "", url);
     showView("homeView");
     closeMobileNavMenu();
@@ -3885,7 +3895,7 @@ function renderimpostorPlayers(players, currentPlayer, status, liveVotes = []) {
     chip.querySelector("span").textContent = player.emoji;
     chip.querySelector("strong").textContent = player.name;
     chip.querySelector("small").textContent = roleText;
-    chip.querySelector("b").textContent = voteText;
+    chip.querySelector("b").textContent = voteText;
     return chip;
   });
   const controls = impostorRoom?.test?.enabled
@@ -8738,6 +8748,7 @@ function applyLanguage() {
   updateLanguageSelector();
   syncimpostorWordSetCards();
   applyScoreboardLanguage();
+  mindController.applyLanguage();
   if (impostorRoom && !document.querySelector("#impostorView")?.hidden) renderimpostorRoom(impostorRoom);
   if (scoreboardRoom && !document.querySelector("#scoreboardView")?.hidden) renderScoreboardRoom(scoreboardRoom);
 }
@@ -8925,12 +8936,14 @@ function showView(targetId) {
   if (targetId !== "wolfView" && document.querySelector("#wolfView")?.classList.contains("active")) leaveWolfRoomClient({ notify: false, forget: false });
   if (targetId !== "masterWordView" && document.querySelector("#masterWordView")?.classList.contains("active")) leaveMasterWordRoom();
   if (targetId !== "scoreboardView" && document.querySelector("#scoreboardView")?.classList.contains("active")) leaveScoreboardRoom();
+  if (targetId !== "mindView" && document.querySelector("#mindView")?.classList.contains("active")) mindController.leaveView();
   document.body.classList.toggle("arcade-game-active", targetId === "gameView");
   document.body.classList.toggle("impostor-active", targetId === "impostorView");
   document.body.classList.toggle("resistance-active", targetId === "resistanceView");
   document.body.classList.toggle("wolf-active", targetId === "wolfView");
   document.body.classList.toggle("masterword-active", targetId === "masterWordView");
   document.body.classList.toggle("scoreboard-active", targetId === "scoreboardView");
+  document.body.classList.toggle("mind-active", targetId === "mindView");
 
   views.forEach((view) => {
     const active = view.id === targetId;
@@ -8949,6 +8962,7 @@ function showView(targetId) {
   if (targetId === "wolfView") showWolfLobby();
   if (targetId === "masterWordView") showMasterWordLobby();
   if (targetId === "scoreboardView") showScoreboardLobby();
+  if (targetId === "mindView") mindController.enterView();
   if (targetId === "scoreboardView") window.scrollTo(0, 0);
   updateViewportChromeVars();
 }
@@ -11661,5 +11675,6 @@ applyResistanceRoomFromUrl();
 applyWolfRoomFromUrl();
 applyMasterWordRoomFromUrl();
 applyScoreboardRoomFromUrl();
+mindController.applyRoomFromUrl();
 setGameBusy(true);
 loadSongGroups();

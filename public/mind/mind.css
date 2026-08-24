@@ -1,0 +1,645 @@
+/* Sincronía. Todo va prefijado con .mind-* y anclado a body.mind-active para no
+   colisionar con los estilos generales ni con los de los otros juegos. */
+
+/* La tarjeta de portada NO puede ir bajo body.mind-active: se ve desde el inicio.
+   .home-menu-grid son 6 columnas y cada juego declara su ancho; sin este
+   grid-column la tarjeta caía a span 1 y salía a un tercio del resto. */
+.home-menu-card[data-view-target="mindView"] {
+  grid-column: span 3;
+  background:
+    radial-gradient(circle at 80% 16%, rgba(198, 226, 255, .22), transparent 22%),
+    linear-gradient(145deg, rgba(29, 62, 92, .97), rgba(10, 20, 36, .98)) !important;
+  color: #eaf0ff;
+  border-color: rgba(126, 168, 255, .35) !important;
+}
+
+.home-menu-card[data-view-target="mindView"] strong { color: #cfe2ff; }
+
+.home-menu-card[data-view-target="mindView"] small,
+.home-menu-card[data-view-target="mindView"] em { color: rgba(234, 240, 255, .74) !important; }
+
+.mind-nav-icon {
+  background: linear-gradient(145deg, #24405e, #0e1a2b) !important;
+  color: #cfe2ff !important;
+}
+
+body.mind-active {
+  --mind-bg: #0d1424;
+  --mind-panel: rgba(18, 28, 48, 0.86);
+  --mind-panel-soft: rgba(30, 44, 72, 0.6);
+  --mind-border: rgba(126, 168, 255, 0.24);
+  --mind-accent: #6ea8ff;
+  --mind-accent-soft: rgba(110, 168, 255, 0.16);
+  --mind-text: #eaf0ff;
+  --mind-muted: #9fb0d0;
+  --mind-danger: #ff6b7d;
+  --mind-star: #ffd166;
+  --mind-ok: #5fd0a0;
+}
+
+.mind-view {
+  color: var(--mind-text);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 24px;
+}
+
+.mind-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Lobby ------------------------------------------------------------- */
+
+.mind-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 20px;
+  background: linear-gradient(140deg, rgba(38, 58, 100, 0.9), rgba(16, 24, 42, 0.9));
+  border: 1px solid var(--mind-border);
+}
+
+.mind-hero-mark {
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--mind-accent);
+  background: var(--mind-accent-soft);
+  border-radius: 16px;
+  padding: 12px 14px;
+  line-height: 1;
+}
+
+.mind-hero h1 {
+  margin: 4px 0 6px;
+  font-size: 1.9rem;
+}
+
+.mind-hero span {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--mind-muted);
+}
+
+.mind-hero p {
+  margin: 0;
+  color: var(--mind-muted);
+  max-width: 52ch;
+}
+
+/* Los contenedores que se ocultan con el atributo [hidden] llevan :not([hidden]) en
+   la regla de display. Un `display` puesto en una clase gana sobre el
+   `[hidden] { display: none }` del navegador y el panel seguiría viéndose. */
+.mind-choice:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.mind-choice-button {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--mind-border);
+  background: var(--mind-panel);
+  color: var(--mind-text);
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.mind-choice-button:hover,
+.mind-choice-button:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--mind-accent);
+}
+
+.mind-choice-button span[aria-hidden] {
+  font-size: 1.4rem;
+  color: var(--mind-accent);
+}
+
+.mind-choice-button small {
+  color: var(--mind-muted);
+}
+
+.mind-form:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--mind-border);
+  background: var(--mind-panel);
+  max-width: 460px;
+}
+
+.mind-form h2 {
+  margin: 0;
+}
+
+.mind-form input {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--mind-border);
+  background: rgba(9, 15, 28, 0.8);
+  color: var(--mind-text);
+  font-size: 1rem;
+  min-height: 44px;
+}
+
+.mind-form p {
+  margin: 0;
+  color: var(--mind-muted);
+  font-size: 0.88rem;
+}
+
+.mind-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.mind-form-actions button,
+.mind-lobby-actions button,
+.mind-ready-panel button,
+.mind-star-vote-actions button,
+.mind-result-actions button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--mind-accent);
+  color: #06101f;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mind-form-actions button.secondary,
+.mind-star-vote-actions button.secondary,
+.mind-result-actions button.secondary {
+  background: transparent;
+  border: 1px solid var(--mind-border);
+  color: var(--mind-text);
+}
+
+.mind-form-actions button:disabled,
+.mind-lobby-actions button:disabled,
+.mind-ready-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Cabecera de partida ------------------------------------------------ */
+
+.mind-control-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--mind-border);
+  background: var(--mind-panel);
+}
+
+.mind-room-chip {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.mind-room-chip span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mind-muted);
+}
+
+.mind-resources {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mind-resource {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--mind-panel-soft);
+  border: 1px solid var(--mind-border);
+  font-size: 0.9rem;
+}
+
+.mind-resource-lives span[aria-hidden] { color: var(--mind-danger); }
+.mind-resource-stars span[aria-hidden] { color: var(--mind-star); }
+
+.mind-resource-level span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mind-muted);
+}
+
+.mind-control-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mind-ghost-button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--mind-border);
+  background: transparent;
+  color: var(--mind-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.mind-ghost-button:hover,
+.mind-ghost-button:focus-visible {
+  border-color: var(--mind-accent);
+}
+
+.mind-status-banner {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--mind-accent-soft);
+  border: 1px solid var(--mind-border);
+  text-align: center;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mind-status-banner[data-tone="danger"] {
+  background: rgba(255, 107, 125, 0.14);
+  border-color: rgba(255, 107, 125, 0.45);
+  color: #ffd9de;
+}
+
+.mind-status-banner[data-tone="ok"] {
+  background: rgba(95, 208, 160, 0.14);
+  border-color: rgba(95, 208, 160, 0.45);
+}
+
+/* --- Tablero ------------------------------------------------------------ */
+
+.mind-board {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.mind-players-panel,
+.mind-play-panel {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--mind-border);
+  background: var(--mind-panel);
+}
+
+.mind-players-panel h2 {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mind-muted);
+}
+
+.mind-players-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mind-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mind-panel-soft);
+  border: 1px solid transparent;
+}
+
+.mind-player[data-ready="true"] { border-color: rgba(95, 208, 160, 0.5); }
+.mind-player[data-connected="false"] { opacity: 0.5; }
+
+.mind-player-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mind-player-cards {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mind-muted);
+  font-size: 0.85rem;
+}
+
+/* El punto de "sin conexión" nunca es la única señal: se acompaña de texto. */
+.mind-player-flag {
+  font-size: 0.72rem;
+  color: var(--mind-muted);
+}
+
+.mind-lobby-actions:not([hidden]) {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mind-hint {
+  margin: 0;
+  color: var(--mind-muted);
+  font-size: 0.85rem;
+}
+
+/* --- Pila --------------------------------------------------------------- */
+
+.mind-play-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  min-height: 260px;
+  justify-content: center;
+}
+
+.mind-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mind-pile-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mind-muted);
+}
+
+.mind-pile-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 168px;
+  border-radius: 18px;
+  font-size: 3.4rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(150deg, #f3f7ff, #c9dbff);
+  color: #0d1424;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+
+.mind-pile-top[data-empty="true"] {
+  background: var(--mind-panel-soft);
+  color: var(--mind-muted);
+  border: 1px dashed var(--mind-border);
+  box-shadow: none;
+}
+
+.mind-pile-history {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+}
+
+.mind-pile-history li {
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--mind-panel-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--mind-muted);
+}
+
+.mind-discard-row {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mind-danger);
+  text-align: center;
+}
+
+.mind-countdown {
+  font-size: 3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--mind-accent);
+}
+
+.mind-ready-panel:not([hidden]),
+.mind-star-vote:not([hidden]),
+.mind-result-panel:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  width: 100%;
+}
+
+.mind-star-vote-actions,
+.mind-result-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mind-result-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  color: var(--mind-muted);
+  font-size: 0.88rem;
+}
+
+.mind-result-stats li {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--mind-panel-soft);
+}
+
+/* --- Mano --------------------------------------------------------------- */
+
+/* La mano queda anclada abajo, al alcance del pulgar. El fondo debe ser OPACO:
+   con el panel translúcido se transparentaba el equipo por debajo al hacer scroll. */
+.mind-hand-panel {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--mind-border);
+  background: #131d33;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+}
+
+.mind-hand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.mind-hand-header h2 {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mind-muted);
+}
+
+.mind-hand-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mind-hand {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.mind-number-card {
+  width: 76px;
+  height: 104px;
+  border-radius: 14px;
+  border: 1px solid var(--mind-border);
+  background: var(--mind-panel-soft);
+  color: var(--mind-muted);
+  font-size: 1.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: not-allowed;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mind-number-card[data-playable="true"] {
+  background: linear-gradient(150deg, #f3f7ff, #c9dbff);
+  color: #0d1424;
+  border-color: transparent;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(110, 168, 255, 0.32);
+}
+
+.mind-number-card[data-playable="true"]:hover,
+.mind-number-card[data-playable="true"]:focus-visible {
+  transform: translateY(-6px);
+}
+
+.mind-number-card:focus-visible {
+  outline: 3px solid var(--mind-accent);
+  outline-offset: 3px;
+}
+
+/* Mientras el servidor confirma, la carta se bloquea para evitar doble pulsación. */
+.mind-number-card[data-pending="true"] {
+  opacity: 0.55;
+  cursor: progress;
+  transform: translateY(-6px);
+}
+
+.mind-number-card[data-empty="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* --- Responsive --------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .mind-board {
+    grid-template-columns: 1fr;
+  }
+
+  .mind-play-panel {
+    order: -1;
+    min-height: 200px;
+  }
+
+  .mind-pile-top {
+    width: 108px;
+    height: 140px;
+    font-size: 2.8rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .mind-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mind-number-card {
+    width: 62px;
+    height: 88px;
+    font-size: 1.4rem;
+  }
+
+  .mind-control-strip {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mind-choice-button,
+  .mind-number-card {
+    transition: none;
+  }
+
+  .mind-choice-button:hover,
+  .mind-number-card[data-playable="true"]:hover {
+    transform: none;
+  }
+}

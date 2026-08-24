@@ -19,6 +19,29 @@ import {
   touchWolfRoom,
   wolfRoomResponse
 } from "./wolf-engine.js";
+import {
+  MIND_HEARTBEAT_MS,
+  MindGameError,
+  advanceMindTimedPhases,
+  authenticateMindPlayer,
+  createMindRoom,
+  isMindHostConnected,
+  isMindRoomJoinable,
+  kickMindPlayer,
+  leaveMindRoom,
+  mindRoomResponse,
+  normalizeMindIdentity,
+  normalizeMindRoomKey,
+  pauseMindRoom,
+  playMindCard,
+  proposeMindStar,
+  readyMindPlayer,
+  replaceOrJoinMindPlayer,
+  restartMindGame,
+  startMindGame,
+  touchMindRoom,
+  voteMindStar
+} from "./mind-engine.js";
 
 const jobs = new Map();
 const SONG_GROUPS = [
@@ -566,6 +589,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(env, "masterword", isMasterWordHostConnected, isLobbyRoomJoinable);
       if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
+      if (request.method === "GET" && url.pathname === "/api/mind/rooms") return listActiveGameRooms(env, "mind", isMindHostConnected, isMindRoomJoinable);
+      if (request.method === "POST" && url.pathname === "/api/mind/rooms") return createMindRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
       if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
@@ -657,6 +682,11 @@ export default {
       if (request.method === "POST" && masterWordSkipMatch) return skipMasterWord(request, masterWordSkipMatch[1], env);
       const masterWordLeaveMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/leave$/);
       if (request.method === "POST" && masterWordLeaveMatch) return leaveMasterWordRoom(request, masterWordLeaveMatch[1], env);
+
+      const mindRoomMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && mindRoomMatch) return getMindRoomWorker(mindRoomMatch[1], request, env);
+      const mindActionMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)\/(join|start|ready|play|pause|star-propose|star-vote|kick|restart|leave)$/);
+      if (request.method === "POST" && mindActionMatch) return handleMindRoomActionWorker(request, mindActionMatch[1], mindActionMatch[2], env);
 
       const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
       if (request.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(scoreboardRoomMatch[1], request, env);
@@ -4695,5 +4725,139 @@ function wolfStorageKey(key) {
 
 function wolfWorkerError(error) {
   if (error instanceof WolfGameError) return json({ error: error.message }, error.status);
+  throw error;
+}
+
+async function createMindRoomWorker(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const room = createMindRoom(await request.json().catch(() => ({})));
+  if (!room) return json({ error: "Los datos de la sala o del jugador no son válidos" }, 400);
+  const existing = await loadMindRoomWorker(room.key, env);
+  if (existing && isMindHostConnected(existing)) return json({ error: "Ese nombre de sala ya está en uso" }, 409);
+  if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(mindStorageKey(room.key)).run();
+  const saved = await saveMindRoomWorker(room, env, true);
+  if (!saved) return json({ error: "No se pudo crear la sala" }, 409);
+  return json(mindRoomResponse(room, room.players[0]), 201);
+}
+
+// El sondeo es la operación más frecuente del juego, así que solo escribe en D1
+// cuando algo cambió de verdad: una fase con cuenta atrás que venció, o un
+// lastSeen lo bastante viejo como para afectar al indicador de conexión.
+async function getMindRoomWorker(roomName, request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const url = new URL(request.url);
+  const key = normalizeMindRoomKey(decodeMindRoomPathName(roomName));
+  const playerId = url.searchParams.get("playerId");
+  const token = url.searchParams.get("token");
+  try {
+    const room = await loadMindRoomWorker(key, env);
+    if (!room) throw new MindGameError("Sala no encontrada", 404);
+
+    const previousRevision = Number(room.revision || 0);
+    const player = authenticateMindPlayer(room, { playerId, token });
+    const staleHeartbeat = Boolean(player) && Date.now() - Number(player.lastSeen || 0) > MIND_HEARTBEAT_MS;
+    advanceMindTimedPhases(room);
+
+    if (Number(room.revision || 0) === previousRevision && !staleHeartbeat) {
+      return json(mindRoomResponse(room, player));
+    }
+    const result = await mutateMindRoomWorker(key, env, (fresh) => {
+      const touched = touchMindRoom(fresh, playerId, token);
+      return touched?.id || "";
+    });
+    const saved = result.room.players.find((item) => item.id === result.value) || null;
+    return json(mindRoomResponse(result.room, saved));
+  } catch (error) {
+    return mindWorkerError(error);
+  }
+}
+
+async function handleMindRoomActionWorker(request, roomName, action, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const body = await request.json().catch(() => ({}));
+  try {
+    const result = await mutateMindRoomWorker(normalizeMindRoomKey(decodeMindRoomPathName(roomName)), env, (room) => {
+      if (action === "join") {
+        const identity = normalizeMindIdentity(body);
+        if (!identity) throw new MindGameError("Los datos del jugador no son válidos");
+        const joined = replaceOrJoinMindPlayer(room, identity);
+        return { playerId: joined.player.id, created: joined.created };
+      }
+      const player = authenticateMindPlayer(room, body);
+      if (!player) throw new MindGameError("Sesión no válida o reemplazada", 401);
+      if (action === "start") startMindGame(room, player);
+      else if (action === "ready") readyMindPlayer(room, player);
+      else if (action === "play") playMindCard(room, player, body.card, String(body.actionId || ""));
+      else if (action === "pause") pauseMindRoom(room, player);
+      else if (action === "star-propose") proposeMindStar(room, player);
+      else if (action === "star-vote") voteMindStar(room, player, Boolean(body.accept), String(body.voteId || ""));
+      else if (action === "kick") kickMindPlayer(room, player, String(body.targetPlayerId || ""));
+      else if (action === "restart") restartMindGame(room, player);
+      else if (action === "leave") leaveMindRoom(room, player);
+      return { playerId: player.id, created: false };
+    });
+    if (action === "leave") return json({ ok: true });
+    const player = result.room.players.find((item) => item.id === result.value.playerId) || null;
+    return json(mindRoomResponse(result.room, player), action === "join" && result.value.created ? 201 : 200);
+  } catch (error) {
+    return mindWorkerError(error);
+  }
+}
+
+function decodeMindRoomPathName(value) {
+  try {
+    return decodeURIComponent(String(value || ""));
+  } catch {
+    return String(value || "");
+  }
+}
+
+// Serialización por sala: si otra jugada ganó la carrera, la mutación se reevalúa
+// contra el estado fresco en lugar de aplicarse sobre datos obsoletos.
+async function mutateMindRoomWorker(key, env, mutator) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const room = await loadMindRoomWorker(key, env);
+    if (!room) throw new MindGameError("Sala no encontrada", 404);
+    const value = mutator(room);
+    if (await saveMindRoomWorker(room, env)) return { room, value };
+  }
+  throw new MindGameError("La sala cambió al mismo tiempo. Inténtalo de nuevo.", 409);
+}
+
+async function loadMindRoomWorker(key, env) {
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(mindStorageKey(key)).first();
+  if (!row?.stateJson) return null;
+  try {
+    return { ...JSON.parse(row.stateJson), _version: Number(row.updatedAt || 0) };
+  } catch {
+    return null;
+  }
+}
+
+async function saveMindRoomWorker(room, env, create = false) {
+  const previousVersion = Number(room._version || 0);
+  const version = Math.max(Date.now(), previousVersion + 1);
+  room.updatedAt = version;
+  const stateJson = JSON.stringify(room, (key, value) => key === "_version" ? undefined : value);
+  let result;
+  if (create) {
+    result = await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(mindStorageKey(room.key), stateJson, version).run();
+  } else {
+    result = await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+      .bind(stateJson, version, mindStorageKey(room.key), previousVersion).run();
+  }
+  const changed = Number(result?.meta?.changes ?? result?.changes ?? 0) > 0;
+  if (changed) room._version = version;
+  return changed;
+}
+
+function mindStorageKey(key) {
+  return `mind:${key}`;
+}
+
+function mindWorkerError(error) {
+  if (error instanceof MindGameError) return json({ error: error.message }, error.status);
   throw error;
 }

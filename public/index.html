@@ -9,6 +9,7 @@
     <link rel="preload" href="/images/you-tried.png" as="image">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/impostor-fixes.css">
+    <link rel="stylesheet" href="/mind/mind.css">
   </head>
   <body>
     <div class="arcade-vinyl-field" aria-hidden="true">
@@ -54,6 +55,7 @@
         <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
         <button type="button" class="nav-link" data-view-target="wolfView"><span class="nav-icon wolf-nav-icon" aria-hidden="true">W</span>Hombres Lobo</button>
         <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
+        <button type="button" class="nav-link" data-view-target="mindView"><span class="nav-icon mind-nav-icon" aria-hidden="true">100</span>Sincronía</button>
         <button type="button" class="nav-link" data-view-target="scoreboardView"><span class="nav-icon" aria-hidden="true">#</span>Tabla de puntuacion</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
       </nav>
@@ -118,6 +120,12 @@
               <strong>Palabra maestra</strong>
               <small id="homeMasterWordHint">Pistas secretas y palabras cooperativas</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMasterWordPlayers">Min. 3 players</small></em>
+            </button>
+            <button type="button" class="home-menu-card mind-home-card" data-view-target="mindView">
+              <span aria-hidden="true">100</span>
+              <strong>Sincronía</strong>
+              <small id="homeMindHint">Sin hablar, jugad las cartas en orden ascendente</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMindPlayers">2-6 jugadores</small></em>
             </button>
             <button type="button" class="home-menu-card scoreboard-home-card" data-view-target="scoreboardView">
               <span aria-hidden="true">#</span>
@@ -672,6 +680,120 @@
             </header>
             <div id="masterWordResultBody" class="masterword-popup-content"></div>
           </div>
+        </section>
+
+        <section id="mindView" class="view mind-view" aria-labelledby="mindTitle" hidden>
+          <section id="mindLobby" class="mind-lobby" aria-label="Sala de Sincronía">
+            <header class="mind-hero">
+              <span class="mind-hero-mark" aria-hidden="true">100</span>
+              <div>
+                <span id="mindEyebrow">Cooperativo, sin hablar</span>
+                <h1 id="mindTitle">Sincronía</h1>
+                <p id="mindSubtitle">Jugad las cartas en orden ascendente sin dar pistas. Solo vale la intuición compartida.</p>
+              </div>
+            </header>
+            <div id="mindChoice" class="mind-choice">
+              <button type="button" id="mindChooseCreate" class="mind-choice-button"><span aria-hidden="true">+</span><strong>Crear sala</strong><small>De 2 a 6 jugadores</small></button>
+              <button type="button" id="mindChooseJoin" class="mind-choice-button"><span aria-hidden="true">&#8594;</span><strong>Unirse a una sala</strong><small>Usa el mismo nombre para reconectar</small></button>
+            </div>
+            <form id="mindCreateForm" class="mind-form" hidden>
+              <h2 id="mindCreateTitle">Crear sala</h2>
+              <input id="mindCreateRoomName" maxlength="16" required placeholder="Nombre de la sala" autocomplete="off">
+              <input id="mindCreatePlayerName" maxlength="16" required placeholder="Tu nombre" autocomplete="off">
+              <p id="mindCreateHint">Cada jugador necesita su propio móvil: nadie puede ver las cartas de los demás.</p>
+              <div class="mind-form-actions">
+                <button type="button" class="secondary" data-mind-back>Volver</button>
+                <button type="submit" id="mindCreateSubmit">Crear sala</button>
+              </div>
+            </form>
+            <form id="mindJoinForm" class="mind-form" hidden>
+              <h2 id="mindJoinTitle">Unirse a la sala</h2>
+              <input id="mindJoinRoomName" maxlength="16" required placeholder="Nombre de la sala" autocomplete="off">
+              <input id="mindJoinPlayerName" maxlength="16" required placeholder="Tu nombre" autocomplete="off">
+              <p id="mindJoinHint">El mismo nombre de sala y jugador recupera tu sesión anterior.</p>
+              <div class="mind-form-actions">
+                <button type="button" class="secondary" data-mind-back>Volver</button>
+                <button type="submit" id="mindJoinSubmit">Unirse</button>
+              </div>
+            </form>
+            <p id="mindLobbyMessage" class="message" aria-live="polite"></p>
+          </section>
+
+          <section id="mindGame" class="mind-game" hidden>
+            <div class="mind-control-strip">
+              <div class="mind-room-chip"><span id="mindRoomChipLabel">Sala</span><strong id="mindRoomLabel"></strong></div>
+              <div class="mind-resources">
+                <span class="mind-resource mind-resource-lives"><span aria-hidden="true">&#10084;</span><strong id="mindLives">0</strong></span>
+                <span class="mind-resource mind-resource-stars"><span aria-hidden="true">&#10022;</span><strong id="mindStars">0</strong></span>
+                <span class="mind-resource mind-resource-level"><span id="mindLevelWord">Nivel</span><strong id="mindLevel">0</strong></span>
+              </div>
+              <div class="mind-control-actions">
+                <button type="button" id="mindInviteButton" class="mind-ghost-button" hidden>Invitar</button>
+                <button type="button" id="mindLeaveButton" class="mind-ghost-button">Salir</button>
+              </div>
+            </div>
+
+            <p id="mindStatusBanner" class="mind-status-banner" role="status" aria-live="polite"></p>
+
+            <div class="mind-board">
+              <section class="mind-players-panel" aria-labelledby="mindPlayersTitle">
+                <h2 id="mindPlayersTitle">Equipo</h2>
+                <ul id="mindPlayersList" class="mind-players-list"></ul>
+                <div id="mindLobbyActions" class="mind-lobby-actions" hidden>
+                  <button type="button" id="mindStartButton">Empezar partida</button>
+                  <p id="mindStartHint" class="mind-hint"></p>
+                </div>
+              </section>
+
+              <section class="mind-play-panel" aria-labelledby="mindPileTitle">
+                <h2 id="mindPileTitle" class="mind-visually-hidden">Pila central</h2>
+                <div class="mind-pile">
+                  <span id="mindPileLabel" class="mind-pile-label">Última carta</span>
+                  <strong id="mindPileTop" class="mind-pile-top" aria-live="polite">—</strong>
+                </div>
+                <ol id="mindPileHistory" class="mind-pile-history" aria-label="Cartas jugadas"></ol>
+                <p id="mindDiscardRow" class="mind-discard-row" hidden></p>
+
+                <div id="mindCountdown" class="mind-countdown" hidden aria-live="assertive"></div>
+
+                <div id="mindReadyPanel" class="mind-ready-panel" hidden>
+                  <p id="mindReadyText"></p>
+                  <button type="button" id="mindReadyButton">Preparado</button>
+                </div>
+
+                <div id="mindStarVote" class="mind-star-vote" hidden role="group" aria-labelledby="mindStarVoteTitle">
+                  <p id="mindStarVoteTitle"></p>
+                  <div class="mind-star-vote-actions">
+                    <button type="button" id="mindStarYes">Sí</button>
+                    <button type="button" id="mindStarNo" class="secondary">No</button>
+                  </div>
+                  <p id="mindStarVoteCount" class="mind-hint"></p>
+                </div>
+
+                <div id="mindResultPanel" class="mind-result-panel" hidden>
+                  <strong id="mindResultTitle"></strong>
+                  <p id="mindResultDetail"></p>
+                  <ul id="mindResultStats" class="mind-result-stats"></ul>
+                  <div class="mind-result-actions">
+                    <button type="button" id="mindRestartButton" hidden>Revancha</button>
+                    <button type="button" id="mindResultHomeButton" class="secondary">Volver al inicio</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <section class="mind-hand-panel" aria-labelledby="mindHandTitle">
+              <div class="mind-hand-header">
+                <h2 id="mindHandTitle">Tu mano</h2>
+                <div class="mind-hand-actions">
+                  <button type="button" id="mindStarButton" class="mind-ghost-button" hidden>&#10022; Estrella</button>
+                  <button type="button" id="mindPauseButton" class="mind-ghost-button" hidden>&#9995; Resincronizar</button>
+                </div>
+              </div>
+              <ul id="mindHand" class="mind-hand"></ul>
+              <p id="mindHandHint" class="mind-hint" aria-live="polite"></p>
+            </section>
+          </section>
         </section>
 
         <section id="scoreboardView" class="view scoreboard-view" aria-labelledby="scoreboardTitle" hidden>

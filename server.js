@@ -26,6 +26,27 @@ import {
   touchWolfRoom,
   wolfRoomResponse
 } from "./wolf-engine.js";
+import {
+  MindGameError,
+  authenticateMindPlayer,
+  createMindRoom,
+  isMindHostConnected,
+  isMindRoomJoinable,
+  kickMindPlayer,
+  leaveMindRoom,
+  mindRoomResponse,
+  normalizeMindIdentity,
+  normalizeMindRoomKey,
+  pauseMindRoom,
+  playMindCard,
+  proposeMindStar,
+  readyMindPlayer,
+  replaceOrJoinMindPlayer,
+  restartMindGame,
+  startMindGame,
+  touchMindRoom,
+  voteMindStar
+} from "./mind-engine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -573,6 +594,7 @@ const impostorRooms = new Map();
 const resistanceRooms = new Map();
 const wolfRooms = new Map();
 const masterWordRooms = new Map();
+const mindRooms = new Map();
 const scoreboardRooms = new Map();
 let spotifyToken = null;
 const songGroupCache = new Map();
@@ -604,6 +626,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(res, masterWordRooms, isMasterWordHostConnected, isLobbyRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(req, res);
+    if (req.method === "GET" && url.pathname === "/api/mind/rooms") return listActiveGameRooms(res, mindRooms, isMindHostConnected, isMindRoomJoinable);
+    if (req.method === "POST" && url.pathname === "/api/mind/rooms") return createMindRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
     if (req.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return sendJson(res, getSongGroups());
@@ -690,6 +714,11 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && masterWordSkipMatch) return skipMasterWord(req, res, masterWordSkipMatch[1]);
     const masterWordLeaveMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/leave$/);
     if (req.method === "POST" && masterWordLeaveMatch) return leaveMasterWordRoom(req, res, masterWordLeaveMatch[1]);
+
+    const mindRoomMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && mindRoomMatch) return getMindRoomNode(res, mindRoomMatch[1], url.searchParams);
+    const mindActionMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)\/(join|start|ready|play|pause|star-propose|star-vote|kick|restart|leave)$/);
+    if (req.method === "POST" && mindActionMatch) return handleMindRoomActionNode(req, res, mindActionMatch[1], mindActionMatch[2]);
 
     const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
     if (req.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(res, scoreboardRoomMatch[1], url.searchParams);
@@ -5661,6 +5690,61 @@ async function handleWolfRoomActionNode(req, res, roomName, action) {
 }
 
 function decodeWolfRoomPathName(value) {
+  try {
+    return decodeURIComponent(String(value || ""));
+  } catch {
+    return String(value || "");
+  }
+}
+
+async function createMindRoomNode(req, res) {
+  const room = createMindRoom(await readJson(req));
+  if (!room) return sendJson(res, { error: "Los datos de la sala o del jugador no son válidos" }, 400);
+  const existing = mindRooms.get(room.key);
+  if (existing && isMindHostConnected(existing)) return sendJson(res, { error: "Ese nombre de sala ya está en uso" }, 409);
+  mindRooms.set(room.key, room);
+  return sendJson(res, mindRoomResponse(room, room.players[0]), 201);
+}
+
+function getMindRoomNode(res, roomName, searchParams) {
+  const room = mindRooms.get(normalizeMindRoomKey(decodeMindRoomPathName(roomName)));
+  if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+  const player = touchMindRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  return sendJson(res, mindRoomResponse(room, player));
+}
+
+// Node es un solo proceso con el estado en memoria, así que las mutaciones ya están
+// serializadas por el bucle de eventos: aquí no hace falta el control optimista del worker.
+async function handleMindRoomActionNode(req, res, roomName, action) {
+  const room = mindRooms.get(normalizeMindRoomKey(decodeMindRoomPathName(roomName)));
+  if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+  const body = await readJson(req);
+  try {
+    if (action === "join") {
+      const identity = normalizeMindIdentity(body);
+      if (!identity) throw new MindGameError("Los datos del jugador no son válidos");
+      const result = replaceOrJoinMindPlayer(room, identity);
+      return sendJson(res, mindRoomResponse(room, result.player), result.created ? 201 : 200);
+    }
+    const player = authenticateMindPlayer(room, body);
+    if (!player) throw new MindGameError("Sesión no válida o reemplazada", 401);
+    if (action === "start") startMindGame(room, player);
+    else if (action === "ready") readyMindPlayer(room, player);
+    else if (action === "play") playMindCard(room, player, body.card, String(body.actionId || ""));
+    else if (action === "pause") pauseMindRoom(room, player);
+    else if (action === "star-propose") proposeMindStar(room, player);
+    else if (action === "star-vote") voteMindStar(room, player, Boolean(body.accept), String(body.voteId || ""));
+    else if (action === "kick") kickMindPlayer(room, player, String(body.targetPlayerId || ""));
+    else if (action === "restart") restartMindGame(room, player);
+    else if (action === "leave") leaveMindRoom(room, player);
+    return sendJson(res, action === "leave" ? { ok: true } : mindRoomResponse(room, player));
+  } catch (error) {
+    if (error instanceof MindGameError) return sendJson(res, { error: error.message }, error.status);
+    throw error;
+  }
+}
+
+function decodeMindRoomPathName(value) {
   try {
     return decodeURIComponent(String(value || ""));
   } catch {
