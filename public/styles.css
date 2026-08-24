@@ -4934,7 +4934,9 @@ body[data-language="es"] .guess-list:empty::before {
 .impostor-chip[role="button"]:focus-visible,
 .resistance-player-card[role="button"]:focus-visible { outline: 3px solid rgba(247, 213, 126, 0.72); outline-offset: 2px; }
 .impostor-chip.is-test-player,
-.resistance-player-card.is-test-player { border-style: dashed; }
+.resistance-player-card.is-test-player,
+.masterword-player-card.is-test-player,
+#multiplayerPlayersList article.is-test-player { border-style: dashed; }
 
 .wolf-control-actions button {
   display: inline-flex;
@@ -10393,9 +10395,9 @@ body.masterword-active .content {
   min-height: 68px;
   padding: 8px;
   border: 1px solid rgba(255, 223, 107, 0.18);
-  border-left: 5px solid rgba(255, 223, 107, 0.38);
+  border-left: 5px solid var(--player-color, rgba(255, 223, 107, 0.38));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.055);
+  background: color-mix(in srgb, var(--player-color, #ffdf6b) 10%, rgba(255, 255, 255, 0.055));
 }
 
 .masterword-player-card.is-current {
@@ -10422,7 +10424,7 @@ body.masterword-active .content {
   height: 42px;
   place-items: center;
   border-radius: 8px;
-  background: rgba(255, 223, 107, 0.12);
+  background: color-mix(in srgb, var(--player-color, #ffdf6b) 22%, transparent);
   font-size: 1.45rem;
 }
 
@@ -11202,6 +11204,19 @@ body.masterword-active .content {
   align-content: center;
   border-radius: 8px;
   text-align: left;
+  border-color: var(--player-color, #ffdf6b);
+  background: var(--player-color, #ffdf6b);
+}
+
+#masterWordValidClues .masterword-clue-chip.is-retry {
+  box-shadow: 0 0 0 2px #fff8dd, 0 0 18px color-mix(in srgb, var(--player-color, #ffdf6b) 58%, transparent);
+}
+
+#masterWordValidClues .masterword-clue-chip em {
+  color: rgba(27, 22, 48, 0.76);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
 }
 
 #masterWordValidClues .masterword-clue-chip strong {
@@ -11226,7 +11241,7 @@ body.masterword-active .content {
   display: grid;
   gap: 3px;
   padding: 8px 10px;
-  border: 1px solid rgba(255, 97, 120, 0.42);
+  border: 1px solid var(--player-color, rgba(255, 97, 120, 0.42));
   border-radius: 8px;
   background: rgba(255, 97, 120, 0.12);
 }
@@ -11241,6 +11256,10 @@ body.masterword-active .content {
   color: rgba(255, 249, 231, 0.72);
   font-size: 0.72rem;
   font-weight: 900;
+}
+
+.masterword-final-summary > div {
+  border-left: 4px solid var(--player-color, #ffdf6b);
 }
 /* MasterWord result popup and right-aligned actions */
 .masterword-play-panel .message:empty {
@@ -13020,6 +13039,7 @@ body.scoreboard-active .title-bar {
 .test-phase-control small { color: rgba(255, 244, 200, .72); font-size: .62rem; line-height: 1.1; }
 .resistance-test-phase-control { border-color: rgba(123, 227, 157, .5); color: #dfffea; background: rgba(123, 227, 157, .1); }
 .wolf-test-phase-control { border-color: rgba(143, 176, 128, .6); color: #edf7e8; background: rgba(143, 176, 128, .12); }
+.masterword-test-phase-control { border-color: rgba(255, 216, 107, .6); color: #fff3c4; background: rgba(255, 216, 107, .1); }
 
 /* Impostor mobile-first information hierarchy. */
 .impostor-clue-card[hidden] { display: none !important; }

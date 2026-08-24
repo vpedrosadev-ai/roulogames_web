@@ -65,6 +65,9 @@ const multiplayerSetup = document.querySelector("#multiplayerSetup");
 const createRoomName = document.querySelector("#createRoomName");
 const createPlayerEmoji = document.querySelector("#createPlayerEmoji");
 const createPlayerName = document.querySelector("#createPlayerName");
+const multiplayerCreateTestMode = document.querySelector("#multiplayerCreateTestMode");
+const multiplayerTestBotCountField = document.querySelector("#multiplayerTestBotCountField");
+const multiplayerCreateBotCount = document.querySelector("#multiplayerCreateBotCount");
 const joinRoomName = document.querySelector("#joinRoomName");
 const joinPlayerEmoji = document.querySelector("#joinPlayerEmoji");
 const joinPlayerName = document.querySelector("#joinPlayerName");
@@ -347,10 +350,14 @@ const masterWordCreateRoomName = document.querySelector("#masterWordCreateRoomNa
 const masterWordCreateEmoji = document.querySelector("#masterWordCreateEmoji");
 const masterWordCreatePlayerName = document.querySelector("#masterWordCreatePlayerName");
 const masterWordCreatePlayerLimit = document.querySelector("#masterWordCreatePlayerLimit");
+const masterWordCreateTestMode = document.querySelector("#masterWordCreateTestMode");
+const masterWordTestBotCountField = document.querySelector("#masterWordTestBotCountField");
+const masterWordCreateBotCount = document.querySelector("#masterWordCreateBotCount");
 const masterWordRoundMode = document.querySelector("#masterWordRoundMode");
 const masterWordRoundLimit = document.querySelector("#masterWordRoundLimit");
 const masterWordAttemptMode = document.querySelector("#masterWordAttemptMode");
 const masterWordAttemptLimit = document.querySelector("#masterWordAttemptLimit");
+const masterWordClueTimeLimit = document.querySelector("#masterWordClueTimeLimit");
 const masterWordRoundModeButtons = document.querySelectorAll("[data-masterword-round-mode]");
 const masterWordAttemptModeButtons = document.querySelectorAll("[data-masterword-attempt-mode]");
 const masterWordJoinForm = document.querySelector("#masterWordJoinForm");
@@ -2374,6 +2381,10 @@ let masterWordShownEventId = "";
 let masterWordShownResultKey = "";
 let masterWordOutcomeEventId = "";
 let masterWordKnownPlayerIds = new Set();
+let masterWordClueDraftKey = "";
+let masterWordGuessRoundKey = "";
+let masterWordTestViewId = "";
+let masterWordTestAutoFollowEnabled = true;
 let scoreboardSession = null;
 let scoreboardRoom = null;
 let scoreboardPollTimer = null;
@@ -2451,6 +2462,7 @@ populateimpostorEmojis();
 populateResistanceEmojis();
 populateMasterWordEmojis();
 syncMasterWordCreateOptions();
+syncMultiplayerTestCreateMode();
 syncimpostorWordSetCards();
 syncimpostorConfigLimits();
 syncResistanceTestCreateMode();
@@ -2530,6 +2542,8 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && wolfRulesPopup && !wolfRulesPopup.hidden) hideWolfRulesPopup();
   if (event.key === "Escape") closeScoreboardPopups();
 });
+multiplayerCreateTestMode?.addEventListener("change", syncMultiplayerTestCreateMode);
+multiplayerCreateBotCount?.addEventListener("input", syncMultiplayerTestCreateMode);
 
 function closeMobileNavMenu() {
   navMenu.classList.remove("mobile-menu-open");
@@ -2662,15 +2676,20 @@ masterWordChooseJoin?.addEventListener("click", () => showMasterWordForm("join")
 masterWordBackButtons.forEach((button) => button.addEventListener("click", showMasterWordChoice));
 masterWordRoundModeButtons.forEach((button) => button.addEventListener("click", () => setMasterWordMode("round", button.dataset.masterwordRoundMode)));
 masterWordAttemptModeButtons.forEach((button) => button.addEventListener("click", () => setMasterWordMode("attempt", button.dataset.masterwordAttemptMode)));
+masterWordCreatePlayerLimit?.addEventListener("input", syncMasterWordCreateOptions);
+masterWordCreateTestMode?.addEventListener("change", syncMasterWordTestCreateMode);
+masterWordCreateBotCount?.addEventListener("input", syncMasterWordTestCreateMode);
 masterWordShareButton?.addEventListener("click", shareMasterWordRoom);
 masterWordRestartButton?.addEventListener("click", restartMasterWordGame);
 masterWordLeaveButton?.addEventListener("click", leaveMasterWordToMenu);
 masterWordStartButton?.addEventListener("click", startMasterWordGame);
 masterWordPlayers?.addEventListener("click", kickMasterWordPlayer);
+masterWordPlayers?.addEventListener("keydown", handleMasterWordPlayerKeydown);
 masterWordClueForm?.addEventListener("submit", submitMasterWordClues);
 masterWordClueInputs?.addEventListener("beforeinput", restrictMasterWordClueInput);
 masterWordClueInputs?.addEventListener("input", sanitizeMasterWordClueInput);
 masterWordGuessForm?.addEventListener("submit", guessMasterWord);
+masterWordGuessInput?.addEventListener("input", sanitizeMasterWordGuessInput);
 masterWordSkipButton?.addEventListener("click", skipMasterWord);
 masterWordResultClose?.addEventListener("click", hideMasterWordResultPopup);
 masterWordResultPopup?.addEventListener("click", (event) => {
@@ -3685,7 +3704,7 @@ async function voteimpostorPlayer(event) {
     impostorLastAssignmentId = payload.eventId || impostorLastAssignmentId;
     impostorLastVotesCast = Number(payload.votesCast || 0);
     renderimpostorRoom(payload, { flash: true });
-    hideImpostorVotePopup();
+    if (eventChanged) hideImpostorVotePopup();
     hideImpostorEventPopup();
     if (eventChanged) announceImpostorEvent(payload);
     else playimpostorAlarmSound("vote");
@@ -3962,20 +3981,22 @@ function renderimpostorActions(room, currentPlayer) {
   });
   const tiedIds = new Set(room.tieCandidates || []);
   const candidates = (room.players || []).filter((player) => {
-    if (player.id === currentPlayer?.id || player.eliminated) return false;
+    if (player.eliminated) return false;
     return status !== "tiebreak" || tiedIds.has(player.id);
   });
   impostorVoteList.replaceChildren(...candidates.map((player) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.votePlayerId = player.id;
-    button.disabled = !canVote;
+    button.disabled = !canVote || player.id === currentPlayer?.id;
     button.innerHTML = `<span></span><strong></strong><small></small>`;
     button.querySelector("span").textContent = player.emoji;
     button.querySelector("strong").textContent = player.name;
     const voterNames = votersByTarget.get(player.id) || [];
     button.classList.toggle("has-visible-votes", voterNames.length > 0);
-    button.querySelector("small").textContent = voterNames.length ? t("impostor.votedBy", { names: voterNames.join(", ") }) : "";
+    button.querySelector("small").textContent = voterNames.length
+      ? t("impostor.votedBy", { names: voterNames.join(", ") })
+      : player.id === currentPlayer?.id ? "Tu tarjeta · no puedes votarte" : "";
     return button;
   }));
   if (!candidates.length) {
@@ -4591,13 +4612,28 @@ function setMasterWordMode(kind, value) {
   syncMasterWordCreateOptions();
 }
 
+function syncMasterWordTestCreateMode() {
+  const enabled = Boolean(masterWordCreateTestMode?.checked);
+  const botCount = Math.max(2, Math.min(6, Math.floor(Number(masterWordCreateBotCount?.value) || 4)));
+  if (masterWordTestBotCountField) masterWordTestBotCountField.hidden = !enabled;
+  if (masterWordCreateBotCount) masterWordCreateBotCount.value = String(botCount);
+  if (masterWordCreatePlayerLimit) {
+    masterWordCreatePlayerLimit.disabled = enabled;
+    if (enabled) masterWordCreatePlayerLimit.value = String(botCount + 1);
+  }
+  syncMasterWordCreateOptions();
+}
+
 function syncMasterWordCreateOptions() {
+  const playerLimit = Math.max(3, Math.min(7, Math.floor(Number(masterWordCreatePlayerLimit?.value) || 5)));
+  const recommendedRounds = playerLimit * 3;
+  if (masterWordCreatePlayerLimit) masterWordCreatePlayerLimit.value = String(playerLimit);
   if (masterWordRoundLimit) {
     const customRounds = masterWordRoundMode?.value === "custom";
     masterWordRoundLimit.hidden = !customRounds;
     masterWordRoundLimit.disabled = !customRounds;
     masterWordRoundLimit.required = customRounds;
-    if (!customRounds) masterWordRoundLimit.value = "13";
+    if (!customRounds) masterWordRoundLimit.value = String(recommendedRounds);
   }
   if (masterWordAttemptLimit) {
     const customAttempts = masterWordAttemptMode?.value === "custom";
@@ -4607,6 +4643,9 @@ function syncMasterWordCreateOptions() {
     if (!customAttempts) masterWordAttemptLimit.value = "2";
   }
   masterWordRoundModeButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.masterwordRoundMode === (masterWordRoundMode?.value || "standard")));
+  masterWordRoundModeButtons.forEach((button) => {
+    if (button.dataset.masterwordRoundMode === "standard") button.textContent = `Recomendado: ${recommendedRounds}`;
+  });
   masterWordAttemptModeButtons.forEach((button) => button.classList.toggle("is-selected", button.dataset.masterwordAttemptMode === (masterWordAttemptMode?.value || "standard")));
 }
 
@@ -4615,15 +4654,17 @@ function getMasterWordCreateConfig() {
   const roundMode = masterWordRoundMode?.value === "custom" ? "custom" : "standard";
   const attemptMode = masterWordAttemptMode?.value === "custom" ? "custom" : "standard";
   const maxRounds = roundMode === "custom"
-    ? Math.max(1, Math.min(80, Math.floor(Number(masterWordRoundLimit?.value) || 13)))
-    : 13;
+    ? Math.max(1, Math.min(78, Math.floor(Number(masterWordRoundLimit?.value) || playerLimit * 3)))
+    : playerLimit * 3;
   const guessLimit = attemptMode === "custom"
     ? Math.max(1, Math.min(5, Math.floor(Number(masterWordAttemptLimit?.value) || 2)))
     : 2;
+  const clueTimeLimit = Math.max(0, Math.min(300, Math.floor(Number(masterWordClueTimeLimit?.value) || 0)));
   masterWordCreatePlayerLimit.value = String(playerLimit);
   if (masterWordRoundLimit) masterWordRoundLimit.value = String(maxRounds);
   if (masterWordAttemptLimit) masterWordAttemptLimit.value = String(guessLimit);
-  return { playerLimit, roundMode, maxRounds, attemptMode, guessLimit };
+  if (masterWordClueTimeLimit) masterWordClueTimeLimit.value = String(clueTimeLimit);
+  return { playerLimit, roundMode, maxRounds, attemptMode, guessLimit, clueTimeLimit };
 }
 
 async function createMasterWordRoom(event) {
@@ -4638,7 +4679,14 @@ async function createMasterWordRoom(event) {
     const response = await fetch("/api/masterword/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomName, playerName, emoji: masterWordCreateEmoji.value, config })
+      body: JSON.stringify({
+        roomName,
+        playerName,
+        emoji: masterWordCreateEmoji.value,
+        config,
+        testMode: Boolean(masterWordCreateTestMode?.checked),
+        testBotCount: Math.max(2, Math.min(6, Math.floor(Number(masterWordCreateBotCount?.value) || 4)))
+      })
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo crear la sala");
@@ -4675,6 +4723,10 @@ function enterMasterWordRoom(payload) {
   masterWordShownEventId = payload.eventId || "";
   masterWordShownResultKey = getMasterWordResultKey(payload.lastRoundResult);
   masterWordKnownPlayerIds = new Set((payload.players || []).map((player) => player.id));
+  masterWordClueDraftKey = "";
+  masterWordGuessRoundKey = "";
+  masterWordTestViewId = payload.test?.viewPlayerId || payload.player?.id || "";
+  masterWordTestAutoFollowEnabled = true;
   masterWordLobby.hidden = true;
   masterWordGame.hidden = false;
   scrollMasterWordGameTop();
@@ -4709,6 +4761,10 @@ async function pollMasterWordRoom() {
   if (!masterWordSession) return;
   try {
     const params = new URLSearchParams({ playerId: masterWordSession.playerId, token: masterWordSession.token });
+    if (masterWordRoom?.test?.enabled) {
+      params.set("viewPlayerId", masterWordTestViewId);
+      params.set("autoFollow", masterWordTestAutoFollowEnabled ? "1" : "0");
+    }
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}?${params}`);
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "Sala no disponible");
@@ -4731,6 +4787,16 @@ async function pollMasterWordRoom() {
   }
 }
 
+function masterWordActionBody(extra = {}) {
+  return {
+    playerId: masterWordSession?.playerId,
+    token: masterWordSession?.token,
+    asPlayerId: masterWordRoom?.test?.enabled ? masterWordTestViewId : "",
+    autoFollow: Boolean(masterWordRoom?.test?.enabled && masterWordTestAutoFollowEnabled),
+    ...extra
+  };
+}
+
 async function startMasterWordGame() {
   if (!masterWordSession) return;
   try {
@@ -4738,7 +4804,7 @@ async function startMasterWordGame() {
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token })
+      body: JSON.stringify(masterWordActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo iniciar");
@@ -4761,7 +4827,7 @@ async function restartMasterWordGame() {
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/restart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token })
+      body: JSON.stringify(masterWordActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo reiniciar");
@@ -4788,7 +4854,7 @@ async function submitMasterWordClues(event) {
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/clue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token, clues })
+      body: JSON.stringify(masterWordActionBody({ clues }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo enviar pista");
@@ -4805,14 +4871,14 @@ async function submitMasterWordClues(event) {
 async function guessMasterWord(event) {
   event.preventDefault();
   if (!masterWordSession) return;
-  const guess = masterWordGuessInput.value.trim();
+  const guess = sanitizeMasterWordGuessValue(masterWordGuessInput.value);
   if (!guess) return;
   try {
     masterWordGuessButton.disabled = true;
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/guess`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token, guess })
+      body: JSON.stringify(masterWordActionBody({ guess }))
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo adivinar");
@@ -4834,7 +4900,7 @@ async function skipMasterWord() {
     const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/skip`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: masterWordSession.playerId, token: masterWordSession.token })
+      body: JSON.stringify(masterWordActionBody())
     });
     const payload = await readJsonResponse(response);
     if (!response.ok) throw new Error(payload.error || "No se pudo pasar");
@@ -4853,6 +4919,7 @@ function renderMasterWordRoom(room = masterWordRoom) {
   if (!room || !masterWordPlayers) return;
   const players = [...(room.players || [])].sort((a, b) => a.seatNumber - b.seatNumber);
   const player = room.player || players.find((item) => item.id === masterWordSession?.playerId);
+  if (room.test?.enabled && room.test.viewPlayerId) masterWordTestViewId = room.test.viewPlayerId;
   const isHost = Boolean(player?.isHost || masterWordSession?.isHost);
   if (masterWordSession) masterWordSession.isHost = isHost;
   masterWordRoomLabel.textContent = `Sala: ${room.roomName || ""}`;
@@ -4861,6 +4928,7 @@ function renderMasterWordRoom(room = masterWordRoom) {
   masterWordScore.textContent = String(room.score || 0);
   masterWordShareButton.hidden = !isHost;
   masterWordRestartButton.hidden = !isHost || room.status === "lobby";
+  syncMasterWordGuessInput(room);
   renderMasterWordPlayers(players, player, room);
   renderMasterWordRole(room, player);
   renderMasterWordActions(room, player, players, isHost);
@@ -4869,16 +4937,26 @@ function renderMasterWordRoom(room = masterWordRoom) {
 
 function renderMasterWordPlayers(players, currentPlayer, room) {
   const clueSlots = Number(room.clueSlots || 1);
-  const canKick = masterWordSession?.isHost && room.status === "lobby";
-  masterWordPlayers.replaceChildren(...players.map((item) => {
+  const canSwitchView = Boolean(room.test?.enabled && masterWordSession?.isHost);
+  const phaseControl = room.test?.enabled
+    ? [createTestPhaseControl("masterword", room.status === "lobby" ? "Inicia la partida de prueba" : "Completa la fase actual", room.status === "finished")]
+    : [];
+  masterWordPlayers.replaceChildren(...phaseControl, ...players.map((item) => {
     const card = document.createElement("article");
     card.className = "masterword-player-card";
     card.dataset.playerId = item.id;
+    card.style.setProperty("--player-color", item.color || "#ffdf6b");
     if (item.id === currentPlayer?.id) card.classList.add("is-current");
     if (item.isActive) card.classList.add("is-active-player");
     if (item.hasSubmitted) card.classList.add("has-submitted");
     if (!item.connected) card.classList.add("is-disconnected");
-    const status = item.isActive ? "Adivina" : room.status === "clue" ? (item.hasSubmitted ? "Pistas listas" : `${clueSlots} pista${clueSlots > 1 ? "s" : ""}`) : room.status === "guessing" ? "Ayudante" : room.status === "lobby" ? "En sala" : "Equipo";
+    if (item.isTestPlayer) card.classList.add("is-test-player");
+    if (canSwitchView) {
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Controlar a ${item.name}`);
+    }
+    const status = item.isActive ? "Adivina" : ["clue", "reclue"].includes(room.status) ? (item.hasSubmitted ? "Pistas listas" : `${clueSlots} pista${clueSlots > 1 ? "s" : ""}`) : room.status === "guessing" ? "Ayudante" : room.status === "lobby" ? "En sala" : "Equipo";
     card.innerHTML = `<span></span><strong></strong><small></small><b></b>`;
     card.querySelector("span").textContent = item.emoji || "";
     card.querySelector("strong").textContent = item.name || "";
@@ -4912,16 +4990,16 @@ function renderMasterWordRole(room, player) {
 
 function renderMasterWordActions(room, player, players, isHost) {
   const status = room.status || "lobby";
-  masterWordGameMessage.textContent = "";
+  masterWordGameMessage.textContent = getMasterWordStatusMessage(room, player);
   masterWordStartButton.hidden = status !== "lobby" || !isHost;
   masterWordStartButton.disabled = !(isHost && players.length >= 3);
   masterWordStartButton.textContent = players.length < 3 ? `Esperando ${players.length}/3` : "Iniciar partida";
   masterWordClueForm.hidden = !player?.canClue;
   masterWordGuessForm.hidden = !player?.canGuess;
   const noVisibleCluesForGuesser = player?.isActive && ["guessing", "finished"].includes(status) && !(room.validClues?.length || 0);
-  const submittedClues = room.status === "clue" && player?.hasSubmitted ? (player.submittedClues?.length || 0) : 0;
+  const submittedClues = ["clue", "reclue"].includes(room.status) && player?.hasSubmitted ? (player.submittedClues?.length || 0) : 0;
   const visibleClues = (room.validClues?.length || 0) + (room.removedClues?.length || 0) + submittedClues + (noVisibleCluesForGuesser ? 1 : 0);
-  masterWordClueBoard.hidden = !["clue", "guessing", "finished"].includes(status) || !visibleClues;
+  masterWordClueBoard.hidden = !["clue", "reclue", "guessing", "finished"].includes(status) || !visibleClues;
   if (!masterWordClueForm.hidden) renderMasterWordClueInputs(room, player);
   renderMasterWordValidClues(room);
   masterWordGuessButton.disabled = !player?.canGuess;
@@ -4930,6 +5008,11 @@ function renderMasterWordActions(room, player, players, isHost) {
 
 function renderMasterWordClueInputs(room, player) {
   const slots = Number(player?.clueSlots || room.clueSlots || 1);
+  const draftKey = `${room.roomName}:${room.roundIndex}:${room.status}:${room.guessAttempts || 0}`;
+  if (draftKey !== masterWordClueDraftKey) {
+    masterWordClueDraftKey = draftKey;
+    masterWordClueInputs.replaceChildren();
+  }
   const activeInput = document.activeElement;
   if (masterWordClueInputs.contains(activeInput) && masterWordClueInputs.querySelectorAll("input").length === slots) return;
   const existing = [...masterWordClueInputs.querySelectorAll("input")].map((input) => input.value);
@@ -4938,6 +5021,8 @@ function renderMasterWordClueInputs(room, player) {
     input.maxLength = 28;
     input.required = true;
     input.autocomplete = "off";
+    input.autocapitalize = "none";
+    input.spellcheck = false;
     input.pattern = "[\\p{L}\\p{N}]+";
     input.placeholder = slots > 1 ? `Pista ${index + 1}` : "Pista de una palabra";
     input.value = sanitizeMasterWordClueValue(existing[index] || "");
@@ -4947,7 +5032,7 @@ function renderMasterWordClueInputs(room, player) {
 
 function restrictMasterWordClueInput(event) {
   if (!event.target?.matches?.("input")) return;
-  if (event.data && sanitizeMasterWordClueValue(event.data) !== event.data) event.preventDefault();
+  if (event.data && sanitizeMasterWordClueValue(event.data) !== String(event.data).toLocaleLowerCase()) event.preventDefault();
 }
 
 function sanitizeMasterWordClueInput(event) {
@@ -4961,14 +5046,36 @@ function sanitizeMasterWordClueInput(event) {
 }
 
 function sanitizeMasterWordClueValue(value) {
-  return String(value || "").replace(/[^\p{L}\p{N}]/gu, "").slice(0, 28);
+  return String(value || "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, "").slice(0, 28);
+}
+
+function sanitizeMasterWordGuessInput(event) {
+  const input = event.target;
+  const clean = sanitizeMasterWordGuessValue(input?.value);
+  if (!input || input.value === clean) return;
+  const cursor = Math.min(clean.length, input.selectionStart || clean.length);
+  input.value = clean;
+  input.setSelectionRange?.(cursor, cursor);
+}
+
+function sanitizeMasterWordGuessValue(value) {
+  return String(value || "").toLocaleLowerCase().replace(/\s+/g, " ").slice(0, 40);
+}
+
+function syncMasterWordGuessInput(room) {
+  if (!masterWordGuessInput) return;
+  const roundKey = `${room.roomName}:${room.roundIndex}:${room.status === "finished" ? "finished" : "round"}`;
+  if (roundKey === masterWordGuessRoundKey) return;
+  masterWordGuessRoundKey = roundKey;
+  masterWordGuessInput.value = "";
 }
 
 function renderMasterWordValidClues(room) {
-  const submittedClues = room.status === "clue" && room.player?.hasSubmitted ? (room.player.submittedClues || []) : [];
+  const submittedClues = ["clue", "reclue"].includes(room.status) && room.player?.hasSubmitted ? (room.player.submittedClues || []) : [];
   const validClueNodes = submittedClues.map((clue) => {
     const item = document.createElement("span");
     item.className = "masterword-clue-chip is-submitted";
+    item.style.setProperty("--player-color", room.player?.color || "#ffdf6b");
     const word = document.createElement("strong");
     word.textContent = clue.text || "";
     item.append(word);
@@ -4978,10 +5085,17 @@ function renderMasterWordValidClues(room) {
     const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("span");
     item.className = "masterword-clue-chip";
+    item.style.setProperty("--player-color", clue.color || "#ffdf6b");
+    if (clue.isRetry) item.classList.add("is-retry");
     const word = document.createElement("strong");
     const author = buildMasterWordClueAuthorNode(clueAuthor);
     word.textContent = clue.text || "";
     item.append(author, word);
+    if (clue.isRetry) {
+      const consensus = document.createElement("em");
+      consensus.textContent = `Nueva pista · ${clue.votes || 1} voto${Number(clue.votes || 1) === 1 ? "" : "s"}`;
+      item.append(consensus);
+    }
     return item;
   }));
   if (!validClueNodes.length && room.player?.isActive && ["guessing", "finished"].includes(room.status || "")) {
@@ -4997,6 +5111,7 @@ function renderMasterWordValidClues(room) {
     const clueAuthor = getMasterWordClueAuthor(clue, room);
     const item = document.createElement("article");
     item.className = "masterword-removed-clue";
+    item.style.setProperty("--player-color", clue.color || "#ffdf6b");
     const author = buildMasterWordClueAuthorNode(clueAuthor);
     const word = document.createElement("strong");
     const reason = document.createElement("em");
@@ -5026,10 +5141,16 @@ function getMasterWordClueAuthor(clue, room) {
 
 function getMasterWordStatusMessage(room, player) {
   if (room.status === "lobby") return `Esperando jugadores: ${room.players?.length || 0}/${room.config?.playerLimit || "?"}.`;
+  const time = room.clueDeadlineAt ? ` Tiempo restante: ${room.clueSecondsRemaining || 0}s.` : "";
   if (room.status === "clue") {
-    if (player?.isActive) return withMasterWordResult(room, `Eres el jugador activo. Pistas recibidas: ${room.cluesCast || 0}/${room.clueGivers || 0}.`);
-    if (player?.hasSubmitted) return withMasterWordResult(room, "Pista enviada. Espera a los demas.");
-    return withMasterWordResult(room, "Escribe una pista secreta. No se mostrara hasta filtrar duplicados.");
+    if (player?.isActive) return withMasterWordResult(room, `Eres el jugador activo. Pistas recibidas: ${room.cluesCast || 0}/${room.clueGivers || 0}.${time}`);
+    if (player?.hasSubmitted) return withMasterWordResult(room, `Pista enviada. Espera a los demas.${time}`);
+    return withMasterWordResult(room, `Escribe una pista secreta. No se mostrara hasta filtrar duplicados.${time}`);
+  }
+  if (room.status === "reclue") {
+    if (player?.isActive) return `Primer intento fallido. Los demas proponen una nueva pista (${room.cluesCast || 0}/${room.clueGivers || 0}).${time}`;
+    if (player?.hasSubmitted) return `Nueva propuesta enviada. Gana la propuesta mas repetida.${time}`;
+    return `El primer intento ha fallado. Propón una nueva pista; la mas repetida se añadira.${time}`;
   }
   if (room.status === "guessing") {
     if (room.lastEvent?.type === "guess-wrong") return withMasterWordResult(room, `Fallaste "${room.lastEvent.guess || ""}". Intentos restantes: ${room.guessesRemaining || 0}/${room.guessLimit || 2}.`);
@@ -5049,8 +5170,8 @@ function withMasterWordResult(room, message) {
 function getMasterWordResultMessage(result) {
   if (!result) return "";
   if (result.result === "correct") return `${result.activePlayerName || "Jugador"} acerto "${result.guess || result.word || ""}". +1 punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
-  if (result.result === "wrong") return `${result.activePlayerName || "Jugador"} fallo "${result.guess || ""}". Sin punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
-  if (result.result === "passed") return `${result.activePlayerName || "Jugador"} paso palabra. Sin punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
+  if (result.result === "wrong") return `${result.activePlayerName || "Jugador"} fallo "${result.guess || ""}".${result.word ? ` La palabra era "${result.word}".` : ""} Sin punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
+  if (result.result === "passed") return `${result.activePlayerName || "Jugador"} paso palabra.${result.word ? ` La palabra era "${result.word}".` : ""} Sin punto. Total: ${result.score || 0}/${result.maxRounds || 13}.`;
   return "";
 }
 
@@ -5061,7 +5182,7 @@ function getMasterWordResultKey(result) {
 
 function maybeShowMasterWordResultPopup(room) {
   const result = room?.lastRoundResult;
-  if (!result && room?.lastEvent?.type === "guess-wrong") {
+  if (room?.lastEvent?.type === "guess-wrong") {
     const key = `event:${room.eventId || ""}`;
     if (!room.eventId || key === masterWordShownResultKey) return;
     masterWordShownResultKey = key;
@@ -5123,19 +5244,31 @@ function buildMasterWordResultNodes(room, result, isFinished) {
 }
 
 function buildMasterWordContributionRows(room) {
-  const scores = new Map((room.players || []).map((player) => [player.id, { name: player.name, emoji: player.emoji, points: 0 }]));
+  const scores = new Map((room.players || []).map((player) => [player.id, { id: player.id, name: player.name, emoji: player.emoji, color: player.color, points: 0, hits: 0, fails: 0, seatNumber: player.seatNumber }]));
   (room.history || []).forEach((round) => {
-    if (round.result !== "correct") return;
-    const entry = scores.get(round.activePlayerId) || { name: round.activePlayerName || "Jugador", emoji: "", points: 0 };
-    entry.points += 1;
+    const entry = scores.get(round.activePlayerId) || { id: round.activePlayerId, name: round.activePlayerName || "Jugador", emoji: "", color: "#ffdf6b", points: 0, hits: 0, fails: 0, seatNumber: 999 };
+    if (round.result === "correct") {
+      entry.points += 1;
+      entry.hits += 1;
+    } else {
+      entry.fails += 1;
+    }
     scores.set(round.activePlayerId, entry);
   });
-  return [...scores.values()].map((entry) => {
+  const ranked = [...scores.values()].sort((a, b) => b.points - a.points || b.hits - a.hits || a.fails - b.fails || a.seatNumber - b.seatNumber || a.name.localeCompare(b.name, "es"));
+  let previousStandingKey = "";
+  let previousRank = 0;
+  return ranked.map((entry, index) => {
+    const standingKey = `${entry.points}:${entry.hits}:${entry.fails}`;
+    const rank = standingKey === previousStandingKey ? previousRank : index + 1;
+    previousStandingKey = standingKey;
+    previousRank = rank;
     const row = document.createElement("div");
+    row.style.setProperty("--player-color", entry.color || "#ffdf6b");
     const player = document.createElement("span");
     const points = document.createElement("strong");
-    player.textContent = `${entry.emoji || ""} ${entry.name || "Jugador"}`.trim();
-    points.textContent = `${entry.points} pts`;
+    player.textContent = `#${rank} ${entry.emoji || ""} ${entry.name || "Jugador"}`.trim();
+    points.textContent = `${entry.points} pts · ${entry.hits} aciertos · ${entry.fails} fallos`;
     row.append(player, points);
     return row;
   });
@@ -5173,6 +5306,10 @@ function leaveMasterWordRoom() {
   masterWordShownResultKey = "";
   masterWordOutcomeEventId = "";
   masterWordKnownPlayerIds = new Set();
+  masterWordClueDraftKey = "";
+  masterWordGuessRoundKey = "";
+  masterWordTestViewId = "";
+  masterWordTestAutoFollowEnabled = true;
   hideMasterWordResultPopup();
 }
 
@@ -5447,10 +5584,21 @@ async function performResistanceKick(targetPlayerId, control = null) {
 }
 
 async function kickMasterWordPlayer(event) {
+  const testControl = event.target.closest('[data-test-phase-action="masterword"]');
+  if (testControl) {
+    event.preventDefault();
+    await skipMasterWordTestPhase(testControl);
+    return;
+  }
   const button = event.target.closest("[data-masterword-kick-id]");
   if (!masterWordSession?.isHost) return;
   if (!button) {
     const card = event.target.closest(".masterword-player-card[data-player-id]");
+    if (card && masterWordRoom?.test?.enabled) {
+      event.preventDefault();
+      selectMasterWordTestView(card.dataset.playerId);
+      return;
+    }
     if (!card || card.dataset.playerId === masterWordSession.playerId || masterWordRoom?.status !== "lobby") return;
     event.preventDefault();
     showRoomKickPopup("masterword", card.dataset.playerId);
@@ -5458,6 +5606,64 @@ async function kickMasterWordPlayer(event) {
   }
   event.preventDefault();
   showRoomKickPopup("masterword", button.dataset.masterwordKickId);
+}
+
+function handleMasterWordPlayerKeydown(event) {
+  if (!masterWordRoom?.test?.enabled || !["Enter", " "].includes(event.key)) return;
+  const card = event.target.closest(".masterword-player-card[data-player-id]");
+  if (!card) return;
+  event.preventDefault();
+  selectMasterWordTestView(card.dataset.playerId);
+}
+
+function selectMasterWordTestView(playerId) {
+  if (!masterWordRoom?.test?.enabled || !playerId) return;
+  masterWordTestViewId = playerId;
+  masterWordTestAutoFollowEnabled = false;
+  void pollMasterWordRoom();
+}
+
+async function skipMasterWordTestPhase(control) {
+  if (!masterWordSession?.isHost || !masterWordRoom?.test?.enabled) return;
+  control.disabled = true;
+  try {
+    let room = masterWordRoom;
+    if (room.status === "lobby") {
+      await startMasterWordGame();
+      return;
+    }
+    if (["clue", "reclue"].includes(room.status)) {
+      const pending = (room.players || []).filter((player) => !player.isActive && !player.hasSubmitted);
+      for (let index = 0; index < pending.length; index += 1) {
+        const clue = room.status === "reclue" ? "nueva" : `pista${Number(pending[index].seatNumber || index + 1)}`;
+        const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/clue`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...masterWordActionBody({ clues: [clue] }), asPlayerId: pending[index].id, autoFollow: false })
+        });
+        room = await readJsonResponse(response);
+        if (!response.ok) throw new Error(room.error || "No se pudo completar la fase");
+      }
+    } else if (room.status === "guessing") {
+      const active = (room.players || []).find((player) => player.isActive);
+      const response = await fetch(`/api/masterword/rooms/${encodeURIComponent(masterWordSession.roomName)}/guess`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...masterWordActionBody({ guess: room.test?.word || "prueba" }), asPlayerId: active?.id || "", autoFollow: false })
+      });
+      room = await readJsonResponse(response);
+      if (!response.ok) throw new Error(room.error || "No se pudo completar la fase");
+    }
+    masterWordRoom = room;
+    masterWordTestAutoFollowEnabled = true;
+    if (room.test?.viewPlayerId) masterWordTestViewId = room.test.viewPlayerId;
+    renderMasterWordRoom(room);
+    maybeShowMasterWordResultPopup(room);
+  } catch (error) {
+    masterWordGameMessage.textContent = error.message;
+  } finally {
+    control.disabled = false;
+  }
 }
 
 async function performMasterWordKick(targetPlayerId, control = null) {
@@ -6452,11 +6658,12 @@ function renderWolfPlayers(players, currentPlayer, room) {
     if (item.role) card.classList.add("is-role-known", `is-role-${item.role}`);
     if (!item.alive) card.classList.add("is-dead");
     if (!item.connected) card.classList.add("is-disconnected");
-    if (canSwitchView) {
+    const canOpenKick = canKick && item.id !== currentPlayer?.id;
+    if (canSwitchView || canOpenKick) {
       card.tabIndex = 0;
       card.setAttribute("role", "button");
-      card.setAttribute("aria-label", `Ver la partida como ${item.name}`);
-      card.title = `Cambiar punto de vista a ${item.name}`;
+      card.setAttribute("aria-label", canSwitchView ? `Ver la partida como ${item.name}` : `Expulsar a ${item.name}`);
+      card.title = canSwitchView ? `Cambiar punto de vista a ${item.name}` : `Expulsar a ${item.name}`;
     } else {
       card.removeAttribute("tabindex");
       card.removeAttribute("role");
@@ -6589,7 +6796,7 @@ function renderWolfNarrator(room, player) {
     cycle = `Noche ${room.nightNumber}`;
   } else if (phase === "night_open") {
     title = "Se hace de día";
-    text = "Todos abren los ojos a la cuenta de cinco. Después comienza la votación, sin límite de tiempo.";
+    text = "Todos abren los ojos. Después comienza la votación, sin límite de tiempo.";
     icon = "wake";
     phaseLabel = "Despertar";
     cycle = `Noche ${room.nightNumber}`;
@@ -6678,6 +6885,7 @@ function renderWolfActions(room, player, players) {
     votersByTarget.set(vote.targetPlayerId, names);
   });
   let canAct = false;
+  let showReadOnlyVote = false;
   let kind = "action";
   let candidates = [];
   if (phase === "night_wolves" && player.alive && isWolfPlayerRole(player.role) && !player.hasActed) {
@@ -6700,25 +6908,27 @@ function renderWolfActions(room, player, players) {
   } else if (phase === "hunter_shot" && player.role === "hunter" && !player.alive && !player.hasActed) {
     candidates = players.filter((item) => item.alive && item.id !== player.id);
     canAct = true;
-  } else if (phase === "day_vote" && player.alive && !player.voteDisabled && !player.hasVoted) {
+  } else if (phase === "day_vote" && player.alive && !player.voteDisabled) {
     const tied = new Set(room.tieCandidates || []);
-    candidates = players.filter((item) => item.alive && !item.voteDisabled && item.id !== player.id && (!tied.size || tied.has(item.id)));
-    canAct = true;
+    candidates = players.filter((item) => item.alive && !item.voteDisabled && (!tied.size || tied.has(item.id)));
+    canAct = !player.hasVoted;
+    showReadOnlyVote = player.hasVoted;
     kind = "vote";
   }
-  if (!canAct) {
+  if (!canAct && !showReadOnlyVote) {
     if (wolfActionRenderKey) wolfActionList.replaceChildren();
     wolfActionRenderKey = "";
     if ((player.hasActed && String(phase).startsWith("night_")) || player.hasVoted) wolfGameMessage.textContent = "Elección enviada. El narrador espera a los demás jugadores. El anfitrión puede saltar la fase si alguien queda inactivo.";
     return;
   }
   wolfActionList.hidden = false;
-  const renderKey = JSON.stringify([phase, player.id, kind, room.wolfKillCount || 1, candidates.map((target) => [target.id, target.role || "unknown", target.witchAction || "", votersByTarget.get(target.id) || []])]);
+  const renderKey = JSON.stringify([phase, player.id, kind, canAct, room.wolfKillCount || 1, candidates.map((target) => [target.id, target.role || "unknown", target.witchAction || "", votersByTarget.get(target.id) || []])]);
   if (renderKey === wolfActionRenderKey) return;
   wolfActionRenderKey = renderKey;
   wolfActionList.replaceChildren(...candidates.map((target) => {
     const button = document.createElement("button");
     button.type = "button";
+    button.disabled = !canAct || target.id === player.id;
     button.className = "wolf-target-button";
     button.dataset.wolfTargetId = target.witchAction === "heal" ? `heal:${target.id}` : target.witchAction === "poison" ? `poison:${target.id}` : target.witchAction === "skip" ? "skip" : target.id;
     button.dataset.wolfTargetKind = kind;
@@ -6731,7 +6941,8 @@ function renderWolfActions(room, player, players) {
     name.textContent = target.name;
     hint.textContent = voterNames.length
       ? `Votado por: ${voterNames.join(", ")}`
-      : target.witchAction === "heal" ? "Pócima de vida: salvar víctima"
+      : target.id === player.id && kind === "vote" ? "Tu tarjeta · no puedes votarte"
+        : target.witchAction === "heal" ? "Pócima de vida: salvar víctima"
         : target.witchAction === "poison" ? "Pócima de muerte: eliminar"
           : target.witchAction === "skip" ? "No usar ninguna pócima esta noche"
             : kind === "vote" ? "Expulsar de la aldea" : phase === "night_doctor" ? "Proteger esta noche" : phase === "night_seer" ? "Investigar rol" : "Elegir objetivo";
@@ -7003,16 +7214,24 @@ function kickWolfPlayerClient(event) {
     return;
   }
   const card = event.target.closest("[data-player-id]");
-  if (!card || !wolfRoom?.test?.enabled) return;
-  selectWolfTestView(card.dataset.playerId);
+  if (!card) return;
+  if (wolfRoom?.test?.enabled) {
+    selectWolfTestView(card.dataset.playerId);
+    return;
+  }
+  if (!wolfSession?.isHost || wolfRoom?.status !== "lobby" || card.dataset.playerId === wolfSession.playerId) return;
+  event.preventDefault();
+  showRoomKickPopup("wolf", card.dataset.playerId);
 }
 
 function handleWolfPlayerKeydown(event) {
-  if (!wolfRoom?.test?.enabled || !["Enter", " "].includes(event.key)) return;
+  if (!["Enter", " "].includes(event.key)) return;
   const card = event.target.closest("[data-player-id]");
   if (!card) return;
+  if (!wolfRoom?.test?.enabled && (!wolfSession?.isHost || wolfRoom?.status !== "lobby" || card.dataset.playerId === wolfSession.playerId)) return;
   event.preventDefault();
-  selectWolfTestView(card.dataset.playerId);
+  if (wolfRoom?.test?.enabled) selectWolfTestView(card.dataset.playerId);
+  else showRoomKickPopup("wolf", card.dataset.playerId);
 }
 
 function selectWolfTestView(playerId) {
@@ -7191,7 +7410,7 @@ function isWolfNarratedTransitionPhase(phase) {
 }
 
 function wolfPhaseOpensEyes(phase) {
-  return phase === "night_role_open" || phase === "night_open";
+  return phase === "night_role_open";
 }
 
 function syncWolfNarration(room, player) {
@@ -9125,6 +9344,13 @@ function populateMultiplayerEmojis() {
   });
 }
 
+function syncMultiplayerTestCreateMode() {
+  const enabled = Boolean(multiplayerCreateTestMode?.checked);
+  const botCount = Math.max(1, Math.min(11, Math.floor(Number(multiplayerCreateBotCount?.value) || 3)));
+  if (multiplayerTestBotCountField) multiplayerTestBotCountField.hidden = !enabled;
+  if (multiplayerCreateBotCount) multiplayerCreateBotCount.value = String(botCount);
+}
+
 function setPlayerMode(mode) {
   playerMode = mode === "multiplayer" ? "multiplayer" : "solo";
   setupModeButtons.forEach((button) => { button.disabled = playerMode === "multiplayer" && button.dataset.setupMode === "daily"; });
@@ -9158,6 +9384,8 @@ async function createMultiplayerRoom() {
     roomName: createRoomName.value,
     playerName: createPlayerName.value,
     emoji: createPlayerEmoji.value,
+    testMode: Boolean(multiplayerCreateTestMode?.checked),
+    testBotCount: Math.max(1, Math.min(11, Math.floor(Number(multiplayerCreateBotCount?.value) || 3))),
     config: { groupId: activeGroupId, mode: setupMode, clipStart: clipStartMode, difficulty: difficultyMode }
   };
   const response = await fetch("/api/multiplayer/rooms", {
@@ -9387,6 +9615,7 @@ function renderMultiplayerPlayers(room = multiplayerRoom) {
     row.dataset.playerId = player.id;
     if (player.id === multiplayerSession?.playerId) row.classList.add("is-current");
     if (!player.connected) row.classList.add("is-disconnected");
+    if (player.isTestPlayer) row.classList.add("is-test-player");
     const emoji = document.createElement("span");
     emoji.textContent = player.emoji;
     const name = document.createElement("strong");
@@ -9394,7 +9623,9 @@ function renderMultiplayerPlayers(room = multiplayerRoom) {
     const score = document.createElement("b");
     score.textContent = `${player.score} pts`;
     const state = document.createElement("small");
-    state.textContent = !player.connected
+    state.textContent = player.isTestPlayer
+      ? "Test bot"
+      : !player.connected
       ? t("game.disconnected")
       : player.finished || Number(player.completedRound ?? -1) >= room.roundIndex ? "✓" : "";
     row.append(emoji, name, score, state);
@@ -9449,6 +9680,7 @@ async function updateMultiplayerScore() {
       playerId: multiplayerSession.playerId,
       token: multiplayerSession.token,
       score: getTotalPoints(),
+      solved: Boolean(won),
       finished: runComplete,
       roundIndex: runIndex
     })
@@ -9494,28 +9726,30 @@ function showMultiplayerPodium() {
     gameStatus.textContent = t("game.waitingPlayers");
     return;
   }
-  const players = [...multiplayerRoom.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  multiplayerPodium.replaceChildren(...players.slice(0, 3).map((player, index) => {
+  const rankedPlayers = rankMultiplayerPlayers(multiplayerRoom.players);
+  const podiumPlayers = rankedPlayers.filter(({ rank }) => rank <= 3);
+  const remainingPlayers = rankedPlayers.filter(({ rank }) => rank > 3);
+  multiplayerPodium.replaceChildren(...podiumPlayers.map(({ player, rank }) => {
     const item = document.createElement("article");
-    item.className = `podium-place place-${index + 1}`;
+    item.className = `podium-place place-${rank}`;
     const emoji = document.createElement("span");
     emoji.textContent = player.emoji;
     const name = document.createElement("strong");
     name.textContent = player.name;
     const score = document.createElement("b");
-    score.textContent = `${player.score} pts`;
+    score.textContent = `#${rank} · ${player.score} pts`;
     item.append(emoji, name, score);
     return item;
   }));
-  multiplayerFinalList.replaceChildren(...players.slice(3).map((player, index) => {
+  multiplayerFinalList.replaceChildren(...remainingPlayers.map(({ player, rank }) => {
     const item = document.createElement("li");
-    const rank = document.createElement("span");
-    rank.textContent = `#${index + 4}`;
+    const rankNode = document.createElement("span");
+    rankNode.textContent = `#${rank}`;
     const name = document.createElement("strong");
     name.textContent = `${player.emoji} ${player.name}`;
     const score = document.createElement("b");
     score.textContent = `${player.score} pts`;
-    item.append(rank, name, score);
+    item.append(rankNode, name, score);
     return item;
   }));
   multiplayerPodiumPopup.hidden = false;
@@ -10540,11 +10774,22 @@ function triggerPendingGameCompleteFlyby() {
   triggerOutcomeFlyby(playerMode !== "multiplayer" || isCurrentMultiplayerWinner());
 }
 
+function rankMultiplayerPlayers(players = []) {
+  const sorted = [...players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  let previousScore = null;
+  let previousRank = 0;
+  return sorted.map((player, index) => {
+    const rank = Number(player.score) === previousScore ? previousRank : index + 1;
+    previousScore = Number(player.score);
+    previousRank = rank;
+    return { player, rank };
+  });
+}
+
 function isCurrentMultiplayerWinner() {
   if (!multiplayerSession?.playerId || !multiplayerRoom?.players?.length) return false;
-  const winner = [...multiplayerRoom.players]
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))[0];
-  return winner?.id === multiplayerSession.playerId;
+  const topScore = Math.max(...multiplayerRoom.players.map((player) => Number(player.score || 0)));
+  return multiplayerRoom.players.some((player) => player.id === multiplayerSession.playerId && Number(player.score || 0) === topScore);
 }
 
 function triggerOutcomeFlyby(success) {

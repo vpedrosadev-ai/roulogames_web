@@ -566,7 +566,7 @@
             <header class="masterword-briefing">
               <span>Cooperativo de pistas</span>
               <h1 id="masterWordTitle">Palabra maestra</h1>
-              <p id="masterWordSubtitle">Da pistas secretas, elimina duplicados y ayuda al jugador activo a adivinar 13 palabras.</p>
+              <p id="masterWordSubtitle">Da pistas secretas, elimina duplicados y ayuda al jugador activo a completar las rondas recomendadas.</p>
             </header>
             <div id="masterWordChoice" class="masterword-choice">
               <button type="button" id="masterWordChooseCreate" class="masterword-choice-button"><span aria-hidden="true">+</span><strong>Crear sala</strong></button>
@@ -580,14 +580,22 @@
                 <input id="masterWordCreatePlayerName" maxlength="16" required placeholder="Tu nombre">
               </div>
               <label><span>Jugadores</span><input id="masterWordCreatePlayerLimit" type="number" min="3" max="7" step="1" inputmode="numeric" value="5"></label>
+              <label class="solo-test-create-toggle">
+                <input id="masterWordCreateTestMode" type="checkbox">
+                <span><strong>Modo de prueba individual</strong><small>Añade bots y permite controlar sus turnos desde este dispositivo.</small></span>
+              </label>
+              <label id="masterWordTestBotCountField" class="test-bot-count-field" hidden>
+                <span><strong>Número de bots</strong><small>De 2 a 6 jugadores virtuales.</small></span>
+                <input id="masterWordCreateBotCount" type="number" min="2" max="6" step="1" inputmode="numeric" value="4">
+              </label>
               <input id="masterWordRoundMode" type="hidden" value="standard">
               <div class="masterword-mode-field">
                 <span>Rondas</span>
                 <div class="masterword-mode-toggle" role="group" aria-label="Modo de rondas">
-                  <button type="button" class="is-selected" data-masterword-round-mode="standard">Estandar: 13</button>
+                  <button type="button" class="is-selected" data-masterword-round-mode="standard">Recomendado: 15</button>
                   <button type="button" data-masterword-round-mode="custom">Personalizado</button>
                 </div>
-                <input id="masterWordRoundLimit" type="number" min="1" max="80" step="1" inputmode="numeric" value="13" hidden>
+                <input id="masterWordRoundLimit" type="number" min="1" max="78" step="1" inputmode="numeric" value="15" hidden>
               </div>
               <input id="masterWordAttemptMode" type="hidden" value="standard">
               <div class="masterword-mode-field">
@@ -598,6 +606,7 @@
                 </div>
                 <input id="masterWordAttemptLimit" type="number" min="1" max="5" step="1" inputmode="numeric" value="2" hidden>
               </div>
+              <label><span>Tiempo para sugerir (segundos; 0 = sin limite)</span><input id="masterWordClueTimeLimit" type="number" min="0" max="300" step="5" inputmode="numeric" value="60"></label>
               <div class="masterword-form-actions">
                 <button type="button" class="secondary" data-masterword-back>Atras</button>
                 <button type="submit">Crear sala</button>
@@ -652,7 +661,7 @@
                   <div id="masterWordRemovedClues" class="masterword-removed-clues"></div>
                 </section>
                 <form id="masterWordGuessForm" class="masterword-guess-form" hidden>
-                  <input id="masterWordGuessInput" maxlength="40" required autocomplete="off" placeholder="Respuesta">
+                  <input id="masterWordGuessInput" maxlength="40" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Respuesta">
                   <div class="masterword-action-row">
                     <button type="submit" id="masterWordGuessButton">Adivinar</button>
                     <button type="button" id="masterWordSkipButton" class="secondary">Pasar</button>
@@ -1229,6 +1238,14 @@
                   <select id="createPlayerEmoji" aria-label="Player emoji"></select>
                   <input id="createPlayerName" maxlength="10" placeholder="Player name">
                 </div>
+                <label class="solo-test-create-toggle">
+                  <input id="multiplayerCreateTestMode" type="checkbox">
+                  <span><strong>Test mode</strong><small>Add automatic bot competitors.</small></span>
+                </label>
+                <label id="multiplayerTestBotCountField" class="test-bot-count-field" hidden>
+                  <span><strong>Number of bots</strong><small>From 1 to 11 virtual players.</small></span>
+                  <input id="multiplayerCreateBotCount" type="number" min="1" max="11" step="1" inputmode="numeric" value="3">
+                </label>
                 <span>Create the room after choosing a category.</span>
               </div>
               <div class="multiplayer-form">

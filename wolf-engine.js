@@ -871,7 +871,12 @@ function checkWolfWinner(room) {
   const alive = room.players.filter((player) => player.alive);
   const wolves = alive.filter((player) => isWolfTeamRole(player.role)).length;
   const village = alive.length - wolves;
-  if (wolves > 0 && wolves < village) return false;
+  const villageLethalActions = alive.filter((player) => (
+    player.role === "hunter"
+    || (player.role === "witch" && !player.witchPoisonUsed)
+  )).length;
+  const wolvesHaveGuaranteedControl = wolves >= village && wolves > villageLethalActions;
+  if (wolves > 0 && !wolvesHaveGuaranteedControl) return false;
   room.status = "finished";
   room.phase = "finished";
   room.winner = wolves <= 0 ? "village" : "werewolves";

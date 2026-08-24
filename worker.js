@@ -21,6 +21,19 @@ import {
 } from "./wolf-engine.js";
 
 const jobs = new Map();
+const MULTIPLAYER_TEST_IDENTITIES = [
+  { name: "Bot Beat", emoji: "\uD83E\uDD41" },
+  { name: "Bot Bass", emoji: "\uD83C\uDFB8" },
+  { name: "Bot Synth", emoji: "\uD83C\uDFB9" },
+  { name: "Bot Vox", emoji: "\uD83C\uDFA4" },
+  { name: "Bot Loop", emoji: "\uD83C\uDFA7" },
+  { name: "Bot Tempo", emoji: "\u23F1\uFE0F" },
+  { name: "Bot Echo", emoji: "\uD83D\uDD0A" },
+  { name: "Bot Disco", emoji: "\uD83E\uDE69" },
+  { name: "Bot Piano", emoji: "\uD83C\uDFBC" },
+  { name: "Bot Radio", emoji: "\uD83D\uDCFB" },
+  { name: "Bot Star", emoji: "\u2B50" }
+];
 const SONG_GROUPS = [
   {
     id: "shadow",
@@ -938,12 +951,11 @@ async function createMultiplayerRoom(request, env) {
 async function joinMultiplayerRoom(request, roomName, env) {
   const room = await loadMultiplayerRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
-  if (room.status === "finished") return json({ error: "Room has finished" }, 409);
-  if (room.roundIndex > 0) return json({ error: "Room has already started" }, 409);
   const identity = normalizeMultiplayerIdentity(await request.json().catch(() => ({})));
   if (!identity) return json({ error: "Invalid player details" }, 400);
   const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
   if (existingPlayer) {
+    if (existingPlayer.isTestPlayer) return json({ error: "Cannot join as a test bot" }, 409);
     existingPlayer.token = crypto.randomUUID() + crypto.randomUUID();
     existingPlayer.emoji = identity.emoji;
     existingPlayer.lastSeen = Date.now();
@@ -951,6 +963,9 @@ async function joinMultiplayerRoom(request, roomName, env) {
     await saveMultiplayerRoom(room, env);
     return json(multiplayerRoomResponse(room, existingPlayer), 200);
   }
+  if (room.testMode) return json({ error: "Test rooms do not accept other players" }, 409);
+  if (room.status === "finished") return json({ error: "Room has finished" }, 409);
+  if (room.roundIndex > 0) return json({ error: "Room has already started" }, 409);
   if (room.players.length >= 12) return json({ error: "Room is full" }, 409);
   const player = createMultiplayerPlayer(identity);
   room.players.push(player);
@@ -976,7 +991,16 @@ async function updateMultiplayerScore(request, roomName, env) {
   const player = authenticateMultiplayerPlayer(room, body);
   const score = Number(body.score);
   if (!player || !Number.isInteger(score) || score < 0 || score > 1000) return json({ error: "Invalid multiplayer score" }, 400);
-  player.score = Math.max(player.score, score);
+  player.baseScore = Math.max(Number(player.baseScore ?? Math.max(0, Number(player.score || 0) - Number(player.bonusScore || 0))), score);
+  room.firstSolverByRound = room.firstSolverByRound || {};
+  const submittedRound = Number(body.roundIndex);
+  if (Boolean(body.solved) && submittedRound === room.roundIndex && !room.firstSolverByRound[submittedRound]) {
+    room.firstSolverByRound[submittedRound] = player.id;
+  }
+  if (room.testMode && player.id === getMultiplayerHostId(room) && submittedRound === room.roundIndex) {
+    completeMultiplayerTestBots(room, submittedRound, Boolean(body.finished));
+  }
+  recalculateMultiplayerBonuses(room);
   player.finished = Boolean(body.finished);
   if (Number(body.roundIndex) === room.roundIndex) player.completedRound = Math.max(Number(player.completedRound ?? -1), room.roundIndex);
   player.lastSeen = Date.now();
@@ -1010,6 +1034,7 @@ async function kickMultiplayerPlayer(request, roomName, env) {
   if (Number(room.roundIndex || 0) > 0) return json({ error: "Players can only be kicked before the game starts" }, 409);
   const targetId = String(body.targetPlayerId || "");
   if (!targetId || targetId === hostId) return json({ error: "Invalid player to kick" }, 400);
+  if (room.players.find((item) => item.id === targetId)?.isTestPlayer) return json({ error: "Test bots cannot be kicked" }, 409);
   const before = room.players.length;
   room.players = room.players.filter((item) => item.id !== targetId);
   if (room.players.length === before) return json({ error: "Player not found" }, 404);
@@ -1085,6 +1110,7 @@ function mergeMultiplayerRooms(latest, incoming) {
       ...current,
       ...player,
       score: Math.max(Number(current.score || 0), Number(player.score || 0)),
+      baseScore: Math.max(Number(current.baseScore || 0), Number(player.baseScore || 0)),
       finished: Boolean(current.finished || player.finished),
       lastSeen: Math.max(Number(current.lastSeen || 0), Number(player.lastSeen || 0)),
       completedRound: Math.max(Number(current.completedRound ?? -1), Number(player.completedRound ?? -1)),
@@ -1099,12 +1125,14 @@ function mergeMultiplayerRooms(latest, incoming) {
     ...incoming,
     _version: latest._version,
     roundIndex,
+    firstSolverByRound: { ...(incoming.firstSolverByRound || {}), ...(latest.firstSolverByRound || {}) },
     roundAdvanceAt: Number(latest.roundIndex || 0) === roundIndex && Number(incoming.roundIndex || 0) === roundIndex && advanceDeadlines.length
       ? Math.min(...advanceDeadlines)
       : 0,
     players: mergedPlayers,
     updatedAt: Math.max(Number(latest.updatedAt || 0), Number(incoming.updatedAt || 0))
   };
+  recalculateMultiplayerBonuses(merged);
   syncMultiplayerRoundState(merged);
   merged._removedPlayerIds = incoming._removedPlayerIds;
   return merged;
@@ -1122,7 +1150,10 @@ function normalizeNewMultiplayerRoom(value) {
   const validGroup = groupId === "all" || SONG_GROUPS.some((group) => group.id === groupId);
   if (!key || !roomName || !identity || !validGroup || !mode || !clipStart || !difficulty) return null;
   const host = createMultiplayerPlayer(identity);
-  return { key, roomName, config: { groupId, mode, clipStart, difficulty }, seed: crypto.randomUUID(), roundIndex: 0, roundAdvanceAt: 0, status: "playing", hostId: host.id, players: [host], createdAt: Date.now(), updatedAt: Date.now() };
+  const testMode = Boolean(value?.testMode);
+  const testBotCount = testMode ? Math.max(1, Math.min(11, Math.floor(Number(value?.testBotCount) || 3))) : 0;
+  const bots = MULTIPLAYER_TEST_IDENTITIES.slice(0, testBotCount).map((bot) => createMultiplayerPlayer({ ...bot, isTestPlayer: true }));
+  return { key, roomName, config: { groupId, mode, clipStart, difficulty }, seed: crypto.randomUUID(), roundIndex: 0, roundAdvanceAt: 0, firstSolverByRound: {}, status: "playing", hostId: host.id, testMode, testBotCount, players: [host, ...bots], createdAt: Date.now(), updatedAt: Date.now() };
 }
 
 function normalizeMultiplayerIdentity(value) {
@@ -1132,7 +1163,30 @@ function normalizeMultiplayerIdentity(value) {
 }
 
 function createMultiplayerPlayer(identity) {
-  return { id: crypto.randomUUID(), token: crypto.randomUUID() + crypto.randomUUID(), ...identity, score: 0, readyRound: -1, completedRound: -1, finished: false, lastSeen: Date.now() };
+  return { id: crypto.randomUUID(), token: crypto.randomUUID() + crypto.randomUUID(), ...identity, isTestPlayer: Boolean(identity.isTestPlayer), score: 0, baseScore: 0, bonusScore: 0, readyRound: -1, completedRound: -1, finished: false, lastSeen: Date.now() };
+}
+
+function completeMultiplayerTestBots(room, roundIndex, finished) {
+  const pointOptions = [0, 20, 40, 60, 80, 100];
+  room.players.filter((item) => item.isTestPlayer).forEach((bot, index) => {
+    if (Number(bot.completedRound ?? -1) >= roundIndex) return;
+    const points = pointOptions[(roundIndex + index * 2 + 1) % pointOptions.length];
+    bot.baseScore = Math.max(0, Number(bot.baseScore || 0)) + points;
+    bot.completedRound = roundIndex;
+    bot.finished = finished;
+    bot.lastSeen = Date.now();
+    if (points > 0 && !room.firstSolverByRound?.[roundIndex]) room.firstSolverByRound[roundIndex] = bot.id;
+  });
+}
+
+function recalculateMultiplayerBonuses(room) {
+  const bonuses = new Map();
+  Object.values(room.firstSolverByRound || {}).forEach((playerId) => bonuses.set(playerId, (bonuses.get(playerId) || 0) + 20));
+  room.players.forEach((item) => {
+    item.bonusScore = bonuses.get(item.id) || 0;
+    item.baseScore = Math.max(0, Number(item.baseScore ?? Math.max(0, Number(item.score || 0) - item.bonusScore)));
+    item.score = item.baseScore + item.bonusScore;
+  });
 }
 
 function authenticateMultiplayerPlayer(room, value) {
@@ -1184,7 +1238,7 @@ function syncMultiplayerRoundState(room) {
 
 function getActiveMultiplayerPlayers(room) {
   const now = Date.now();
-  return room.players.filter((item) => now - Number(item.lastSeen || room.createdAt) < 30_000);
+  return room.players.filter((item) => item.isTestPlayer || now - Number(item.lastSeen || room.createdAt) < 30_000);
 }
 
 function getMultiplayerHostId(room) {
@@ -1205,8 +1259,10 @@ function multiplayerRoomResponse(room, privatePlayer = null) {
     roundIndex: room.roundIndex,
     roundAdvanceAt: Number(room.roundAdvanceAt || 0),
     status: room.status,
-    players: room.players.map(({ id, name, emoji, score, readyRound, completedRound, finished, lastSeen }) => ({
-      id, name, emoji, score, readyRound, completedRound, finished, connected: now - Number(lastSeen || room.createdAt) < 30_000
+    testMode: Boolean(room.testMode),
+    testBotCount: Number(room.testBotCount || 0),
+    players: room.players.map(({ id, name, emoji, score, bonusScore, readyRound, completedRound, finished, lastSeen, isTestPlayer }) => ({
+      id, name, emoji, score, bonusScore: Number(bonusScore || 0), readyRound, completedRound, finished, isTestPlayer: Boolean(isTestPlayer), connected: Boolean(isTestPlayer) || now - Number(lastSeen || room.createdAt) < 30_000
     })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)),
     player: privatePlayer ? { id: privatePlayer.id, token: privatePlayer.token, isHost: privatePlayer.id === getMultiplayerHostId(room) } : undefined
   };
@@ -2513,6 +2569,15 @@ function impostorRoomResponse(room, privatePlayer = null, sessionPlayer = privat
 }
 
 const MASTER_WORD_MAX_ROUNDS = 13;
+const MASTER_WORD_PLAYER_COLORS = ["#ff6b6b", "#4dabf7", "#ffd43b", "#69db7c", "#b197fc", "#ffa94d", "#f783ac"];
+const MASTER_WORD_TEST_IDENTITIES = [
+  { name: "Bot Ambar", emoji: "\uD83D\uDFE0" },
+  { name: "Bot Nube", emoji: "\u2601\uFE0F" },
+  { name: "Bot Faro", emoji: "\uD83D\uDD26" },
+  { name: "Bot Lince", emoji: "\uD83D\uDC3E" },
+  { name: "Bot Menta", emoji: "\uD83C\uDF3F" },
+  { name: "Bot Astro", emoji: "\uD83D\uDE80" }
+];
 const MASTER_WORDS = [
   "abeja", "abogado", "acuario", "albahaca", "almendra", "ancla", "antena", "archivo", "armadura", "asteroide",
   "bambu", "barco", "bateria", "biblioteca", "bigote", "brujula", "burbuja", "caballo", "cactus", "calabaza",
@@ -2542,6 +2607,7 @@ async function joinMasterWordRoom(request, roomName, env) {
   if (!identity) return json({ error: "Invalid player details" }, 400);
   const existingPlayer = room.players.find((player) => player.name.toLocaleLowerCase() === identity.name.toLocaleLowerCase());
   if (existingPlayer) {
+    if (existingPlayer.isTestPlayer) return json({ error: "Cannot join as a test bot" }, 409);
     existingPlayer.token = crypto.randomUUID() + crypto.randomUUID();
     existingPlayer.emoji = identity.emoji;
     existingPlayer.lastSeen = Date.now();
@@ -2549,6 +2615,7 @@ async function joinMasterWordRoom(request, roomName, env) {
     await saveMasterWordRoom(room, env);
     return json(masterWordRoomResponse(room, existingPlayer));
   }
+  if (room.testMode) return json({ error: "Test rooms do not accept more players" }, 409);
   if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
   if (room.players.length >= Number(room.config.playerLimit)) return json({ error: "Room is full" }, 409);
   const player = createMasterWordPlayer(identity, nextMasterWordSeatNumber(room));
@@ -2563,33 +2630,38 @@ async function getMasterWordRoom(roomName, request, env) {
   const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
   const url = new URL(request.url);
-  const player = touchMasterWordRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  const sessionPlayer = touchMasterWordRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  const player = resolveMasterWordTestViewPlayer(room, sessionPlayer, url.searchParams.get("viewPlayerId"), url.searchParams.get("autoFollow") === "1");
   await saveMasterWordRoom(room, env);
-  return json(masterWordRoomResponse(room, player));
+  return json(masterWordRoomResponse(room, player, sessionPlayer));
 }
 
 async function startMasterWordGame(request, roomName, env) {
   const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
-  if (!isMasterWordHost(room, player)) return json({ error: "Only host can start" }, 403);
+  const body = await request.json().catch(() => ({}));
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  if (!isMasterWordHost(room, sessionPlayer)) return json({ error: "Only host can start" }, 403);
   if (room.status !== "lobby") return json({ error: "Game already started" }, 409);
   if (room.players.length < 3) return json({ error: "Need at least 3 players" }, 409);
   startMasterWordRound(room);
   await saveMasterWordRoom(room, env);
-  return json(masterWordRoomResponse(room, player));
+  const player = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  return json(masterWordRoomResponse(room, player, sessionPlayer));
 }
 
 async function restartMasterWordGame(request, roomName, env) {
   const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
-  if (!isMasterWordHost(room, player)) return json({ error: "Only host can restart" }, 403);
+  const body = await request.json().catch(() => ({}));
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  if (!isMasterWordHost(room, sessionPlayer)) return json({ error: "Only host can restart" }, 403);
   resetMasterWordGame(room);
   if (room.players.length >= 3) startMasterWordRound(room);
   room.updatedAt = Date.now();
   await saveMasterWordRoom(room, env);
-  return json(masterWordRoomResponse(room, player));
+  const player = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  return json(masterWordRoomResponse(room, player, sessionPlayer));
 }
 
 async function kickMasterWordPlayer(request, roomName, env) {
@@ -2602,6 +2674,7 @@ async function kickMasterWordPlayer(request, roomName, env) {
   if (room.status !== "lobby") return json({ error: "Players can only be kicked before the game starts" }, 409);
   const targetId = String(body.targetPlayerId || "");
   if (!targetId || targetId === hostId) return json({ error: "Invalid player to kick" }, 400);
+  if (room.players.find((item) => item.id === targetId)?.isTestPlayer) return json({ error: "Test bots cannot be kicked" }, 409);
   const before = room.players.length;
   room.players = room.players.filter((item) => item.id !== targetId);
   if (room.players.length === before) return json({ error: "Player not found" }, 404);
@@ -2614,34 +2687,36 @@ async function kickMasterWordPlayer(request, roomName, env) {
 async function submitMasterWordClue(request, roomName, env) {
   const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
+  advanceMasterWordTimedState(room);
   const body = await request.json().catch(() => ({}));
-  const player = authenticateMultiplayerPlayer(room, body);
-  if (!player || room.status !== "clue" || player.id === room.activePlayerId) return json({ error: "No puedes enviar pista ahora" }, 400);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  if (!player || !["clue", "reclue"].includes(room.status) || player.id === room.activePlayerId) return json({ error: "No puedes enviar pista ahora" }, 400);
   const expected = getMasterWordClueSlots(room);
   const values = Array.isArray(body.clues) ? body.clues : [body.clue];
   const clues = values.map((value) => normalizeMasterWordClue(value)).filter(Boolean).slice(0, expected);
   if (clues.length !== expected) return json({ error: expected > 1 ? `Envia ${expected} pistas` : "Envia una pista" }, 400);
   if (clues.some((clue) => !isMasterWordSingleToken(clue))) return json({ error: "La pista solo puede tener letras o numeros, sin espacios ni simbolos" }, 400);
   room._actionRoundKey = masterWordRoundKey(room);
-  room.clues = { ...(room.clues || {}), [player.id]: clues };
+  const clueTarget = room.status === "reclue" ? "retryClues" : "clues";
+  room[clueTarget] = { ...(room[clueTarget] || {}), [player.id]: clues };
   player.lastSeen = Date.now();
-  if (areMasterWordCluesReady(room)) {
-    room.clueReview = reviewMasterWordClues(room);
-    room.status = "guessing";
-    setMasterWordEvent(room, { type: "clues-ready" });
-  }
+  if (areMasterWordCluesReady(room)) resolveMasterWordCluePhase(room);
   room.updatedAt = Date.now();
   await saveMasterWordRoom(room, env);
-  return json(masterWordRoomResponse(room, player));
+  const responsePlayer = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  return json(masterWordRoomResponse(room, responsePlayer, sessionPlayer));
 }
 
 async function guessMasterWord(request, roomName, env) {
   const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
+  advanceMasterWordTimedState(room);
   const body = await request.json().catch(() => ({}));
-  const player = authenticateMultiplayerPlayer(room, body);
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
   if (!player || room.status !== "guessing" || player.id !== room.activePlayerId) return json({ error: "Solo adivina el jugador activo" }, 400);
-  const guess = String(body.guess || "").trim().replace(/\s+/g, " ").slice(0, 40);
+  const guess = String(body.guess || "").trim().replace(/\s+/g, " ").toLocaleLowerCase().slice(0, 40);
   if (!guess) return json({ error: "Escribe una respuesta" }, 400);
   const correct = normalizeMasterWordText(guess) === normalizeMasterWordText(room.word);
   if (correct) {
@@ -2652,23 +2727,31 @@ async function guessMasterWord(request, roomName, env) {
     if (room.currentGuessAttempts >= getMasterWordGuessLimit(room)) {
       finishMasterWordRound(room, "wrong", guess);
     } else {
+      room.status = "reclue";
+      room.retryClues = {};
+      setMasterWordClueDeadline(room);
       setMasterWordEvent(room, { type: "guess-wrong", guess });
     }
   }
   room.updatedAt = Date.now();
   await saveMasterWordRoom(room, env);
-  return json(masterWordRoomResponse(room, player));
+  const responsePlayer = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  return json(masterWordRoomResponse(room, responsePlayer, sessionPlayer));
 }
 
 async function skipMasterWord(request, roomName, env) {
   const room = await loadMasterWordRoom(normalizeRoomKey(roomName), env);
   if (!room) return json({ error: "Room not found" }, 404);
-  const player = authenticateMultiplayerPlayer(room, await request.json().catch(() => ({})));
+  advanceMasterWordTimedState(room);
+  const body = await request.json().catch(() => ({}));
+  const sessionPlayer = authenticateMultiplayerPlayer(room, body);
+  const player = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
   if (!player || room.status !== "guessing" || player.id !== room.activePlayerId) return json({ error: "Solo pasa el jugador activo" }, 400);
   finishMasterWordRound(room, "passed", "");
   room.updatedAt = Date.now();
   await saveMasterWordRoom(room, env);
-  return json(masterWordRoomResponse(room, player));
+  const responsePlayer = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  return json(masterWordRoomResponse(room, responsePlayer, sessionPlayer));
 }
 
 async function leaveMasterWordRoom(request, roomName, env) {
@@ -2743,12 +2826,11 @@ function mergeMasterWordRooms(latest, incoming) {
   const staleAction = incoming._actionRoundKey && incoming._actionRoundKey !== masterWordRoundKey(latest);
   if (staleAction) return { ...latest, players: mergeMasterWordPlayers(latest.players, incoming.players).filter((player) => !removedIds.has(player.id)), _version: latest._version };
   const merged = { ...incoming, players: mergeMasterWordPlayers(latest.players, incoming.players).filter((player) => !removedIds.has(player.id)), _version: latest._version };
-  if (incoming._actionRoundKey && latest.status === "clue" && incoming.status === "clue") {
-    merged.clues = { ...(latest.clues || {}), ...(incoming.clues || {}) };
+  if (incoming._actionRoundKey && ["clue", "reclue"].includes(latest.status) && incoming.status === latest.status) {
+    const clueTarget = incoming.status === "reclue" ? "retryClues" : "clues";
+    merged[clueTarget] = { ...(latest[clueTarget] || {}), ...(incoming[clueTarget] || {}) };
     if (areMasterWordCluesReady(merged)) {
-      merged.clueReview = reviewMasterWordClues(merged);
-      merged.status = "guessing";
-      setMasterWordEvent(merged, { type: "clues-ready" });
+      resolveMasterWordCluePhase(merged);
     }
   }
   merged._actionRoundKey = incoming._actionRoundKey;
@@ -2773,12 +2855,17 @@ function normalizeNewMasterWordRoom(value) {
   const key = normalizeRoomKey(value?.roomName);
   const roomName = String(value?.roomName || "").trim().replace(/\s+/g, " ").slice(0, 16);
   const identity = normalizeMasterWordIdentity(value);
-  const config = normalizeMasterWordConfig(value?.config || value);
+  const testMode = Boolean(value?.testMode);
+  const testBotCount = testMode ? Math.max(2, Math.min(MASTER_WORD_TEST_IDENTITIES.length, Math.floor(Number(value?.testBotCount) || 4))) : 0;
+  const config = normalizeMasterWordConfig(testMode ? { ...(value?.config || value), playerLimit: testBotCount + 1 } : value?.config || value);
   if (!key || !roomName || !identity || !config) return null;
   const host = createMasterWordPlayer(identity, 1);
+  const bots = MASTER_WORD_TEST_IDENTITIES.slice(0, testBotCount).map((bot, index) => createMasterWordPlayer({ ...bot, isTestPlayer: true }, index + 2));
   return {
     key,
     roomName,
+    testMode,
+    testBotCount,
     config,
     status: "lobby",
     hostId: host.id,
@@ -2792,11 +2879,13 @@ function normalizeNewMasterWordRoom(value) {
     word: "",
     usedWords: [],
     clues: {},
+    retryClues: {},
     clueReview: null,
+    clueDeadlineAt: 0,
     history: [],
     eventId: "",
     lastEvent: null,
-    players: [host],
+    players: [host, ...bots],
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -2808,12 +2897,13 @@ function normalizeMasterWordConfig(value = {}) {
   const roundMode = value.roundMode === "custom" ? "custom" : "standard";
   const maxRounds = roundMode === "custom"
     ? Math.max(1, Math.min(MASTER_WORDS.length, Math.floor(Number(value.maxRounds) || MASTER_WORD_MAX_ROUNDS)))
-    : MASTER_WORD_MAX_ROUNDS;
+    : Math.min(MASTER_WORDS.length, playerLimit * 3);
   const attemptMode = value.attemptMode === "custom" ? "custom" : "standard";
   const guessLimit = attemptMode === "custom"
     ? Math.max(1, Math.min(5, Math.floor(Number(value.guessLimit) || 2)))
     : 2;
-  return { playerLimit, roundMode, maxRounds, attemptMode, guessLimit };
+  const clueTimeLimit = Math.max(0, Math.min(300, Math.floor(Number(value.clueTimeLimit) || 0)));
+  return { playerLimit, roundMode, maxRounds, attemptMode, guessLimit, clueTimeLimit };
 }
 
 function normalizeMasterWordIdentity(value) {
@@ -2823,7 +2913,11 @@ function normalizeMasterWordIdentity(value) {
 }
 
 function createMasterWordPlayer(identity, seatNumber) {
-  return { id: crypto.randomUUID(), token: crypto.randomUUID() + crypto.randomUUID(), ...identity, seatNumber, lastSeen: Date.now() };
+  return { id: crypto.randomUUID(), token: crypto.randomUUID() + crypto.randomUUID(), ...identity, isTestPlayer: Boolean(identity.isTestPlayer), seatNumber, color: getMasterWordPlayerColor(seatNumber), lastSeen: Date.now() };
+}
+
+function getMasterWordPlayerColor(seatNumber) {
+  return MASTER_WORD_PLAYER_COLORS[(Math.max(1, Number(seatNumber) || 1) - 1) % MASTER_WORD_PLAYER_COLORS.length];
 }
 
 function nextMasterWordSeatNumber(room) {
@@ -2831,9 +2925,10 @@ function nextMasterWordSeatNumber(room) {
 }
 
 function touchMasterWordRoom(room, playerId, token) {
+  const timedChange = advanceMasterWordTimedState(room);
   const player = authenticateMultiplayerPlayer(room, { playerId, token });
   if (player) player.lastSeen = Date.now();
-  room._touchOnly = true;
+  room._touchOnly = !timedChange;
   room.updatedAt = Date.now();
   return player || null;
 }
@@ -2850,7 +2945,9 @@ function resetMasterWordGame(room) {
   room.word = "";
   room.usedWords = [];
   room.clues = {};
+  room.retryClues = {};
   room.clueReview = null;
+  room.clueDeadlineAt = 0;
   room.history = [];
   room.lastRoundResult = null;
   room.eventId = "";
@@ -2871,7 +2968,9 @@ function startMasterWordRound(room) {
   room.word = nextWord;
   room.usedWords = [...(room.usedWords || []), nextWord];
   room.clues = {};
+  room.retryClues = {};
   room.clueReview = null;
+  setMasterWordClueDeadline(room);
   room.currentGuessAttempts = 0;
   room.roundGuesses = [];
   setMasterWordEvent(room, { type: "round-start", activePlayerName: getMasterWordActivePlayer(room)?.name || "" });
@@ -2894,9 +2993,55 @@ function getMasterWordClueSlots(room) {
 
 function areMasterWordCluesReady(room) {
   const clueSlots = getMasterWordClueSlots(room);
+  const clueSource = room.status === "reclue" ? room.retryClues : room.clues;
   return room.players
     .filter((player) => player.id !== room.activePlayerId)
-    .every((player) => (room.clues?.[player.id] || []).length === clueSlots);
+    .every((player) => (clueSource?.[player.id] || []).length === clueSlots);
+}
+
+function setMasterWordClueDeadline(room) {
+  const seconds = Math.max(0, Math.min(300, Math.floor(Number(room.config?.clueTimeLimit) || 0)));
+  room.clueDeadlineAt = seconds ? Date.now() + seconds * 1000 : 0;
+}
+
+function advanceMasterWordTimedState(room) {
+  if (!["clue", "reclue"].includes(room.status) || !room.clueDeadlineAt || Date.now() < Number(room.clueDeadlineAt)) return false;
+  resolveMasterWordCluePhase(room);
+  room.updatedAt = Date.now();
+  return true;
+}
+
+function resolveMasterWordCluePhase(room) {
+  const retry = room.status === "reclue";
+  if (retry) appendMasterWordRetryClue(room);
+  else room.clueReview = reviewMasterWordClues(room);
+  room.status = "guessing";
+  room.clueDeadlineAt = 0;
+  setMasterWordEvent(room, { type: retry ? "retry-clue-ready" : "clues-ready" });
+}
+
+function appendMasterWordRetryClue(room) {
+  const entries = [];
+  Object.entries(room.retryClues || {}).forEach(([playerId, clues]) => {
+    const player = room.players.find((item) => item.id === playerId);
+    (clues || []).forEach((text, index) => {
+      if (getMasterWordInvalidReason(text, room.word)) return;
+      entries.push({
+        id: `retry:${room.roundIndex}:${room.currentGuessAttempts}:${playerId}:${index}`,
+        text,
+        normalized: normalizeMasterWordText(text),
+        playerName: player?.name || "",
+        emoji: player?.emoji || "",
+        color: player?.color || getMasterWordPlayerColor(player?.seatNumber)
+      });
+    });
+  });
+  const counts = new Map();
+  entries.forEach((entry) => counts.set(entry.normalized, (counts.get(entry.normalized) || 0) + 1));
+  const selected = entries.sort((a, b) => (counts.get(b.normalized) || 0) - (counts.get(a.normalized) || 0))[0];
+  if (!selected) return;
+  room.clueReview = room.clueReview || { valid: [], removed: [], all: [] };
+  room.clueReview.valid = [...(room.clueReview.valid || []), { ...selected, votes: counts.get(selected.normalized) || 1, isRetry: true }];
 }
 
 function reviewMasterWordClues(room) {
@@ -2904,7 +3049,7 @@ function reviewMasterWordClues(room) {
   for (const [playerId, clues] of Object.entries(room.clues || {})) {
     const player = room.players.find((item) => item.id === playerId);
     (clues || []).forEach((text, index) => {
-      entries.push({ id: `${playerId}:${index}`, playerId, playerName: player?.name || "", emoji: player?.emoji || "", text, normalized: normalizeMasterWordText(text) });
+      entries.push({ id: `${playerId}:${index}`, playerId, playerName: player?.name || "", emoji: player?.emoji || "", color: player?.color || getMasterWordPlayerColor(player?.seatNumber), text, normalized: normalizeMasterWordText(text) });
     });
   }
   const counts = new Map();
@@ -2915,8 +3060,8 @@ function reviewMasterWordClues(room) {
     return { ...entry, valid: !invalidReason && !duplicate, reason: invalidReason || (duplicate ? "duplicada" : "") };
   });
   return {
-    valid: reviewed.filter((entry) => entry.valid).map(({ id, text }) => ({ id, text })),
-    removed: reviewed.filter((entry) => !entry.valid).map(({ id, text, reason }) => ({ id, text, reason })),
+    valid: reviewed.filter((entry) => entry.valid).map(({ id, text, playerName, emoji, color }) => ({ id, text, playerName, emoji, color })),
+    removed: reviewed.filter((entry) => !entry.valid).map(({ id, text, reason, playerName, emoji, color }) => ({ id, text, reason, playerName, emoji, color })),
     all: reviewed
   };
 }
@@ -2974,7 +3119,9 @@ function finishMasterWordGame(room, event) {
   room.status = "finished";
   room.activePlayerId = "";
   room.clues = {};
+  room.retryClues = {};
   room.clueReview = null;
+  room.clueDeadlineAt = 0;
   setMasterWordEvent(room, event || { type: "finished" });
 }
 
@@ -2992,7 +3139,7 @@ function getMasterWordGuessLimit(room) {
 }
 
 function normalizeMasterWordClue(value) {
-  return String(value || "").trim().slice(0, 28);
+  return String(value || "").trim().toLocaleLowerCase().slice(0, 28);
 }
 
 function isMasterWordSingleToken(value) {
@@ -3031,18 +3178,34 @@ function isMasterWordHostConnected(room) {
   return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
 }
 
-function masterWordRoomResponse(room, privatePlayer = null) {
+function resolveMasterWordTestViewPlayer(room, sessionPlayer, requestedPlayerId = "", autoFollow = false) {
+  if (!room?.testMode || !isMasterWordHost(room, sessionPlayer)) return sessionPlayer || null;
+  if (autoFollow) {
+    if (["clue", "reclue"].includes(room.status)) {
+      const clueSource = room.status === "reclue" ? room.retryClues || {} : room.clues || {};
+      return room.players.find((item) => item.id !== room.activePlayerId && !(clueSource[item.id] || []).length) || getMasterWordActivePlayer(room) || sessionPlayer;
+    }
+    if (room.status === "guessing") return getMasterWordActivePlayer(room) || sessionPlayer;
+    return sessionPlayer;
+  }
+  return room.players.find((item) => item.id === requestedPlayerId) || sessionPlayer;
+}
+
+function masterWordRoomResponse(room, privatePlayer = null, sessionPlayer = privatePlayer) {
   const now = Date.now();
   const activePlayer = getMasterWordActivePlayer(room);
   const isActive = privatePlayer?.id === room.activePlayerId;
   const clueSlots = getMasterWordClueSlots(room);
   const clueReview = room.clueReview || { valid: [], removed: [] };
-  const showClues = ["guessing", "finished"].includes(room.status);
+  const showClues = ["reclue", "guessing", "finished"].includes(room.status);
+  const clueSource = room.status === "reclue" ? room.retryClues || {} : room.clues || {};
   const maxRounds = getMasterWordMaxRounds(room);
   const guessLimit = getMasterWordGuessLimit(room);
   const guessAttempts = Number(room.currentGuessAttempts || 0);
   return {
     roomName: room.roomName,
+    testMode: Boolean(room.testMode),
+    testBotCount: Number(room.testBotCount || 0),
     config: room.config,
     status: room.status,
     eventId: room.eventId || "",
@@ -3055,36 +3218,46 @@ function masterWordRoomResponse(room, privatePlayer = null) {
     guessLimit,
     guessAttempts,
     guessesRemaining: Math.max(0, guessLimit - guessAttempts),
+    serverTime: now,
+    clueDeadlineAt: Number(room.clueDeadlineAt || 0),
+    clueSecondsRemaining: room.clueDeadlineAt ? Math.max(0, Math.ceil((Number(room.clueDeadlineAt) - now) / 1000)) : 0,
     score: Number(room.score || 0),
     activePlayerId: room.activePlayerId || "",
     activePlayerName: activePlayer?.name || "",
     clueSlots,
-    cluesCast: Object.keys(room.clues || {}).length,
+    cluesCast: Object.keys(clueSource).length,
     clueGivers: Math.max(0, room.players.length - 1),
-    validClues: showClues ? clueReview.valid.map(({ id, text, playerName, emoji }) => ({ id, text, playerName, emoji })) : [],
-    removedClues: showClues && !isActive ? clueReview.removed.map(({ id, text, reason, playerName, emoji }) => ({ id, text, reason, playerName, emoji })) : [],
+    validClues: showClues ? clueReview.valid.map(({ id, text, playerName, emoji, color, votes, isRetry }) => ({ id, text, playerName, emoji, color, votes, isRetry })) : [],
+    removedClues: showClues && !isActive ? clueReview.removed.map(({ id, text, reason, playerName, emoji, color }) => ({ id, text, reason, playerName, emoji, color })) : [],
     history: room.status === "finished" ? room.history || [] : (room.history || []).map(({ word, ...item }) => item),
     players: room.players.map((player) => ({
       id: player.id,
       name: player.name,
       emoji: player.emoji,
+      color: player.color || getMasterWordPlayerColor(player.seatNumber),
       seatNumber: player.seatNumber,
-      connected: now - Number(player.lastSeen || room.createdAt) < 30_000,
+      isTestPlayer: Boolean(player.isTestPlayer),
+      connected: Boolean(player.isTestPlayer) || now - Number(player.lastSeen || room.createdAt) < 30_000,
       isActive: player.id === room.activePlayerId,
-      hasSubmitted: (room.clues?.[player.id] || []).length === clueSlots
+      hasSubmitted: (clueSource?.[player.id] || []).length === clueSlots
     })).sort((a, b) => a.seatNumber - b.seatNumber),
     player: privatePlayer ? {
       id: privatePlayer.id,
-      token: privatePlayer.token,
-      isHost: isMasterWordHost(room, privatePlayer),
+      token: sessionPlayer?.token,
+      sessionPlayerId: sessionPlayer?.id || privatePlayer.id,
+      viewingAs: privatePlayer.id !== sessionPlayer?.id,
+      isTestPlayer: Boolean(privatePlayer.isTestPlayer),
+      isHost: isMasterWordHost(room, sessionPlayer),
       isActive,
       clueSlots,
-      hasSubmitted: (room.clues?.[privatePlayer.id] || []).length === clueSlots,
-      submittedClues: (room.clues?.[privatePlayer.id] || []).map((text) => ({ text })),
-      word: !isActive && ["clue", "guessing", "finished"].includes(room.status) ? room.word : "",
-      canClue: room.status === "clue" && !isActive && (room.clues?.[privatePlayer.id] || []).length !== clueSlots,
+      color: privatePlayer.color || getMasterWordPlayerColor(privatePlayer.seatNumber),
+      hasSubmitted: (clueSource?.[privatePlayer.id] || []).length === clueSlots,
+      submittedClues: (clueSource?.[privatePlayer.id] || []).map((text) => ({ text })),
+      word: !isActive && ["clue", "reclue", "guessing", "finished"].includes(room.status) ? room.word : "",
+      canClue: ["clue", "reclue"].includes(room.status) && !isActive && (clueSource?.[privatePlayer.id] || []).length !== clueSlots,
       canGuess: room.status === "guessing" && isActive
-    } : undefined
+    } : undefined,
+    test: room.testMode && isMasterWordHost(room, sessionPlayer) ? { enabled: true, viewPlayerId: privatePlayer?.id || sessionPlayer?.id || "", word: room.word || "" } : null
   };
 }
 
