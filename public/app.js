@@ -2378,6 +2378,10 @@ let masterWordSession = null;
 let masterWordRoom = null;
 let masterWordPollTimer = null;
 let masterWordClueTimer = null;
+let masterWordClueTimerDeadline = 0;
+let masterWordClueTimerOffset = 0;
+let masterWordClueTimerCard = null;
+let masterWordClueTimerValue = null;
 let masterWordShownEventId = "";
 let masterWordShownResultKey = "";
 let masterWordOutcomeEventId = "";
@@ -4969,34 +4973,62 @@ function renderMasterWordPlayers(players, currentPlayer, room) {
 }
 
 function createMasterWordClueTimerCard(room) {
-  clearInterval(masterWordClueTimer);
-  masterWordClueTimer = null;
   const deadlineAt = Number(room.clueDeadlineAt || 0);
-  if (!deadlineAt || !["clue", "reclue"].includes(room.status)) return null;
+  if (!deadlineAt || !["clue", "reclue"].includes(room.status)) {
+    stopMasterWordClueTimer();
+    return null;
+  }
   const card = document.createElement("article");
   const icon = document.createElement("span");
   const copy = document.createElement("div");
   const label = document.createElement("small");
   const value = document.createElement("strong");
-  const offset = Number(room.serverTime || Date.now()) - Date.now();
   card.className = "masterword-clue-timer-card";
   card.setAttribute("aria-live", "polite");
   icon.textContent = "⏰";
   label.textContent = "Tiempo restante";
-  const update = () => {
-    const seconds = Math.max(0, Math.ceil((deadlineAt - (Date.now() + offset)) / 1000));
-    value.textContent = `${seconds} s`;
-    card.classList.toggle("is-ending", seconds > 0 && seconds <= 10);
-    if (seconds > 0) return;
-    clearInterval(masterWordClueTimer);
-    masterWordClueTimer = null;
-    void pollMasterWordRoom();
-  };
   copy.append(label, value);
   card.append(icon, copy);
-  update();
-  if (masterWordClueTimer === null && deadlineAt > Date.now() + offset) masterWordClueTimer = window.setInterval(update, 1000);
+  if (masterWordClueTimerDeadline !== deadlineAt) {
+    clearTimeout(masterWordClueTimer);
+    masterWordClueTimer = null;
+    masterWordClueTimerDeadline = deadlineAt;
+    masterWordClueTimerOffset = Number(room.serverTime || Date.now()) - Date.now();
+  }
+  masterWordClueTimerCard = card;
+  masterWordClueTimerValue = value;
+  updateMasterWordClueTimer();
   return card;
+}
+
+function updateMasterWordClueTimer() {
+  if (!masterWordClueTimerDeadline || !masterWordClueTimerCard || !masterWordClueTimerValue) return;
+  const remaining = Math.max(0, masterWordClueTimerDeadline - (Date.now() + masterWordClueTimerOffset));
+  const seconds = Math.ceil(remaining / 1000);
+  masterWordClueTimerValue.textContent = `${seconds} s`;
+  masterWordClueTimerCard.classList.toggle("is-ending", seconds > 0 && seconds <= 10);
+  if (remaining <= 0) {
+    clearTimeout(masterWordClueTimer);
+    masterWordClueTimer = null;
+    masterWordClueTimerDeadline = 0;
+    void pollMasterWordRoom();
+    return;
+  }
+  if (masterWordClueTimer !== null) return;
+  const untilNextSecond = remaining - Math.max(0, seconds - 1) * 1000;
+  masterWordClueTimer = window.setTimeout(() => {
+    masterWordClueTimer = null;
+    updateMasterWordClueTimer();
+  }, Math.max(40, untilNextSecond + 15));
+}
+
+function stopMasterWordClueTimer() {
+  clearTimeout(masterWordClueTimer);
+  masterWordClueTimer = null;
+  masterWordClueTimerDeadline = 0;
+  masterWordClueTimerOffset = 0;
+  masterWordClueTimerCard = null;
+  masterWordClueTimerValue = null;
 }
 
 function renderMasterWordRole(room, player) {
@@ -5360,9 +5392,8 @@ function leaveMasterWordToMenu() {
 function leaveMasterWordRoom() {
   releaseMasterWordRoomIfHost();
   clearInterval(masterWordPollTimer);
-  clearInterval(masterWordClueTimer);
+  stopMasterWordClueTimer();
   masterWordPollTimer = null;
-  masterWordClueTimer = null;
   masterWordSession = null;
   masterWordRoom = null;
   masterWordShownEventId = "";
