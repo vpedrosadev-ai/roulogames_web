@@ -2735,7 +2735,9 @@ async function guessMasterWord(request, roomName, env) {
   }
   room.updatedAt = Date.now();
   await saveMasterWordRoom(room, env);
-  const responsePlayer = resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
+  const responsePlayer = room.lastRoundResult?.activePlayerId === player.id
+    ? player
+    : resolveMasterWordTestViewPlayer(room, sessionPlayer, body.asPlayerId, Boolean(body.autoFollow));
   return json(masterWordRoomResponse(room, responsePlayer, sessionPlayer));
 }
 
@@ -3040,8 +3042,9 @@ function appendMasterWordRetryClue(room) {
   entries.forEach((entry) => counts.set(entry.normalized, (counts.get(entry.normalized) || 0) + 1));
   const selected = entries.sort((a, b) => (counts.get(b.normalized) || 0) - (counts.get(a.normalized) || 0))[0];
   if (!selected) return;
+  const playerNames = [...new Set(entries.filter((entry) => entry.normalized === selected.normalized).map((entry) => entry.playerName).filter(Boolean))];
   room.clueReview = room.clueReview || { valid: [], removed: [], all: [] };
-  room.clueReview.valid = [...(room.clueReview.valid || []), { ...selected, votes: counts.get(selected.normalized) || 1, isRetry: true }];
+  room.clueReview.valid = [...(room.clueReview.valid || []), { ...selected, playerNames, votes: counts.get(selected.normalized) || 1, isRetry: true }];
 }
 
 function reviewMasterWordClues(room) {
@@ -3062,8 +3065,9 @@ function reviewMasterWordClues(room) {
   const duplicates = [...counts.entries()]
     .filter(([, count]) => count >= 2)
     .map(([normalized, count]) => {
-      const first = entries.find((entry) => entry.normalized === normalized);
-      return { id: `duplicate:${normalized}`, text: first?.text || "", count };
+      const matching = entries.filter((entry) => entry.normalized === normalized);
+      const playerNames = [...new Set(matching.map((entry) => entry.playerName).filter(Boolean))];
+      return { id: `duplicate:${normalized}`, text: matching[0]?.text || "", count, playerNames };
     });
   return {
     valid: reviewed.filter((entry) => entry.valid).map(({ id, text, playerName, emoji, color }) => ({ id, text, playerName, emoji, color })),
@@ -3216,7 +3220,7 @@ function masterWordRoomResponse(room, privatePlayer = null, sessionPlayer = priv
   const guessAttempts = Number(room.currentGuessAttempts || 0);
   const lastRoundResult = room.lastRoundResult ? {
     ...room.lastRoundResult,
-    duplicateClues: privatePlayer?.id === room.lastRoundResult.activePlayerId && ["correct", "wrong"].includes(room.lastRoundResult.result)
+    duplicateClues: (privatePlayer?.id === room.lastRoundResult.activePlayerId || sessionPlayer?.id === room.lastRoundResult.activePlayerId) && ["correct", "wrong"].includes(room.lastRoundResult.result)
       ? room.lastRoundResult.duplicateClues || []
       : []
   } : null;
@@ -3245,8 +3249,8 @@ function masterWordRoomResponse(room, privatePlayer = null, sessionPlayer = priv
     clueSlots,
     cluesCast: Object.keys(clueSource).length,
     clueGivers: Math.max(0, room.players.length - 1),
-    validClues: showClues ? clueReview.valid.map(({ id, text, playerName, emoji, color, votes, isRetry }) => ({ id, text, playerName, emoji, color, votes, isRetry })) : [],
-    duplicateClues: showClues ? (clueReview.duplicates || []).map(({ id, count }) => ({ id, count })) : [],
+    validClues: showClues ? clueReview.valid.map(({ id, text, playerName, playerNames, emoji, color, votes, isRetry }) => ({ id, text, playerName, playerNames, emoji, color, votes, isRetry })) : [],
+    duplicateClues: showClues ? (clueReview.duplicates || []).map(({ id, count, playerNames }) => ({ id, count, playerNames })) : [],
     removedClues: showClues && !isActive ? clueReview.removed.filter((clue) => clue.reason !== "duplicada").map(({ id, text, reason, playerName, emoji, color }) => ({ id, text, reason, playerName, emoji, color })) : [],
     history: room.status === "finished" ? room.history || [] : (room.history || []).map(({ word, ...item }) => item),
     players: room.players.map((player) => ({

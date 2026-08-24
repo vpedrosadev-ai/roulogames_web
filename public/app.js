@@ -5137,10 +5137,9 @@ function renderMasterWordValidClues(room) {
     const item = document.createElement("span");
     const message = document.createElement("strong");
     const detail = document.createElement("small");
-    const count = Math.max(2, Number(clue.count || 2));
     item.className = "masterword-clue-chip is-duplicate";
-    message.textContent = `${count} personas han coincidido`;
-    detail.textContent = "Pista repetida oculta";
+    message.textContent = "🔒 Pista repetida";
+    detail.textContent = (clue.playerNames || []).join(", ") || "Varios jugadores";
     item.append(message, detail);
     return item;
   }));
@@ -5175,6 +5174,7 @@ function buildMasterWordClueAuthorNode(clueAuthor) {
 }
 
 function getMasterWordClueAuthor(clue, room) {
+  if (clue?.playerNames?.length) return { name: clue.playerNames.join(", "), emoji: "" };
   if (clue?.playerName || clue?.emoji) return { name: clue.playerName || "", emoji: clue.emoji || "" };
   const playerId = String(clue?.id || "").split(":")[0];
   const player = (room.players || []).find((item) => item.id === playerId);
@@ -5284,10 +5284,10 @@ function buildMasterWordResultNodes(room, result, isFinished) {
     list.append(...result.duplicateClues.map((clue) => {
       const card = document.createElement("article");
       const word = document.createElement("strong");
-      const count = document.createElement("small");
+      const authors = document.createElement("small");
       word.textContent = clue.text || "";
-      count.textContent = `${Math.max(2, Number(clue.count || 2))} personas coincidieron`;
-      card.append(word, count);
+      authors.textContent = (clue.playerNames || []).join(", ") || `${Math.max(2, Number(clue.count || 2))} personas coincidieron`;
+      card.append(word, authors);
       return card;
     }));
     duplicates.append(title, list);
@@ -6811,6 +6811,7 @@ function renderWolfNarrator(room, player) {
   let icon = "werewolf";
   let phaseLabel = "La aldea se reúne";
   let cycle = "Sala de espera";
+  let emphasizedRoles = [];
 
   if (phase === "role_reveal") {
     title = "Memoriza tu rol";
@@ -6880,9 +6881,11 @@ function renderWolfNarrator(room, player) {
     const result = (room.lastEliminations || []).length > 1
       ? `${formatWolfEliminationList(room.lastEliminations)} `
       : event.role ? `${event.playerName} era ${wolfRoleLabel(event.role)}. ` : "";
+    emphasizedRoles = [...new Set((room.lastEliminations || []).map((item) => item.role).filter(Boolean).map(wolfRoleLabel))];
+    if (!emphasizedRoles.length && event.role) emphasizedRoles = [wolfRoleLabel(event.role)];
     text = player?.alive && !player.hasVoted
       ? `${result}Elige a quién expulsar. No hay límite de tiempo.`
-      : `Votos enviados: ${room.votesCast || 0}/${room.votesNeeded || 0}.`;
+      : `${result}Votos enviados: ${room.votesCast || 0}/${room.votesNeeded || 0}.`;
     icon = "vote";
     phaseLabel = room.tieCandidates?.length ? "Desempate" : "Votación de la aldea";
     cycle = `Día ${room.dayNumber}`;
@@ -6917,8 +6920,24 @@ function renderWolfNarrator(room, player) {
   wolfCycleLabel.textContent = cycle;
   wolfPhaseLabel.textContent = phaseLabel;
   wolfNarratorTitle.textContent = title;
-  wolfNarratorText.textContent = text;
+  renderWolfNarratorText(text, emphasizedRoles);
   setWolfIcon(wolfNarratorIcon, icon);
+}
+
+function renderWolfNarratorText(text, emphasizedRoles = []) {
+  const roles = [...new Set(emphasizedRoles.filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!roles.length) {
+    wolfNarratorText.textContent = text;
+    return;
+  }
+  const pattern = new RegExp(`(${roles.map((role) => role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
+  wolfNarratorText.replaceChildren(...String(text || "").split(pattern).filter(Boolean).map((part) => {
+    if (!roles.includes(part)) return document.createTextNode(part);
+    const role = document.createElement("strong");
+    role.className = "wolf-revealed-role";
+    role.textContent = part;
+    return role;
+  }));
 }
 
 function formatWolfEliminationList(eliminations = []) {

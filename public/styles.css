@@ -6753,6 +6753,15 @@ body.wolf-active .arcade-vinyl-field { opacity: .1; }
 .wolf-game.is-night .wolf-narrator-icon { color: var(--wolf-moon); filter: drop-shadow(0 0 24px rgba(214, 231, 198, .2)); }
 .wolf-narrator h2 { margin: .2rem 0 .65rem; max-width: 800px; font-size: clamp(1.8rem, 4.5vw, 3.5rem); line-height: .98; letter-spacing: -.035em; }
 .wolf-narrator > p { max-width: 720px; margin: 0 0 1rem; font-size: clamp(.95rem, 1.8vw, 1.12rem); line-height: 1.55; opacity: .72; }
+.wolf-narrator > p .wolf-revealed-role {
+  color: #7a321f;
+  font-size: 1.28em;
+  font-weight: 950;
+  line-height: 1;
+  opacity: 1;
+}
+
+.wolf-game.is-night .wolf-narrator > p .wolf-revealed-role { color: #f3d88f; }
 
 .wolf-countdown {
   display: grid;
@@ -14679,7 +14688,7 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
 #masterWordValidClues > .masterword-clue-chip > strong {
   grid-row: 1 !important;
   width: 100%;
-  text-align: left !important;
+  text-align: center !important;
 }
 
 #masterWordValidClues > .masterword-clue-chip > small {
@@ -14692,6 +14701,14 @@ body.resistance-active:has(#resistanceGame:not([hidden])) .resistance-mission-su
   line-height: 1.1 !important;
   text-align: left !important;
   white-space: normal !important;
+}
+
+#masterWordValidClues > .masterword-clue-chip.is-duplicate > small {
+  text-align: center !important;
+}
+
+.masterword-removed-clue > strong {
+  text-align: center !important;
 }
 
 @media (max-width: 760px) {
