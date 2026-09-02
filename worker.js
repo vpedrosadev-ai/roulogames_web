@@ -1356,7 +1356,7 @@ async function listWordDuelRoomsWorker(env) {
   const result = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson FROM multiplayer_rooms WHERE room_key LIKE 'wordduel:%'").all();
   const rooms = (result.results || [])
     .map((row) => { try { return JSON.parse(row.stateJson); } catch { return null; } })
-    .filter((room) => room?.status === "lobby" && isWordDuelHostConnected(room))
+    .filter((room) => room?.status === "lobby" && !room.testMode && isWordDuelHostConnected(room))
     .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
     .map((room) => {
       const playerLimit = Number(room.config?.playerLimit || 10);

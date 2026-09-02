@@ -1391,7 +1391,7 @@ async function createWordDuelRoomNode(req, res) {
 
 function listWordDuelRoomsNode(res) {
   const rooms = [...wordDuelRooms.values()]
-    .filter((room) => room.status === "lobby" && isWordDuelHostConnected(room))
+    .filter((room) => room.status === "lobby" && !room.testMode && isWordDuelHostConnected(room))
     .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
     .map(wordDuelDirectoryEntry);
   return sendJson(res, { rooms });

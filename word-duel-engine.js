@@ -3,6 +3,18 @@ import { SPANISH_WORDS_4_TO_8 } from "./spanish-words-4-8.js";
 export const WORD_DUEL_ROUND_LENGTHS = [4, 5, 6, 7, 8];
 export const WORD_DUEL_MAX_ATTEMPTS = 6;
 const SPANISH_ACCENT_CORRECTIONS = buildSpanishAccentCorrections();
+const WORD_DUEL_TEST_BOTS = [
+  ["Bot Letra", "🤖"], ["Bot Tilde", "🧠"], ["Bot Verde", "🟩"],
+  ["Bot Amarillo", "🟨"], ["Bot Ñ", "Ñ"], ["Bot Pluma", "✏️"],
+  ["Bot Libro", "📚"], ["Bot Diana", "🎯"], ["Bot Rayo", "⚡"]
+];
+const WORD_DUEL_BOT_WORDS = [
+  ["casa", "luna", "mesa", "roca", "pato", "vino", "nube", "gato", "mapa"],
+  ["perro", "mango", "nubes", "ratón", "campo", "libro", "playa", "reloj", "tigre"],
+  ["camino", "tomate", "puerta", "jardín", "piedra", "bosque", "barcos", "cantar", "pelota"],
+  ["palabra", "teclado", "ventana", "caballo", "planeta", "piratas", "caminar", "montaña", "sonrisa"],
+  ["elefante", "estrella", "guitarra", "mariposa", "universo", "aventura", "tormenta", "princesa", "cuaderno"]
+];
 
 export class WordDuelError extends Error {
   constructor(message, status = 400) {
@@ -28,17 +40,25 @@ export function createWordDuelRoom(value) {
   const roomName = String(value?.roomName || "").trim().slice(0, 16);
   const key = normalizeWordDuelKey(roomName);
   const identity = normalizeWordDuelIdentity(value);
-  const playerLimit = Math.floor(Number(value?.playerLimit));
+  const testMode = Boolean(value?.testMode);
+  const botCount = Math.max(1, Math.min(9, Math.floor(Number(value?.botCount) || 3)));
+  const playerLimit = testMode ? botCount + 1 : Math.floor(Number(value?.playerLimit));
   if (!key || !roomName || !identity || playerLimit < 2 || playerLimit > 10) {
     throw new WordDuelError("Sala, jugador o límite no válido");
   }
   const host = createPlayer(identity);
   const now = Date.now();
-  return {
+  const room = {
     key, roomName, hostId: host.id, config: { playerLimit }, status: "lobby",
+    testMode,
     roundIndex: 0, attemptIndex: 0, proposals: {}, proposalSpellings: {}, assignments: {}, boards: {}, roundEvents: [],
     players: [host], createdAt: now, updatedAt: now
   };
+  if (testMode) {
+    WORD_DUEL_TEST_BOTS.slice(0, botCount).forEach(([name, emoji]) => room.players.push(createPlayer({ name, emoji, isTestPlayer: true })));
+    startWordDuelGame(room, host);
+  }
+  return room;
 }
 
 export function joinWordDuelRoom(room, value) {
@@ -52,10 +72,12 @@ export function joinWordDuelRoom(room, value) {
     room.updatedAt = Date.now();
     return existing;
   }
+  if (room.testMode) throw new WordDuelError("Las salas de prueba no aceptan otros jugadores", 409);
   if (room.status !== "lobby") throw new WordDuelError("La partida ya ha empezado", 409);
   if (room.players.length >= room.config.playerLimit) throw new WordDuelError("La sala está llena", 409);
   const player = createPlayer(identity);
   room.players.push(player);
+  if (room.players.length >= room.config.playerLimit) startWordDuelGame(room, room.players.find((item) => item.id === room.hostId));
   room.updatedAt = Date.now();
   return player;
 }
@@ -73,6 +95,7 @@ export function startWordDuelGame(room, player) {
   if (room.players.length < 2) throw new WordDuelError("Se necesitan al menos 2 jugadores", 409);
   room.status = "proposing";
   resetRound(room, 0);
+  prepareWordDuelBotProposals(room);
   room.updatedAt = Date.now();
 }
 
@@ -94,33 +117,12 @@ export function submitWordDuelGuess(room, player, rawWord) {
   const guess = validateWord(rawWord, currentLength(room));
   const target = room.proposals[room.assignments[player.id]];
   const targetSpelling = room.proposalSpellings?.[room.assignments[player.id]] || target;
-  const result = evaluateWordDuelGuess(guess, target);
   const displayedGuess = guess === target
     ? targetSpelling
     : String(rawWord || "").trim().toLocaleLowerCase("es").normalize("NFC");
-  board.guesses.push({ word: displayedGuess, normalizedWord: guess, result });
-  if (guess === target) {
-    board.solved = true;
-    board.finished = true;
-    const points = scoreFor(room.roundIndex, room.attemptIndex);
-    board.points = points;
-    player.roundScores[room.roundIndex] = points;
-    player.score = player.roundScores.reduce((sum, value) => sum + Number(value || 0), 0);
-  } else if (room.attemptIndex >= WORD_DUEL_MAX_ATTEMPTS - 1) {
-    board.finished = true;
-    player.roundScores[room.roundIndex] = 0;
-  }
-  room.roundEvents = [...(room.roundEvents || []), {
-    id: crypto.randomUUID(),
-    type: guess === target ? "correct" : "wrong",
-    playerId: player.id,
-    playerName: player.name,
-    playerEmoji: player.emoji,
-    guess: displayedGuess,
-    attemptNumber: room.attemptIndex + 1,
-    points: guess === target ? board.points : 0
-  }].slice(-30);
-  advanceAttemptWhenReady(room);
+  applyWordDuelGuess(room, player, guess, displayedGuess);
+  if (room.testMode) completeWordDuelTestBots(room);
+  else advanceAttemptWhenReady(room);
   room.updatedAt = Date.now();
 }
 
@@ -132,6 +134,7 @@ export function advanceWordDuelRound(room, player) {
   } else {
     resetRound(room, room.roundIndex + 1);
     room.status = "proposing";
+    prepareWordDuelBotProposals(room);
   }
   room.updatedAt = Date.now();
 }
@@ -141,6 +144,7 @@ export function restartWordDuelGame(room, player) {
   room.players.forEach((item) => { item.score = 0; item.roundScores = Array(5).fill(null); });
   room.status = "proposing";
   resetRound(room, 0);
+  prepareWordDuelBotProposals(room);
   room.updatedAt = Date.now();
 }
 
@@ -181,7 +185,7 @@ export function wordDuelRoomResponse(room, viewer = null) {
   const length = currentLength(room);
   const rankings = [...room.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "es"));
   return {
-    roomName: room.roomName, config: room.config, status: room.status,
+    roomName: room.roomName, config: room.config, status: room.status, testMode: Boolean(room.testMode),
     roundIndex: room.roundIndex, roundNumber: room.roundIndex + 1, wordLength: length,
     attemptIndex: room.attemptIndex, maxAttempts: WORD_DUEL_MAX_ATTEMPTS,
     proposedCount: Object.keys(room.proposals || {}).length,
@@ -189,7 +193,7 @@ export function wordDuelRoomResponse(room, viewer = null) {
     events: room.roundEvents || [],
     players: room.players.map((player) => ({
       id: player.id, name: player.name, emoji: player.emoji, score: player.score,
-      roundScores: player.roundScores, isHost: player.id === room.hostId,
+      roundScores: player.roundScores, isHost: player.id === room.hostId, isTestPlayer: Boolean(player.isTestPlayer),
       hasProposed: Boolean(room.proposals?.[player.id]),
       submittedAttempt: room.boards?.[player.id]?.guesses?.length > room.attemptIndex || Boolean(room.boards?.[player.id]?.finished),
       solved: Boolean(room.boards?.[player.id]?.solved)
@@ -289,6 +293,70 @@ function beginGuessing(room) {
   room.boards = Object.fromEntries(ids.map((id) => [id, { guesses: [], solved: false, finished: false, points: 0 }]));
   room.attemptIndex = 0;
   room.status = "guessing";
+}
+
+function prepareWordDuelBotProposals(room) {
+  if (!room.testMode || room.status !== "proposing") return;
+  const words = WORD_DUEL_BOT_WORDS[room.roundIndex] || WORD_DUEL_BOT_WORDS.at(-1);
+  room.players.filter((player) => player.isTestPlayer).forEach((bot, index) => {
+    const spelling = words[index % words.length];
+    room.proposals[bot.id] = normalizeWordDuelText(spelling);
+    room.proposalSpellings[bot.id] = spelling;
+  });
+  if (room.players.every((player) => room.proposals[player.id])) beginGuessing(room);
+}
+
+function completeWordDuelTestBots(room) {
+  const humans = room.players.filter((player) => !player.isTestPlayer);
+  while (room.status === "guessing") {
+    const attemptIndex = room.attemptIndex;
+    room.players.filter((player) => player.isTestPlayer).forEach((bot, index) => {
+      const board = room.boards[bot.id];
+      if (!board || board.finished || board.guesses.length !== attemptIndex) return;
+      const targetPlayerId = room.assignments[bot.id];
+      const target = room.proposals[targetPlayerId];
+      const targetSpelling = room.proposalSpellings?.[targetPlayerId] || target;
+      const solveAt = (index % 4) + 1;
+      const solvedGuess = attemptIndex + 1 >= solveAt;
+      const guess = solvedGuess ? target : "x".repeat(currentLength(room));
+      applyWordDuelGuess(room, bot, guess, solvedGuess ? targetSpelling : guess);
+    });
+    advanceAttemptWhenReady(room);
+    if (room.status !== "guessing") break;
+    const humanNeedsInput = humans.some((player) => {
+      const board = room.boards[player.id];
+      return board && !board.finished && board.guesses.length === room.attemptIndex;
+    });
+    if (humanNeedsInput) break;
+  }
+}
+
+function applyWordDuelGuess(room, player, guess, displayedGuess) {
+  const board = room.boards[player.id];
+  const target = room.proposals[room.assignments[player.id]];
+  const result = evaluateWordDuelGuess(guess, target);
+  board.guesses.push({ word: displayedGuess, normalizedWord: guess, result });
+  if (guess === target) {
+    board.solved = true;
+    board.finished = true;
+    const points = scoreFor(room.roundIndex, room.attemptIndex);
+    board.points = points;
+    player.roundScores[room.roundIndex] = points;
+    player.score = player.roundScores.reduce((sum, value) => sum + Number(value || 0), 0);
+  } else if (room.attemptIndex >= WORD_DUEL_MAX_ATTEMPTS - 1) {
+    board.finished = true;
+    player.roundScores[room.roundIndex] = 0;
+  }
+  room.roundEvents = [...(room.roundEvents || []), {
+    id: crypto.randomUUID(),
+    type: guess === target ? "correct" : "wrong",
+    playerId: player.id,
+    playerName: player.name,
+    playerEmoji: player.emoji,
+    guess: displayedGuess,
+    attemptNumber: room.attemptIndex + 1,
+    points: guess === target ? board.points : 0
+  }].slice(-30);
 }
 
 function derange(ids) {

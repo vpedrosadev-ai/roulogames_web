@@ -12,10 +12,10 @@ const lobbyMessage = $("#wordDuelLobbyMessage");
 const gameMessage = $("#wordDuelGameMessage");
 const proposalForm = $("#wordDuelProposalForm");
 const proposalInput = $("#wordDuelProposalInput");
+const proposalHint = $("#wordDuelProposalHint");
 const boardPanel = $("#wordDuelBoardPanel");
 const guessForm = $("#wordDuelGuessForm");
 const guessInput = $("#wordDuelGuessInput");
-const startButton = $("#wordDuelStartButton");
 const advanceButton = $("#wordDuelAdvanceButton");
 const ranking = $("#wordDuelRanking");
 const proposalWaiting = $("#wordDuelProposalWaiting");
@@ -37,6 +37,7 @@ $("#wordDuelChooseCreate").addEventListener("click", () => showLobbyForm(createF
 $("#wordDuelChooseJoin").addEventListener("click", () => showLobbyForm(joinForm));
 document.querySelectorAll("[data-word-duel-back]").forEach((button) => button.addEventListener("click", resetLobby));
 $("#wordDuelRefreshRooms").addEventListener("click", loadAvailableRooms);
+$("#wordDuelCreateTestMode").addEventListener("change", syncTestModeFields);
 
 createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -47,7 +48,9 @@ createForm.addEventListener("submit", async (event) => {
         roomName: $("#wordDuelCreateRoomName").value,
         name: $("#wordDuelCreatePlayerName").value,
         emoji: $("#wordDuelCreateEmoji").value,
-        playerLimit: Number($("#wordDuelCreatePlayerLimit").value)
+        playerLimit: Number($("#wordDuelCreatePlayerLimit").value),
+        testMode: $("#wordDuelCreateTestMode").checked,
+        botCount: Number($("#wordDuelCreateBotCount").value)
       }
     });
     enterRoom(payload);
@@ -68,9 +71,18 @@ joinForm.addEventListener("submit", async (event) => {
 
 proposalForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await action("proposal", { word: proposalInput.value });
+  resetProposalHint();
+  const accepted = await action("proposal", { word: proposalInput.value }, proposalHint);
+  if (!accepted) {
+    proposalHint.classList.add("is-error");
+    proposalInput.focus();
+    proposalInput.select();
+    return;
+  }
   proposalInput.value = "";
+  resetProposalHint();
 });
+proposalInput.addEventListener("input", resetProposalHint);
 
 guessForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -78,7 +90,6 @@ guessForm.addEventListener("submit", async (event) => {
   guessInput.value = "";
 });
 
-startButton.addEventListener("click", () => action("start"));
 advanceButton.addEventListener("click", () => action(room?.status === "finished" ? "restart" : "advance"));
 restartButton.addEventListener("click", () => action("restart"));
 $("#wordDuelMyBoardButton").addEventListener("click", () => { selectedPlayerId = session?.playerId || ""; renderRoom(); });
@@ -172,15 +183,15 @@ function startPolling() { stopPolling(); pollTimer = setInterval(pollRoom, 1100)
 function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
 function stopRoomDirectoryPolling() { clearInterval(roomDirectoryTimer); roomDirectoryTimer = null; }
 
-async function action(name, extra = {}) {
+async function action(name, extra = {}, output = gameMessage) {
   if (!session) return;
-  await perform(async () => {
+  return perform(async () => {
     const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}/${name}`, {
       method: "POST", body: { playerId: session.playerId, token: session.token, ...extra }
     });
     showNewEvents(payload);
     room = payload; renderRoom();
-  }, gameMessage);
+  }, output);
 }
 
 function renderRoom() {
@@ -195,10 +206,9 @@ function renderRoom() {
   proposalInput.maxLength = room.wordLength; proposalInput.minLength = room.wordLength; proposalInput.placeholder = `${room.wordLength} letras`;
   guessInput.maxLength = room.wordLength; guessInput.minLength = room.wordLength; guessInput.placeholder = `${room.wordLength} letras`;
   renderPlayers(me);
-  startButton.hidden = !(room.status === "lobby" && session.isHost);
-  startButton.disabled = room.players.length < 2;
-  startButton.textContent = room.players.length < 2 ? "Esperando otro jugador" : "Empezar partida";
-  proposalForm.hidden = !(room.status === "proposing" && !me.hasProposed);
+  const shouldShowProposal = room.status === "proposing" && !me.hasProposed;
+  proposalForm.hidden = !shouldShowProposal;
+  proposalForm.style.display = shouldShowProposal ? "" : "none";
   proposalWaiting.hidden = !(room.status === "proposing" && me.hasProposed);
   if (!proposalWaiting.hidden) {
     $("#wordDuelSubmittedWord").textContent = room.submittedWord.toLocaleUpperCase("es");
@@ -270,7 +280,7 @@ function renderRanking() {
 }
 
 function statusMessage(me) {
-  if (room.status === "lobby") return `${room.players.length}/${room.config.playerLimit} jugadores en la sala`;
+  if (room.status === "lobby") return `${room.players.length}/${room.config.playerLimit} jugadores. La partida comenzará cuando se llene la sala.`;
   if (room.status === "proposing") return me.hasProposed ? `Palabra enviada. Esperando ${room.players.length - room.proposedCount} jugador(es)…` : `Escribe una palabra de ${room.wordLength} letras.`;
   if (room.status === "guessing") {
     if (me.solved) return "¡Palabra resuelta! Esperando al resto…";
@@ -281,12 +291,23 @@ function statusMessage(me) {
   return "Partida terminada. ¡Tenemos podio!";
 }
 
+function resetProposalHint() {
+  proposalHint.classList.remove("is-error");
+  proposalHint.textContent = "Otro jugador tendrá que adivinarla.";
+}
+
 function playerStatus(player) {
-  if (room.status === "lobby") return player.isHost ? "Anfitrión" : "En sala";
+  if (room.status === "lobby") return player.isHost ? "Anfitrión" : player.isTestPlayer ? "Bot" : "En sala";
   if (room.status === "proposing") return player.hasProposed ? "Palabra lista" : "Pensando…";
   if (player.solved) return "Resuelta";
   if (player.submittedAttempt) return "Intento listo";
   return "Jugando…";
+}
+
+function syncTestModeFields() {
+  const enabled = $("#wordDuelCreateTestMode").checked;
+  $("#wordDuelBotCountField").hidden = !enabled;
+  $("#wordDuelCreatePlayerLimit").closest("label").hidden = enabled;
 }
 
 async function loadAvailableRooms() {
@@ -385,7 +406,7 @@ async function api(path, options = {}) {
 async function perform(callback, output) {
   if (requestPending) return;
   requestPending = true; output.textContent = "";
-  try { await callback(); } catch (error) { output.textContent = error.message; }
+  try { await callback(); return true; } catch (error) { output.textContent = error.message; return false; }
   finally { requestPending = false; }
 }
 
