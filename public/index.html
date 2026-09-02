@@ -691,7 +691,7 @@
           </div>
         </section>
 
-        <section id="wordDuelView" class="view word-duel-view" aria-labelledby="wordDuelTitle" hidden>
+        <section id="wordDuelView" class="view word-duel-view" aria-label="Duelo de Palabras" hidden>
           <section id="wordDuelLobby" class="word-duel-lobby">
             <header class="word-duel-hero">
               <div class="word-duel-logo" aria-hidden="true"><span>D</span><span>U</span><span>E</span><span>L</span><span>O</span></div>
@@ -711,6 +711,10 @@
             </form>
             <form id="wordDuelJoinForm" class="word-duel-form" hidden>
               <h2>Unirse a sala</h2>
+              <section class="word-duel-room-directory" aria-labelledby="wordDuelRoomsTitle">
+                <header><strong id="wordDuelRoomsTitle">Salas disponibles</strong><button id="wordDuelRefreshRooms" type="button" class="secondary compact-button">Actualizar</button></header>
+                <div id="wordDuelAvailableRooms" class="word-duel-available-rooms"></div>
+              </section>
               <label>Nombre de la sala<input id="wordDuelJoinRoomName" maxlength="16" required placeholder="Sala verde"></label>
               <div class="word-duel-identity"><select id="wordDuelJoinEmoji" aria-label="Emoji"></select><input id="wordDuelJoinPlayerName" maxlength="16" required placeholder="Tu nombre"></div>
               <div class="word-duel-form-actions"><button type="button" class="secondary" data-word-duel-back>Atrás</button><button type="submit">Entrar</button></div>
@@ -721,9 +725,9 @@
           <section id="wordDuelGame" class="word-duel-game" hidden>
             <header class="word-duel-game-header">
               <div><span>Sala</span><strong id="wordDuelRoomLabel"></strong></div>
-              <div class="word-duel-header-actions"><button id="wordDuelShareButton" class="secondary" type="button">Copiar enlace</button><button id="wordDuelLeaveButton" class="secondary" type="button">Atrás</button></div>
+              <div class="word-duel-header-actions"><button id="wordDuelShareButton" class="secondary" type="button">Copiar enlace</button><button id="wordDuelRestartButton" class="secondary" type="button" hidden>Reiniciar</button><button id="wordDuelLeaveButton" class="secondary" type="button">Atrás</button></div>
             </header>
-            <div class="word-duel-round-strip"><strong id="wordDuelRoundLabel">Ronda 1/5</strong><span id="wordDuelLengthLabel">3 letras</span><span id="wordDuelAttemptLabel"></span></div>
+            <div class="word-duel-round-strip"><strong id="wordDuelRoundLabel">Ronda 1/5</strong><span id="wordDuelLengthLabel">4 letras</span><span id="wordDuelAttemptLabel"></span></div>
             <div class="word-duel-layout">
               <aside><h2>Jugadores</h2><div id="wordDuelPlayers" class="word-duel-players"></div></aside>
               <main class="word-duel-stage">
@@ -732,10 +736,14 @@
                   <h2>Propón una palabra</h2><p>Otro jugador tendrá que adivinarla.</p>
                   <input id="wordDuelProposalInput" required autocomplete="off" autocapitalize="none" spellcheck="false"><button type="submit">Confirmar palabra</button>
                 </form>
+                <section id="wordDuelProposalWaiting" class="word-duel-waiting-card" hidden>
+                  <span>Palabra enviada</span><strong id="wordDuelSubmittedWord"></strong><p id="wordDuelProposalPending"></p>
+                </section>
                 <section id="wordDuelBoardPanel" hidden>
                   <header class="word-duel-board-head"><div><span id="wordDuelBoardOwner"></span><strong id="wordDuelRevealedWord"></strong></div><button id="wordDuelMyBoardButton" type="button" class="secondary" hidden>Volver a mi tablero</button></header>
                   <div id="wordDuelGrid" class="word-duel-grid" aria-label="Tablero Wordle"></div>
                   <form id="wordDuelGuessForm" class="word-duel-guess-form"><input id="wordDuelGuessInput" required autocomplete="off" autocapitalize="none" spellcheck="false"><button type="submit">Probar</button></form>
+                  <p id="wordDuelGuessWaiting" class="word-duel-guess-waiting" hidden>Esperando otros jugadores</p>
                 </section>
                 <section id="wordDuelRanking" class="word-duel-ranking" hidden></section>
                 <button id="wordDuelStartButton" type="button" class="word-duel-primary">Empezar partida</button>

@@ -634,7 +634,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(res, masterWordRooms, isMasterWordHostConnected, isLobbyRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(req, res);
-    if (req.method === "GET" && url.pathname === "/api/word-duel/rooms") return listActiveGameRooms(res, wordDuelRooms, isWordDuelHostConnected, isLobbyRoomJoinable);
+    if (req.method === "GET" && url.pathname === "/api/word-duel/rooms") return listWordDuelRoomsNode(res);
     if (req.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
@@ -1387,6 +1387,26 @@ async function createWordDuelRoomNode(req, res) {
     wordDuelRooms.set(room.key, room);
     return sendJson(res, wordDuelRoomResponse(room, room.players[0]), 201);
   } catch (error) { return sendWordDuelErrorNode(res, error); }
+}
+
+function listWordDuelRoomsNode(res) {
+  const rooms = [...wordDuelRooms.values()]
+    .filter((room) => room.status === "lobby" && isWordDuelHostConnected(room))
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+    .map(wordDuelDirectoryEntry);
+  return sendJson(res, { rooms });
+}
+
+function wordDuelDirectoryEntry(room) {
+  const playerLimit = Number(room.config?.playerLimit || 10);
+  return {
+    roomName: room.roomName,
+    playerCount: room.players.length,
+    playerLimit,
+    full: room.players.length >= playerLimit,
+    players: room.players.map((player) => player.name),
+    updatedAt: Number(room.updatedAt || room.createdAt || 0)
+  };
 }
 
 function getWordDuelRoomNode(res, roomName, searchParams) {

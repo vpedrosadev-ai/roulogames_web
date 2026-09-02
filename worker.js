@@ -595,7 +595,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(env, "masterword", isMasterWordHostConnected, isLobbyRoomJoinable);
       if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
-      if (request.method === "GET" && url.pathname === "/api/word-duel/rooms") return listActiveGameRooms(env, "wordduel", isWordDuelHostConnected, isLobbyRoomJoinable);
+      if (request.method === "GET" && url.pathname === "/api/word-duel/rooms") return listWordDuelRoomsWorker(env);
       if (request.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
       if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
@@ -1349,6 +1349,27 @@ async function createWordDuelRoomWorker(request, env) {
     await saveWordDuelRoom(room, env, true);
     return json(wordDuelRoomResponse(room, room.players[0]), 201);
   } catch (error) { return sendWordDuelErrorWorker(error); }
+}
+
+async function listWordDuelRoomsWorker(env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const result = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson FROM multiplayer_rooms WHERE room_key LIKE 'wordduel:%'").all();
+  const rooms = (result.results || [])
+    .map((row) => { try { return JSON.parse(row.stateJson); } catch { return null; } })
+    .filter((room) => room?.status === "lobby" && isWordDuelHostConnected(room))
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+    .map((room) => {
+      const playerLimit = Number(room.config?.playerLimit || 10);
+      return {
+        roomName: room.roomName,
+        playerCount: room.players.length,
+        playerLimit,
+        full: room.players.length >= playerLimit,
+        players: room.players.map((player) => player.name),
+        updatedAt: Number(room.updatedAt || room.createdAt || 0)
+      };
+    });
+  return json({ rooms });
 }
 
 async function getWordDuelRoomWorker(roomName, request, env) {

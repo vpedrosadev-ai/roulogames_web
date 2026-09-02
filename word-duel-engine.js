@@ -1,5 +1,8 @@
-export const WORD_DUEL_ROUND_LENGTHS = [3, 4, 5, 6, 7];
+import { SPANISH_WORDS_4_TO_8 } from "./spanish-words-4-8.js";
+
+export const WORD_DUEL_ROUND_LENGTHS = [4, 5, 6, 7, 8];
 export const WORD_DUEL_MAX_ATTEMPTS = 6;
+const SPANISH_ACCENT_CORRECTIONS = buildSpanishAccentCorrections();
 
 export class WordDuelError extends Error {
   constructor(message, status = 400) {
@@ -33,7 +36,7 @@ export function createWordDuelRoom(value) {
   const now = Date.now();
   return {
     key, roomName, hostId: host.id, config: { playerLimit }, status: "lobby",
-    roundIndex: 0, attemptIndex: 0, proposals: {}, assignments: {}, boards: {},
+    roundIndex: 0, attemptIndex: 0, proposals: {}, proposalSpellings: {}, assignments: {}, boards: {}, roundEvents: [],
     players: [host], createdAt: now, updatedAt: now
   };
 }
@@ -75,8 +78,10 @@ export function startWordDuelGame(room, player) {
 
 export function submitWordDuelProposal(room, player, rawWord) {
   if (room.status !== "proposing") throw new WordDuelError("Ahora no se proponen palabras", 409);
-  const word = validateWord(rawWord, currentLength(room));
-  room.proposals[player.id] = word;
+  const word = validateProposalWord(rawWord, currentLength(room));
+  room.proposals[player.id] = word.normalized;
+  room.proposalSpellings = room.proposalSpellings || {};
+  room.proposalSpellings[player.id] = word.spelling;
   if (room.players.every((item) => room.proposals[item.id])) beginGuessing(room);
   room.updatedAt = Date.now();
 }
@@ -88,8 +93,12 @@ export function submitWordDuelGuess(room, player, rawWord) {
   if (board.guesses.length !== room.attemptIndex) throw new WordDuelError("Ya has enviado este intento", 409);
   const guess = validateWord(rawWord, currentLength(room));
   const target = room.proposals[room.assignments[player.id]];
+  const targetSpelling = room.proposalSpellings?.[room.assignments[player.id]] || target;
   const result = evaluateWordDuelGuess(guess, target);
-  board.guesses.push({ word: guess, result });
+  const displayedGuess = guess === target
+    ? targetSpelling
+    : String(rawWord || "").trim().toLocaleLowerCase("es").normalize("NFC");
+  board.guesses.push({ word: displayedGuess, normalizedWord: guess, result });
   if (guess === target) {
     board.solved = true;
     board.finished = true;
@@ -101,6 +110,16 @@ export function submitWordDuelGuess(room, player, rawWord) {
     board.finished = true;
     player.roundScores[room.roundIndex] = 0;
   }
+  room.roundEvents = [...(room.roundEvents || []), {
+    id: crypto.randomUUID(),
+    type: guess === target ? "correct" : "wrong",
+    playerId: player.id,
+    playerName: player.name,
+    playerEmoji: player.emoji,
+    guess: displayedGuess,
+    attemptNumber: room.attemptIndex + 1,
+    points: guess === target ? board.points : 0
+  }].slice(-30);
   advanceAttemptWhenReady(room);
   room.updatedAt = Date.now();
 }
@@ -139,7 +158,10 @@ export function leaveWordDuelPlayer(room, player) {
   if (player.id === room.hostId) return { closeRoom: true };
   room.players = room.players.filter((item) => item.id !== player.id);
   delete room.boards?.[player.id];
-  if (room.status !== "guessing") delete room.proposals?.[player.id];
+  if (room.status !== "guessing") {
+    delete room.proposals?.[player.id];
+    delete room.proposalSpellings?.[player.id];
+  }
   delete room.assignments?.[player.id];
   if (room.players.length < 2 && room.status !== "lobby") room.status = "finished";
   else if (room.status === "proposing" && room.players.every((item) => room.proposals[item.id])) beginGuessing(room);
@@ -163,6 +185,8 @@ export function wordDuelRoomResponse(room, viewer = null) {
     roundIndex: room.roundIndex, roundNumber: room.roundIndex + 1, wordLength: length,
     attemptIndex: room.attemptIndex, maxAttempts: WORD_DUEL_MAX_ATTEMPTS,
     proposedCount: Object.keys(room.proposals || {}).length,
+    submittedWord: viewer ? room.proposalSpellings?.[viewer.id] || room.proposals?.[viewer.id] || "" : "",
+    events: room.roundEvents || [],
     players: room.players.map((player) => ({
       id: player.id, name: player.name, emoji: player.emoji, score: player.score,
       roundScores: player.roundScores, isHost: player.id === room.hostId,
@@ -172,7 +196,8 @@ export function wordDuelRoomResponse(room, viewer = null) {
     })),
     boards: room.players.map((player) => {
       const board = room.boards?.[player.id] || { guesses: [], solved: false, finished: false, points: 0 };
-      const target = room.proposals?.[room.assignments?.[player.id]] || "";
+      const targetPlayerId = room.assignments?.[player.id];
+      const target = room.proposalSpellings?.[targetPlayerId] || room.proposals?.[targetPlayerId] || "";
       const reveal = room.status === "round-result" || room.status === "finished" || (viewer && player.id !== viewer.id);
       return { playerId: player.id, guesses: board.guesses, solved: board.solved, finished: board.finished, points: board.points, target: reveal ? target : "", wordLength: length };
     }),
@@ -209,7 +234,30 @@ function makeToken() {
 }
 
 function normalizeWordDuelText(value) {
-  return String(value || "").trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return String(value || "").trim().toLocaleLowerCase("es").normalize("NFD").replace(/n\u0303/g, "ñ").replace(/[\u0300-\u036f]/g, "");
+}
+
+function validateProposalWord(value, length) {
+  const spelling = String(value || "").trim().toLocaleLowerCase("es").normalize("NFC");
+  if (!/^[a-záéíóúüñ]+$/.test(spelling) || Array.from(spelling).length !== length) {
+    throw new WordDuelError(`La palabra debe tener ${length} letras`);
+  }
+  const correctedSpelling = SPANISH_WORDS_4_TO_8.has(spelling)
+    ? spelling
+    : SPANISH_ACCENT_CORRECTIONS.get(normalizeWordDuelText(spelling));
+  if (!correctedSpelling) {
+    throw new WordDuelError(`No encontramos «${spelling}» en el diccionario. Revisa la ortografía.`);
+  }
+  return { spelling: correctedSpelling, normalized: normalizeWordDuelText(correctedSpelling) };
+}
+
+function buildSpanishAccentCorrections() {
+  const corrections = new Map();
+  SPANISH_WORDS_4_TO_8.forEach((word) => {
+    const normalized = normalizeWordDuelText(word);
+    if (word !== normalized && !corrections.has(normalized)) corrections.set(normalized, word);
+  });
+  return corrections;
 }
 
 function validateWord(value, length) {
@@ -228,8 +276,10 @@ function resetRound(room, roundIndex) {
   room.roundIndex = roundIndex;
   room.attemptIndex = 0;
   room.proposals = {};
+  room.proposalSpellings = {};
   room.assignments = {};
   room.boards = {};
+  room.roundEvents = [];
 }
 
 function beginGuessing(room) {

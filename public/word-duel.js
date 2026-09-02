@@ -18,11 +18,16 @@ const guessInput = $("#wordDuelGuessInput");
 const startButton = $("#wordDuelStartButton");
 const advanceButton = $("#wordDuelAdvanceButton");
 const ranking = $("#wordDuelRanking");
+const proposalWaiting = $("#wordDuelProposalWaiting");
+const guessWaiting = $("#wordDuelGuessWaiting");
+const restartButton = $("#wordDuelRestartButton");
 let session = readSession();
 let room = null;
 let pollTimer = null;
+let roomDirectoryTimer = null;
 let selectedPlayerId = "";
 let requestPending = false;
+let seenEventIds = new Set();
 
 for (const select of [$("#wordDuelCreateEmoji"), $("#wordDuelJoinEmoji")]) {
   select.replaceChildren(...EMOJIS.map((emoji) => new Option(emoji, emoji)));
@@ -31,6 +36,7 @@ for (const select of [$("#wordDuelCreateEmoji"), $("#wordDuelJoinEmoji")]) {
 $("#wordDuelChooseCreate").addEventListener("click", () => showLobbyForm(createForm));
 $("#wordDuelChooseJoin").addEventListener("click", () => showLobbyForm(joinForm));
 document.querySelectorAll("[data-word-duel-back]").forEach((button) => button.addEventListener("click", resetLobby));
+$("#wordDuelRefreshRooms").addEventListener("click", loadAvailableRooms);
 
 createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -74,6 +80,7 @@ guessForm.addEventListener("submit", async (event) => {
 
 startButton.addEventListener("click", () => action("start"));
 advanceButton.addEventListener("click", () => action(room?.status === "finished" ? "restart" : "advance"));
+restartButton.addEventListener("click", () => action("restart"));
 $("#wordDuelMyBoardButton").addEventListener("click", () => { selectedPlayerId = session?.playerId || ""; renderRoom(); });
 $("#wordDuelShareButton").addEventListener("click", copyInvite);
 $("#wordDuelLeaveButton").addEventListener("click", leaveRoom);
@@ -83,7 +90,7 @@ document.addEventListener("click", (event) => {
   if (!target) return;
   const active = target.dataset.viewTarget === "wordDuelView";
   document.body.classList.toggle("word-duel-active", active);
-  if (active) activateView(); else stopPolling();
+  if (active) activateView(); else { stopPolling(); stopRoomDirectoryPolling(); }
 });
 document.querySelectorAll("[data-home-link]").forEach((link) => link.addEventListener("click", () => {
   document.body.classList.remove("word-duel-active");
@@ -111,22 +118,30 @@ function activateView() {
 }
 
 function showLobbyForm(form) {
+  stopRoomDirectoryPolling();
   choice.hidden = true;
   createForm.hidden = form !== createForm;
   joinForm.hidden = form !== joinForm;
   lobbyMessage.textContent = "";
   form.querySelector("input")?.focus();
+  if (form === joinForm) {
+    void loadAvailableRooms();
+    roomDirectoryTimer = setInterval(loadAvailableRooms, 3000);
+  }
 }
 
 function resetLobby() {
+  stopRoomDirectoryPolling();
   lobby.hidden = false; game.hidden = true; choice.hidden = false;
   createForm.hidden = true; joinForm.hidden = true; lobbyMessage.textContent = "";
 }
 
 function enterRoom(payload) {
+  stopRoomDirectoryPolling();
   room = payload;
   session = { roomName: payload.roomName, playerId: payload.player.id, token: payload.player.token, isHost: payload.player.isHost };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  seenEventIds = new Set((payload.events || []).map((event) => event.id));
   selectedPlayerId = session.playerId;
   const url = new URL(location.href); url.searchParams.set("wordduel", payload.roomName); history.replaceState({}, "", url);
   showGame(); renderRoom(); startPolling();
@@ -138,7 +153,14 @@ async function pollRoom() {
   if (!session || requestPending || view.hidden) return;
   try {
     const params = new URLSearchParams({ playerId: session.playerId, token: session.token });
-    room = await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}?${params}`);
+    const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}?${params}`);
+    if (!payload.player) {
+      clearSession();
+      lobbyMessage.textContent = "Tu sesión ha sido sustituida por otro acceso con el mismo nombre.";
+      return;
+    }
+    showNewEvents(payload, !room);
+    room = payload;
     renderRoom();
   } catch (error) {
     gameMessage.textContent = error.message;
@@ -148,6 +170,7 @@ async function pollRoom() {
 
 function startPolling() { stopPolling(); pollTimer = setInterval(pollRoom, 1100); }
 function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
+function stopRoomDirectoryPolling() { clearInterval(roomDirectoryTimer); roomDirectoryTimer = null; }
 
 async function action(name, extra = {}) {
   if (!session) return;
@@ -155,6 +178,7 @@ async function action(name, extra = {}) {
     const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}/${name}`, {
       method: "POST", body: { playerId: session.playerId, token: session.token, ...extra }
     });
+    showNewEvents(payload);
     room = payload; renderRoom();
   }, gameMessage);
 }
@@ -175,11 +199,18 @@ function renderRoom() {
   startButton.disabled = room.players.length < 2;
   startButton.textContent = room.players.length < 2 ? "Esperando otro jugador" : "Empezar partida";
   proposalForm.hidden = !(room.status === "proposing" && !me.hasProposed);
-  boardPanel.hidden = !["guessing", "round-result"].includes(room.status);
+  proposalWaiting.hidden = !(room.status === "proposing" && me.hasProposed);
+  if (!proposalWaiting.hidden) {
+    $("#wordDuelSubmittedWord").textContent = room.submittedWord.toLocaleUpperCase("es");
+    const pending = room.players.filter((player) => !player.hasProposed).map((player) => player.name);
+    $("#wordDuelProposalPending").textContent = pending.length ? `Faltan por enviar: ${pending.join(", ")}` : "Todos han enviado su palabra.";
+  }
+  boardPanel.hidden = room.status !== "guessing";
   ranking.hidden = !["round-result", "finished"].includes(room.status);
+  restartButton.hidden = !(session.isHost && room.status !== "lobby");
   advanceButton.hidden = !(session.isHost && ["round-result", "finished"].includes(room.status));
   advanceButton.textContent = room.status === "finished" ? "Nueva partida" : room.roundIndex === 4 ? "Ver resultado final" : "Siguiente ronda";
-  if (["guessing", "round-result"].includes(room.status)) renderBoard(me);
+  if (room.status === "guessing") renderBoard(me);
   if (["round-result", "finished"].includes(room.status)) renderRanking();
   gameMessage.textContent = statusMessage(me);
 }
@@ -192,7 +223,7 @@ function renderPlayers(me) {
     button.className = `word-duel-player-card${player.id === (selectedPlayerId || me.id) ? " is-selected" : ""}${player.submittedAttempt || player.hasProposed || player.solved ? " is-ready" : ""}`;
     button.innerHTML = `<span>${escapeHtml(player.emoji)}</span><span><strong>${escapeHtml(player.name)}${player.id === me.id ? " (tú)" : ""}</strong><small>${playerStatus(player)}</small></span><b>${player.score}</b>`;
     button.addEventListener("click", () => {
-      if (!["guessing", "round-result"].includes(room.status)) return;
+      if (room.status !== "guessing") return;
       selectedPlayerId = player.id; renderRoom();
     });
     fragment.append(button);
@@ -223,6 +254,7 @@ function renderBoard(me) {
   $("#wordDuelGrid").replaceChildren(...rows);
   const canGuess = ownerId === me.id && room.status === "guessing" && !me.submittedAttempt && !me.solved;
   guessForm.hidden = !canGuess;
+  guessWaiting.hidden = !(ownerId === me.id && room.status === "guessing" && !canGuess);
 }
 
 function renderRanking() {
@@ -230,7 +262,8 @@ function renderRanking() {
   title.textContent = room.status === "finished" ? "Podio final" : `Resultado · ronda ${room.roundNumber}`;
   const entries = room.ranking.map((player) => {
     const article = document.createElement("article"); article.className = "word-duel-rank";
-    article.innerHTML = `<strong>${player.rank <= 3 ? ["🥇", "🥈", "🥉"][player.rank - 1] : `#${player.rank}`}</strong><span>${escapeHtml(player.emoji)} ${escapeHtml(player.name)}</span><strong>${player.score} pt</strong>`;
+    const roundPoints = Number(player.roundScores?.[room.roundIndex] || 0);
+    article.innerHTML = `<strong>${player.rank <= 3 ? ["🥇", "🥈", "🥉"][player.rank - 1] : `#${player.rank}`}</strong><span>${escapeHtml(player.emoji)} ${escapeHtml(player.name)}<small>+${roundPoints} esta ronda</small></span><strong>${player.score} pt</strong>`;
     return article;
   });
   ranking.replaceChildren(title, ...entries);
@@ -256,6 +289,64 @@ function playerStatus(player) {
   return "Jugando…";
 }
 
+async function loadAvailableRooms() {
+  if (joinForm.hidden) return;
+  const container = $("#wordDuelAvailableRooms");
+  try {
+    const payload = await api("/api/word-duel/rooms");
+    const rooms = payload.rooms || [];
+    if (!rooms.length) {
+      const empty = document.createElement("p");
+      empty.className = "word-duel-empty-rooms";
+      empty.textContent = "No hay salas abiertas.";
+      container.replaceChildren(empty);
+      return;
+    }
+    const cards = rooms.map((availableRoom) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `word-duel-room-card${availableRoom.full ? " is-full" : ""}`;
+      button.innerHTML = `<span><strong>${escapeHtml(availableRoom.roomName)}</strong><small>${availableRoom.full ? "Completa · solo reingreso" : "Disponible"}</small></span><b>${availableRoom.playerCount}/${availableRoom.playerLimit}</b>`;
+      button.addEventListener("click", () => {
+        $("#wordDuelJoinRoomName").value = availableRoom.roomName;
+        container.querySelectorAll(".word-duel-room-card").forEach((card) => card.classList.toggle("is-selected", card === button));
+        $("#wordDuelJoinPlayerName").focus();
+      });
+      return button;
+    });
+    container.replaceChildren(...cards);
+  } catch (error) {
+    const message = document.createElement("p");
+    message.className = "word-duel-empty-rooms";
+    message.textContent = error.message;
+    container.replaceChildren(message);
+  }
+}
+
+function showNewEvents(payload, silent = false) {
+  const newEvents = (payload.events || []).filter((event) => event.id && !seenEventIds.has(event.id));
+  (payload.events || []).forEach((event) => seenEventIds.add(event.id));
+  if (silent) return;
+  newEvents.filter((event) => event.playerId !== session?.playerId).forEach((event, index) => {
+    let stack = document.querySelector(".word-duel-notifications");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.className = "word-duel-notifications";
+      stack.setAttribute("aria-live", "polite");
+      document.body.append(stack);
+    }
+    const notification = document.createElement("article");
+    notification.className = `word-duel-notification is-${event.type}`;
+    notification.style.setProperty("--notification-delay", `${index * 100}ms`);
+    notification.innerHTML = `<span>${escapeHtml(event.playerEmoji)}</span><div><strong>${escapeHtml(event.playerName)}</strong><small>${event.type === "correct" ? "ha acertado" : `ha fallado: ${escapeHtml(event.guess).toLocaleUpperCase("es")}`}</small></div><b>${event.type === "correct" ? `+${event.points}` : "✕"}</b>`;
+    stack.append(notification);
+    window.setTimeout(() => {
+      notification.remove();
+      if (!stack.children.length) stack.remove();
+    }, 3800 + index * 100);
+  });
+}
+
 async function copyInvite() {
   const url = new URL(location.href); url.search = ""; url.searchParams.set("wordduel", session.roomName);
   await navigator.clipboard.writeText(url.toString());
@@ -273,7 +364,7 @@ async function leaveRoom() {
 }
 
 function clearSession() {
-  stopPolling(); localStorage.removeItem(SESSION_KEY); session = null; room = null; selectedPlayerId = ""; resetLobby();
+  stopPolling(); stopRoomDirectoryPolling(); localStorage.removeItem(SESSION_KEY); session = null; room = null; selectedPlayerId = ""; resetLobby();
 }
 
 function readSession() {
