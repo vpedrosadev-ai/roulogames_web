@@ -9,6 +9,7 @@
     <link rel="preload" href="/images/you-tried.png" as="image">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/impostor-fixes.css">
+    <link rel="stylesheet" href="/word-duel.css">
   </head>
   <body>
     <div class="arcade-vinyl-field" aria-hidden="true">
@@ -54,6 +55,7 @@
         <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
         <button type="button" class="nav-link" data-view-target="wolfView"><span class="nav-icon wolf-nav-icon" aria-hidden="true">W</span>Hombres Lobo</button>
         <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
+        <button type="button" class="nav-link" data-view-target="wordDuelView"><span class="nav-icon" aria-hidden="true">W</span>Duelo de Palabras</button>
         <button type="button" class="nav-link" data-view-target="scoreboardView"><span class="nav-icon" aria-hidden="true">#</span>Tabla de puntuacion</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
       </nav>
@@ -118,6 +120,12 @@
               <strong>Palabra maestra</strong>
               <small id="homeMasterWordHint">Pistas secretas y palabras cooperativas</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMasterWordPlayers">Min. 3 players</small></em>
+            </button>
+            <button type="button" class="home-menu-card word-duel-home-card" data-view-target="wordDuelView">
+              <span aria-hidden="true">W</span>
+              <strong>Duelo de Palabras</strong>
+              <small>Wordle simultáneo en cinco rondas</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small>2–10 jugadores</small></em>
             </button>
             <button type="button" class="home-menu-card scoreboard-home-card" data-view-target="scoreboardView">
               <span aria-hidden="true">#</span>
@@ -681,6 +689,60 @@
             </header>
             <div id="masterWordResultBody" class="masterword-popup-content"></div>
           </div>
+        </section>
+
+        <section id="wordDuelView" class="view word-duel-view" aria-labelledby="wordDuelTitle" hidden>
+          <section id="wordDuelLobby" class="word-duel-lobby">
+            <header class="word-duel-hero">
+              <div class="word-duel-logo" aria-hidden="true"><span>D</span><span>U</span><span>E</span><span>L</span><span>O</span></div>
+              <h1 id="wordDuelTitle">Duelo de Palabras</h1>
+              <p>Cinco palabras, cinco rondas y todos jugando a la vez.</p>
+            </header>
+            <div id="wordDuelChoice" class="word-duel-choice">
+              <button type="button" id="wordDuelChooseCreate"><span>+</span><strong>Crear sala</strong></button>
+              <button type="button" id="wordDuelChooseJoin"><span>→</span><strong>Unirse</strong></button>
+            </div>
+            <form id="wordDuelCreateForm" class="word-duel-form" hidden>
+              <h2>Crear sala</h2>
+              <label>Nombre de la sala<input id="wordDuelCreateRoomName" maxlength="16" required placeholder="Sala verde"></label>
+              <div class="word-duel-identity"><select id="wordDuelCreateEmoji" aria-label="Emoji"></select><input id="wordDuelCreatePlayerName" maxlength="16" required placeholder="Tu nombre"></div>
+              <label>Jugadores<input id="wordDuelCreatePlayerLimit" type="number" min="2" max="10" value="4" required></label>
+              <div class="word-duel-form-actions"><button type="button" class="secondary" data-word-duel-back>Atrás</button><button type="submit">Crear</button></div>
+            </form>
+            <form id="wordDuelJoinForm" class="word-duel-form" hidden>
+              <h2>Unirse a sala</h2>
+              <label>Nombre de la sala<input id="wordDuelJoinRoomName" maxlength="16" required placeholder="Sala verde"></label>
+              <div class="word-duel-identity"><select id="wordDuelJoinEmoji" aria-label="Emoji"></select><input id="wordDuelJoinPlayerName" maxlength="16" required placeholder="Tu nombre"></div>
+              <div class="word-duel-form-actions"><button type="button" class="secondary" data-word-duel-back>Atrás</button><button type="submit">Entrar</button></div>
+            </form>
+            <p id="wordDuelLobbyMessage" class="message" role="status"></p>
+          </section>
+
+          <section id="wordDuelGame" class="word-duel-game" hidden>
+            <header class="word-duel-game-header">
+              <div><span>Sala</span><strong id="wordDuelRoomLabel"></strong></div>
+              <div class="word-duel-header-actions"><button id="wordDuelShareButton" class="secondary" type="button">Copiar enlace</button><button id="wordDuelLeaveButton" class="secondary" type="button">Atrás</button></div>
+            </header>
+            <div class="word-duel-round-strip"><strong id="wordDuelRoundLabel">Ronda 1/5</strong><span id="wordDuelLengthLabel">3 letras</span><span id="wordDuelAttemptLabel"></span></div>
+            <div class="word-duel-layout">
+              <aside><h2>Jugadores</h2><div id="wordDuelPlayers" class="word-duel-players"></div></aside>
+              <main class="word-duel-stage">
+                <p id="wordDuelGameMessage" class="message" role="status"></p>
+                <form id="wordDuelProposalForm" class="word-duel-action-card" hidden>
+                  <h2>Propón una palabra</h2><p>Otro jugador tendrá que adivinarla.</p>
+                  <input id="wordDuelProposalInput" required autocomplete="off" autocapitalize="none" spellcheck="false"><button type="submit">Confirmar palabra</button>
+                </form>
+                <section id="wordDuelBoardPanel" hidden>
+                  <header class="word-duel-board-head"><div><span id="wordDuelBoardOwner"></span><strong id="wordDuelRevealedWord"></strong></div><button id="wordDuelMyBoardButton" type="button" class="secondary" hidden>Volver a mi tablero</button></header>
+                  <div id="wordDuelGrid" class="word-duel-grid" aria-label="Tablero Wordle"></div>
+                  <form id="wordDuelGuessForm" class="word-duel-guess-form"><input id="wordDuelGuessInput" required autocomplete="off" autocapitalize="none" spellcheck="false"><button type="submit">Probar</button></form>
+                </section>
+                <section id="wordDuelRanking" class="word-duel-ranking" hidden></section>
+                <button id="wordDuelStartButton" type="button" class="word-duel-primary">Empezar partida</button>
+                <button id="wordDuelAdvanceButton" type="button" class="word-duel-primary" hidden>Siguiente ronda</button>
+              </main>
+            </div>
+          </section>
         </section>
 
         <section id="scoreboardView" class="view scoreboard-view" aria-labelledby="scoreboardTitle" hidden>
@@ -1464,5 +1526,6 @@
       </main>
     </div>
     <script src="/app.js" type="module"></script>
+    <script src="/word-duel.js" type="module"></script>
   </body>
 </html>

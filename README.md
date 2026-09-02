@@ -7,6 +7,7 @@ Browser party-game collection, including:
 - La resistencia
 - Hombres Lobo (automatic narrator)
 - Palabra maestra
+- Duelo de Palabras (Wordle multijugador simultáneo)
 - Shared scoreboard
 
 ## Development

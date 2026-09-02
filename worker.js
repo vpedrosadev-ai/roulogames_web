@@ -19,6 +19,22 @@ import {
   touchWolfRoom,
   wolfRoomResponse
 } from "./wolf-engine.js";
+import {
+  WordDuelError,
+  advanceWordDuelRound,
+  authenticateWordDuelPlayer,
+  createWordDuelRoom,
+  joinWordDuelRoom as addWordDuelPlayer,
+  kickWordDuelPlayer,
+  leaveWordDuelPlayer,
+  normalizeWordDuelKey,
+  restartWordDuelGame,
+  startWordDuelGame,
+  submitWordDuelGuess,
+  submitWordDuelProposal,
+  touchWordDuelRoom,
+  wordDuelRoomResponse
+} from "./word-duel-engine.js";
 
 const jobs = new Map();
 const MULTIPLAYER_TEST_IDENTITIES = [
@@ -579,6 +595,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(env, "masterword", isMasterWordHostConnected, isLobbyRoomJoinable);
       if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
+      if (request.method === "GET" && url.pathname === "/api/word-duel/rooms") return listActiveGameRooms(env, "wordduel", isWordDuelHostConnected, isLobbyRoomJoinable);
+      if (request.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
       if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
@@ -670,6 +688,11 @@ export default {
       if (request.method === "POST" && masterWordSkipMatch) return skipMasterWord(request, masterWordSkipMatch[1], env);
       const masterWordLeaveMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/leave$/);
       if (request.method === "POST" && masterWordLeaveMatch) return leaveMasterWordRoom(request, masterWordLeaveMatch[1], env);
+
+      const wordDuelRoomMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomWorker(wordDuelRoomMatch[1], request, env);
+      const wordDuelActionMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)\/(join|start|proposal|guess|advance|restart|kick|leave)$/);
+      if (request.method === "POST" && wordDuelActionMatch) return handleWordDuelActionWorker(request, wordDuelActionMatch[1], wordDuelActionMatch[2], env);
 
       const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
       if (request.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(scoreboardRoomMatch[1], request, env);
@@ -1315,6 +1338,103 @@ const impostor_WORD_SETS = {
     ["Georgina Rodriguez", "Jaca"], ["Risto Mejide", "Chester"], ["Chicote", "Cuchillo rojo"]
   ].map(([word, hint]) => ({ word, hint }))
 };
+
+async function createWordDuelRoomWorker(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  try {
+    const room = createWordDuelRoom(await request.json().catch(() => ({})));
+    const existing = await loadWordDuelRoom(room.key, env);
+    if (existing && isWordDuelHostConnected(existing)) return json({ error: "El nombre de sala ya está en uso" }, 409);
+    if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(wordDuelStorageKey(room.key)).run();
+    await saveWordDuelRoom(room, env, true);
+    return json(wordDuelRoomResponse(room, room.players[0]), 201);
+  } catch (error) { return sendWordDuelErrorWorker(error); }
+}
+
+async function getWordDuelRoomWorker(roomName, request, env) {
+  const room = await loadWordDuelRoom(normalizeWordDuelKey(roomName), env);
+  if (!room) return json({ error: "Sala no encontrada" }, 404);
+  const url = new URL(request.url);
+  const viewer = touchWordDuelRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  await saveWordDuelRoom(room, env).catch(() => false);
+  return json(wordDuelRoomResponse(room, viewer));
+}
+
+async function handleWordDuelActionWorker(request, roomName, action, env) {
+  const key = normalizeWordDuelKey(roomName);
+  const body = await request.json().catch(() => ({}));
+  if (action === "leave") {
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const room = await loadWordDuelRoom(key, env);
+        if (!room) return json({ ok: true });
+        const player = authenticateWordDuelPlayer(room, body);
+        if (leaveWordDuelPlayer(room, player).closeRoom) {
+          await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(wordDuelStorageKey(key)).run();
+          return json({ ok: true });
+        }
+        if (await saveWordDuelRoom(room, env)) return json({ ok: true });
+      }
+      throw new WordDuelError("La sala cambió al mismo tiempo; inténtalo de nuevo", 409);
+    } catch (error) { return sendWordDuelErrorWorker(error); }
+  }
+  try {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const room = await loadWordDuelRoom(key, env);
+      if (!room) return json({ error: "Sala no encontrada" }, 404);
+      let viewer;
+      if (action === "join") viewer = addWordDuelPlayer(room, body);
+      else {
+        viewer = authenticateWordDuelPlayer(room, body);
+        if (action === "start") startWordDuelGame(room, viewer);
+        else if (action === "proposal") submitWordDuelProposal(room, viewer, body.word);
+        else if (action === "guess") submitWordDuelGuess(room, viewer, body.word);
+        else if (action === "advance") advanceWordDuelRound(room, viewer);
+        else if (action === "restart") restartWordDuelGame(room, viewer);
+        else if (action === "kick") kickWordDuelPlayer(room, viewer, String(body.targetPlayerId || ""));
+      }
+      if (await saveWordDuelRoom(room, env)) return json(wordDuelRoomResponse(room, viewer), action === "join" ? 201 : 200);
+    }
+    throw new WordDuelError("La sala cambió al mismo tiempo; inténtalo de nuevo", 409);
+  } catch (error) { return sendWordDuelErrorWorker(error); }
+}
+
+async function loadWordDuelRoom(key, env) {
+  if (!key || !env.LEADERBOARD_DB) return null;
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(wordDuelStorageKey(key)).first();
+  return row?.stateJson ? { ...JSON.parse(row.stateJson), _version: row.updatedAt } : null;
+}
+
+async function saveWordDuelRoom(room, env, create = false) {
+  const storageKey = wordDuelStorageKey(room.key);
+  const version = `${Date.now()}-${crypto.randomUUID()}`;
+  const stored = { ...room };
+  delete stored._version;
+  if (create) {
+    await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(storageKey, JSON.stringify(stored), version).run();
+    room._version = version;
+    return true;
+  }
+  const result = await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+    .bind(JSON.stringify(stored), version, storageKey, room._version || "").run();
+  if (!result.meta?.changes) return false;
+  room._version = version;
+  return true;
+}
+
+function wordDuelStorageKey(key) { return `wordduel:${key}`; }
+
+function isWordDuelHostConnected(room) {
+  const host = room.players.find((player) => player.id === room.hostId);
+  return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
+}
+
+function sendWordDuelErrorWorker(error) {
+  if (error instanceof WordDuelError) return json({ error: error.message }, error.status);
+  throw error;
+}
 
 async function listScoreboardRooms(env) {
   if (!env.LEADERBOARD_DB) return json({ error: "Scoreboard storage is not configured" }, 503);

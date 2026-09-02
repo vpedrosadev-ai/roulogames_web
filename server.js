@@ -26,6 +26,22 @@ import {
   touchWolfRoom,
   wolfRoomResponse
 } from "./wolf-engine.js";
+import {
+  WordDuelError,
+  advanceWordDuelRound,
+  authenticateWordDuelPlayer,
+  createWordDuelRoom,
+  joinWordDuelRoom as addWordDuelPlayer,
+  kickWordDuelPlayer,
+  leaveWordDuelPlayer,
+  normalizeWordDuelKey,
+  restartWordDuelGame,
+  startWordDuelGame,
+  submitWordDuelGuess,
+  submitWordDuelProposal,
+  touchWordDuelRoom,
+  wordDuelRoomResponse
+} from "./word-duel-engine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -586,6 +602,7 @@ const impostorRooms = new Map();
 const resistanceRooms = new Map();
 const wolfRooms = new Map();
 const masterWordRooms = new Map();
+const wordDuelRooms = new Map();
 const scoreboardRooms = new Map();
 let spotifyToken = null;
 const songGroupCache = new Map();
@@ -617,6 +634,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/wolf/rooms") return createWolfRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/masterword/rooms") return listActiveGameRooms(res, masterWordRooms, isMasterWordHostConnected, isLobbyRoomJoinable);
     if (req.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(req, res);
+    if (req.method === "GET" && url.pathname === "/api/word-duel/rooms") return listActiveGameRooms(res, wordDuelRooms, isWordDuelHostConnected, isLobbyRoomJoinable);
+    if (req.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
     if (req.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return sendJson(res, getSongGroups());
@@ -703,6 +722,11 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && masterWordSkipMatch) return skipMasterWord(req, res, masterWordSkipMatch[1]);
     const masterWordLeaveMatch = url.pathname.match(/^\/api\/masterword\/rooms\/([^/]+)\/leave$/);
     if (req.method === "POST" && masterWordLeaveMatch) return leaveMasterWordRoom(req, res, masterWordLeaveMatch[1]);
+
+    const wordDuelRoomMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomNode(res, wordDuelRoomMatch[1], url.searchParams);
+    const wordDuelActionMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)\/(join|start|proposal|guess|advance|restart|kick|leave)$/);
+    if (req.method === "POST" && wordDuelActionMatch) return handleWordDuelActionNode(req, res, wordDuelActionMatch[1], wordDuelActionMatch[2]);
 
     const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
     if (req.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(res, scoreboardRoomMatch[1], url.searchParams);
@@ -1353,6 +1377,58 @@ function isLobbyRoomJoinable(room) {
 function isMultiplayerRoomJoinable(room) {
   const players = Array.isArray(room.players) ? room.players : [];
   return room.status !== "finished" && Number(room.roundIndex || 0) <= 0 && players.length < 12;
+}
+
+async function createWordDuelRoomNode(req, res) {
+  try {
+    const room = createWordDuelRoom(await readJson(req));
+    const existing = wordDuelRooms.get(room.key);
+    if (existing && isWordDuelHostConnected(existing)) return sendJson(res, { error: "El nombre de sala ya está en uso" }, 409);
+    wordDuelRooms.set(room.key, room);
+    return sendJson(res, wordDuelRoomResponse(room, room.players[0]), 201);
+  } catch (error) { return sendWordDuelErrorNode(res, error); }
+}
+
+function getWordDuelRoomNode(res, roomName, searchParams) {
+  const room = wordDuelRooms.get(normalizeWordDuelKey(roomName));
+  if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+  const viewer = touchWordDuelRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  return sendJson(res, wordDuelRoomResponse(room, viewer));
+}
+
+async function handleWordDuelActionNode(req, res, roomName, action) {
+  try {
+    const key = normalizeWordDuelKey(roomName);
+    const room = wordDuelRooms.get(key);
+    if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+    const body = await readJson(req);
+    if (action === "join") {
+      const player = addWordDuelPlayer(room, body);
+      return sendJson(res, wordDuelRoomResponse(room, player), 201);
+    }
+    const player = authenticateWordDuelPlayer(room, body);
+    if (action === "start") startWordDuelGame(room, player);
+    else if (action === "proposal") submitWordDuelProposal(room, player, body.word);
+    else if (action === "guess") submitWordDuelGuess(room, player, body.word);
+    else if (action === "advance") advanceWordDuelRound(room, player);
+    else if (action === "restart") restartWordDuelGame(room, player);
+    else if (action === "kick") kickWordDuelPlayer(room, player, String(body.targetPlayerId || ""));
+    else if (action === "leave") {
+      if (leaveWordDuelPlayer(room, player).closeRoom) wordDuelRooms.delete(key);
+      return sendJson(res, { ok: true });
+    }
+    return sendJson(res, wordDuelRoomResponse(room, player));
+  } catch (error) { return sendWordDuelErrorNode(res, error); }
+}
+
+function isWordDuelHostConnected(room) {
+  const host = room.players.find((player) => player.id === room.hostId);
+  return Boolean(host && Date.now() - Number(host.lastSeen || room.createdAt) < 30_000);
+}
+
+function sendWordDuelErrorNode(res, error) {
+  if (error instanceof WordDuelError) return sendJson(res, { error: error.message }, error.status);
+  throw error;
 }
 
 function isWolfRoomJoinable(room) {
