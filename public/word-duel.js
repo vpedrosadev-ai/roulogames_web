@@ -20,6 +20,8 @@ const advanceButton = $("#wordDuelAdvanceButton");
 const ranking = $("#wordDuelRanking");
 const proposalWaiting = $("#wordDuelProposalWaiting");
 const guessWaiting = $("#wordDuelGuessWaiting");
+const waitingPoints = $("#wordDuelWaitingPoints");
+const waitingWord = $("#wordDuelWaitingWord");
 const restartButton = $("#wordDuelRestartButton");
 let session = readSession();
 let room = null;
@@ -28,6 +30,7 @@ let roomDirectoryTimer = null;
 let selectedPlayerId = "";
 let requestPending = false;
 let seenEventIds = new Set();
+let mobileGuessScrollLock = null;
 
 for (const select of [$("#wordDuelCreateEmoji"), $("#wordDuelJoinEmoji")]) {
   select.replaceChildren(...EMOJIS.map((emoji) => new Option(emoji, emoji)));
@@ -89,6 +92,13 @@ guessForm.addEventListener("submit", async (event) => {
   await action("guess", { word: guessInput.value });
   guessInput.value = "";
 });
+guessInput.addEventListener("pointerdown", rememberMobileGuessScroll, { passive: true });
+guessInput.addEventListener("touchstart", rememberMobileGuessScroll, { passive: true });
+guessInput.addEventListener("focus", lockMobileGuessScroll);
+guessInput.addEventListener("blur", unlockMobileGuessScroll);
+window.addEventListener("scroll", restoreMobileGuessScroll, { passive: true });
+window.visualViewport?.addEventListener("resize", restoreMobileGuessScroll);
+window.visualViewport?.addEventListener("scroll", restoreMobileGuessScroll);
 
 advanceButton.addEventListener("click", () => action(room?.status === "finished" ? "restart" : "advance"));
 restartButton.addEventListener("click", () => action("restart"));
@@ -265,6 +275,11 @@ function renderBoard(me) {
   const canGuess = ownerId === me.id && room.status === "guessing" && !me.submittedAttempt && !me.solved;
   guessForm.hidden = !canGuess;
   guessWaiting.hidden = !(ownerId === me.id && room.status === "guessing" && !canGuess);
+  const finishedOwnRound = ownerId === me.id && Boolean(board.finished);
+  waitingPoints.hidden = !finishedOwnRound;
+  waitingPoints.textContent = finishedOwnRound ? `Has sumado ${Number(board.points || 0)} puntos en esta ronda` : "";
+  waitingWord.hidden = !(finishedOwnRound && !board.solved);
+  waitingWord.textContent = finishedOwnRound && !board.solved && board.target ? `La palabra era ${board.target.toLocaleUpperCase("es")}` : "";
 }
 
 function renderRanking() {
@@ -273,7 +288,9 @@ function renderRanking() {
   const entries = room.ranking.map((player) => {
     const article = document.createElement("article"); article.className = "word-duel-rank";
     const roundPoints = Number(player.roundScores?.[room.roundIndex] || 0);
-    article.innerHTML = `<strong>${player.rank <= 3 ? ["🥇", "🥈", "🥉"][player.rank - 1] : `#${player.rank}`}</strong><span>${escapeHtml(player.emoji)} ${escapeHtml(player.name)}<small>+${roundPoints} esta ronda</small></span><strong>${player.score} pt</strong>`;
+    const playerBoard = room.boards.find((board) => board.playerId === player.id);
+    const target = playerBoard?.target ? playerBoard.target.toLocaleUpperCase("es") : "—";
+    article.innerHTML = `<strong>${player.rank <= 3 ? ["🥇", "🥈", "🥉"][player.rank - 1] : `#${player.rank}`}</strong><span>${escapeHtml(player.emoji)} ${escapeHtml(player.name)}<small>Palabra: ${escapeHtml(target)}</small><small>+${roundPoints} esta ronda</small></span><strong>${player.score} pt</strong>`;
     return article;
   });
   ranking.replaceChildren(title, ...entries);
@@ -294,6 +311,29 @@ function statusMessage(me) {
 function resetProposalHint() {
   proposalHint.classList.remove("is-error");
   proposalHint.textContent = "Otro jugador tendrá que adivinarla.";
+}
+
+function rememberMobileGuessScroll() {
+  if (!window.matchMedia("(max-width: 760px)").matches) return;
+  mobileGuessScrollLock = { x: window.scrollX, y: window.scrollY };
+}
+
+function lockMobileGuessScroll() {
+  if (!window.matchMedia("(max-width: 760px)").matches) return;
+  if (!mobileGuessScrollLock) rememberMobileGuessScroll();
+  restoreMobileGuessScroll();
+  [40, 120, 280, 500].forEach((delay) => window.setTimeout(restoreMobileGuessScroll, delay));
+}
+
+function restoreMobileGuessScroll() {
+  if (!mobileGuessScrollLock || document.activeElement !== guessInput) return;
+  if (window.scrollX !== mobileGuessScrollLock.x || window.scrollY !== mobileGuessScrollLock.y) {
+    window.scrollTo(mobileGuessScrollLock.x, mobileGuessScrollLock.y);
+  }
+}
+
+function unlockMobileGuessScroll() {
+  window.setTimeout(() => { mobileGuessScrollLock = null; }, 120);
 }
 
 function playerStatus(player) {

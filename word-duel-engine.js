@@ -202,7 +202,7 @@ export function wordDuelRoomResponse(room, viewer = null) {
       const board = room.boards?.[player.id] || { guesses: [], solved: false, finished: false, points: 0 };
       const targetPlayerId = room.assignments?.[player.id];
       const target = room.proposalSpellings?.[targetPlayerId] || room.proposals?.[targetPlayerId] || "";
-      const reveal = room.status === "round-result" || room.status === "finished" || (viewer && player.id !== viewer.id);
+      const reveal = board.finished || room.status === "round-result" || room.status === "finished" || (viewer && player.id !== viewer.id);
       return { playerId: player.id, guesses: board.guesses, solved: board.solved, finished: board.finished, points: board.points, target: reveal ? target : "", wordLength: length };
     }),
     ranking: rankings.map((player, index) => ({ rank: index + 1, id: player.id, name: player.name, emoji: player.emoji, score: player.score, roundScores: player.roundScores })),
