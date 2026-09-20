@@ -23,6 +23,8 @@ const guessWaiting = $("#wordDuelGuessWaiting");
 const waitingPoints = $("#wordDuelWaitingPoints");
 const waitingWord = $("#wordDuelWaitingWord");
 const restartButton = $("#wordDuelRestartButton");
+const roundCountInput = $("#wordDuelCreateRoundCount");
+const roundLengthFields = $("#wordDuelRoundLengthFields");
 let session = readSession();
 let room = null;
 let pollTimer = null;
@@ -30,7 +32,7 @@ let roomDirectoryTimer = null;
 let selectedPlayerId = "";
 let requestPending = false;
 let seenEventIds = new Set();
-let mobileGuessScrollLock = null;
+let sessionRevision = 0;
 
 for (const select of [$("#wordDuelCreateEmoji"), $("#wordDuelJoinEmoji")]) {
   select.replaceChildren(...EMOJIS.map((emoji) => new Option(emoji, emoji)));
@@ -41,6 +43,8 @@ $("#wordDuelChooseJoin").addEventListener("click", () => showLobbyForm(joinForm)
 document.querySelectorAll("[data-word-duel-back]").forEach((button) => button.addEventListener("click", resetLobby));
 $("#wordDuelRefreshRooms").addEventListener("click", loadAvailableRooms);
 $("#wordDuelCreateTestMode").addEventListener("change", syncTestModeFields);
+roundCountInput.addEventListener("input", renderRoundLengthFields);
+renderRoundLengthFields();
 
 createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -52,6 +56,8 @@ createForm.addEventListener("submit", async (event) => {
         name: $("#wordDuelCreatePlayerName").value,
         emoji: $("#wordDuelCreateEmoji").value,
         playerLimit: Number($("#wordDuelCreatePlayerLimit").value),
+        roundCount: Number(roundCountInput.value),
+        roundLengths: [...roundLengthFields.querySelectorAll("input")].map((input) => Number(input.value)),
         testMode: $("#wordDuelCreateTestMode").checked,
         botCount: Number($("#wordDuelCreateBotCount").value)
       }
@@ -89,16 +95,18 @@ proposalInput.addEventListener("input", resetProposalHint);
 
 guessForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await action("guess", { word: guessInput.value });
+  const accepted = await action("guess", { word: guessInput.value });
+  if (!accepted) {
+    guessInput.focus();
+    guessInput.select();
+    scheduleGuessInputVisibility();
+    return;
+  }
   guessInput.value = "";
 });
-guessInput.addEventListener("pointerdown", rememberMobileGuessScroll, { passive: true });
-guessInput.addEventListener("touchstart", rememberMobileGuessScroll, { passive: true });
-guessInput.addEventListener("focus", lockMobileGuessScroll);
-guessInput.addEventListener("blur", unlockMobileGuessScroll);
-window.addEventListener("scroll", restoreMobileGuessScroll, { passive: true });
-window.visualViewport?.addEventListener("resize", restoreMobileGuessScroll);
-window.visualViewport?.addEventListener("scroll", restoreMobileGuessScroll);
+guessInput.addEventListener("focus", scheduleGuessInputVisibility);
+window.visualViewport?.addEventListener("resize", ensureGuessInputVisible);
+window.visualViewport?.addEventListener("scroll", ensureGuessInputVisible);
 
 advanceButton.addEventListener("click", () => action(room?.status === "finished" ? "restart" : "advance"));
 restartButton.addEventListener("click", () => action("restart"));
@@ -158,6 +166,8 @@ function resetLobby() {
 }
 
 function enterRoom(payload) {
+  sessionRevision += 1;
+  stopPolling();
   stopRoomDirectoryPolling();
   room = payload;
   session = { roomName: payload.roomName, playerId: payload.player.id, token: payload.player.token, isHost: payload.player.isHost };
@@ -172,9 +182,12 @@ function showGame() { lobby.hidden = true; game.hidden = false; }
 
 async function pollRoom() {
   if (!session || requestPending || view.hidden) return;
+  const polledSession = session;
+  const revision = sessionRevision;
   try {
-    const params = new URLSearchParams({ playerId: session.playerId, token: session.token });
-    const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}?${params}`);
+    const params = new URLSearchParams({ playerId: polledSession.playerId, token: polledSession.token });
+    const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(polledSession.roomName)}?${params}`);
+    if (revision !== sessionRevision || session !== polledSession) return;
     if (!payload.player) {
       clearSession();
       lobbyMessage.textContent = "Tu sesión ha sido sustituida por otro acceso con el mismo nombre.";
@@ -184,6 +197,7 @@ async function pollRoom() {
     room = payload;
     renderRoom();
   } catch (error) {
+    if (revision !== sessionRevision || session !== polledSession) return;
     gameMessage.textContent = error.message;
     if (/no encontrada|not found/i.test(error.message)) clearSession();
   }
@@ -195,10 +209,13 @@ function stopRoomDirectoryPolling() { clearInterval(roomDirectoryTimer); roomDir
 
 async function action(name, extra = {}, output = gameMessage) {
   if (!session) return;
+  const actionSession = session;
+  const revision = sessionRevision;
   return perform(async () => {
-    const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}/${name}`, {
-      method: "POST", body: { playerId: session.playerId, token: session.token, ...extra }
+    const payload = await api(`/api/word-duel/rooms/${encodeURIComponent(actionSession.roomName)}/${name}`, {
+      method: "POST", body: { playerId: actionSession.playerId, token: actionSession.token, ...extra }
     });
+    if (revision !== sessionRevision || session !== actionSession) return;
     showNewEvents(payload);
     room = payload; renderRoom();
   }, output);
@@ -210,7 +227,7 @@ function renderRoom() {
   if (!me) { clearSession(); return; }
   session.isHost = Boolean(me.isHost);
   $("#wordDuelRoomLabel").textContent = room.roomName;
-  $("#wordDuelRoundLabel").textContent = `Ronda ${room.roundNumber}/5`;
+  $("#wordDuelRoundLabel").textContent = `Ronda ${room.roundNumber}/${room.roundCount}`;
   $("#wordDuelLengthLabel").textContent = `${room.wordLength} letras`;
   $("#wordDuelAttemptLabel").textContent = room.status === "guessing" ? `Intento ${room.attemptIndex + 1}/${room.maxAttempts}` : "";
   proposalInput.maxLength = room.wordLength; proposalInput.minLength = room.wordLength; proposalInput.placeholder = `${room.wordLength} letras`;
@@ -226,12 +243,13 @@ function renderRoom() {
     $("#wordDuelProposalPending").textContent = pending.length ? `Faltan por enviar: ${pending.join(", ")}` : "Todos han enviado su palabra.";
   }
   boardPanel.hidden = room.status !== "guessing";
-  ranking.hidden = !["round-result", "finished"].includes(room.status);
+  const showPartialRanking = room.status === "guessing" && me.finished;
+  ranking.hidden = !(showPartialRanking || ["round-result", "finished"].includes(room.status));
   restartButton.hidden = !(session.isHost && room.status !== "lobby");
   advanceButton.hidden = !(session.isHost && ["round-result", "finished"].includes(room.status));
-  advanceButton.textContent = room.status === "finished" ? "Nueva partida" : room.roundIndex === 4 ? "Ver resultado final" : "Siguiente ronda";
+  advanceButton.textContent = room.status === "finished" ? "Nueva partida" : room.roundIndex === room.roundCount - 1 ? "Ver resultado final" : "Siguiente ronda";
   if (room.status === "guessing") renderBoard(me);
-  if (["round-result", "finished"].includes(room.status)) renderRanking();
+  if (showPartialRanking || ["round-result", "finished"].includes(room.status)) renderRanking(showPartialRanking);
   gameMessage.textContent = statusMessage(me);
 }
 
@@ -240,7 +258,7 @@ function renderPlayers(me) {
   room.players.forEach((player) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `word-duel-player-card${player.id === (selectedPlayerId || me.id) ? " is-selected" : ""}${player.submittedAttempt || player.hasProposed || player.solved ? " is-ready" : ""}`;
+    button.className = `word-duel-player-card${player.id === (selectedPlayerId || me.id) ? " is-selected" : ""}${player.finished || player.hasProposed ? " is-ready" : ""}`;
     button.innerHTML = `<span>${escapeHtml(player.emoji)}</span><span><strong>${escapeHtml(player.name)}${player.id === me.id ? " (tú)" : ""}</strong><small>${playerStatus(player)}</small></span><b>${player.score}</b>`;
     button.addEventListener("click", () => {
       if (room.status !== "guessing") return;
@@ -272,7 +290,7 @@ function renderBoard(me) {
     rows.push(row);
   }
   $("#wordDuelGrid").replaceChildren(...rows);
-  const canGuess = ownerId === me.id && room.status === "guessing" && !me.submittedAttempt && !me.solved;
+  const canGuess = ownerId === me.id && room.status === "guessing" && !me.finished;
   guessForm.hidden = !canGuess;
   guessWaiting.hidden = !(ownerId === me.id && room.status === "guessing" && !canGuess);
   const finishedOwnRound = ownerId === me.id && Boolean(board.finished);
@@ -280,17 +298,28 @@ function renderBoard(me) {
   waitingPoints.textContent = finishedOwnRound ? `Has sumado ${Number(board.points || 0)} puntos en esta ronda` : "";
   waitingWord.hidden = !(finishedOwnRound && !board.solved);
   waitingWord.textContent = finishedOwnRound && !board.solved && board.target ? `La palabra era ${board.target.toLocaleUpperCase("es")}` : "";
+  const pendingPlayers = room.players.filter((player) => !player.finished);
+  $("#wordDuelGuessWaitingTitle").textContent = pendingPlayers.length ? "Esperando jugadores:" : "Todos han terminado; actualizando…";
+  $("#wordDuelPendingPlayers").replaceChildren(...pendingPlayers.map((player) => {
+    const item = document.createElement("li");
+    item.textContent = `${player.emoji} ${player.name}`;
+    return item;
+  }));
 }
 
-function renderRanking() {
+function renderRanking(partial = false) {
   const title = document.createElement("h2");
-  title.textContent = room.status === "finished" ? "Podio final" : `Resultado · ronda ${room.roundNumber}`;
-  const entries = room.ranking.map((player) => {
+  title.textContent = room.status === "finished" ? "Podio final" : partial ? `Puntuación · ronda ${room.roundNumber}` : `Resultado · ronda ${room.roundNumber}`;
+  const visiblePlayers = partial
+    ? room.ranking.filter((player) => player.finished).sort((a, b) => Number(b.roundScores?.[room.roundIndex] || 0) - Number(a.roundScores?.[room.roundIndex] || 0) || b.score - a.score)
+    : room.ranking;
+  const entries = visiblePlayers.map((player, index) => {
     const article = document.createElement("article"); article.className = "word-duel-rank";
     const roundPoints = Number(player.roundScores?.[room.roundIndex] || 0);
     const playerBoard = room.boards.find((board) => board.playerId === player.id);
     const target = playerBoard?.target ? playerBoard.target.toLocaleUpperCase("es") : "—";
-    article.innerHTML = `<strong>${player.rank <= 3 ? ["🥇", "🥈", "🥉"][player.rank - 1] : `#${player.rank}`}</strong><span>${escapeHtml(player.emoji)} ${escapeHtml(player.name)}<small>Palabra: ${escapeHtml(target)}</small><small>+${roundPoints} esta ronda</small></span><strong>${player.score} pt</strong>`;
+    const position = partial ? index + 1 : player.rank;
+    article.innerHTML = `<strong>${position <= 3 ? ["🥇", "🥈", "🥉"][position - 1] : `#${position}`}</strong><span>${escapeHtml(player.emoji)} ${escapeHtml(player.name)}<small>Palabra: ${escapeHtml(target)}</small><small>+${roundPoints} esta ronda</small></span><strong>${player.score} pt</strong>`;
     return article;
   });
   ranking.replaceChildren(title, ...entries);
@@ -300,9 +329,8 @@ function statusMessage(me) {
   if (room.status === "lobby") return `${room.players.length}/${room.config.playerLimit} jugadores. La partida comenzará cuando se llene la sala.`;
   if (room.status === "proposing") return me.hasProposed ? `Palabra enviada. Esperando ${room.players.length - room.proposedCount} jugador(es)…` : `Escribe una palabra de ${room.wordLength} letras.`;
   if (room.status === "guessing") {
-    if (me.solved) return "¡Palabra resuelta! Esperando al resto…";
-    if (me.submittedAttempt) return "Intento enviado. Esperando al resto…";
-    return `Todos juegan el intento ${room.attemptIndex + 1} a la vez.`;
+    if (me.finished) return "Ronda terminada.";
+    return `Intento ${room.attemptIndex + 1} de ${room.maxAttempts}.`;
   }
   if (room.status === "round-result") return session.isHost ? "Ronda completada. Revisa los tableros y continúa." : "Ronda completada. Esperando al anfitrión.";
   return "Partida terminada. ¡Tenemos podio!";
@@ -313,34 +341,27 @@ function resetProposalHint() {
   proposalHint.textContent = "Otro jugador tendrá que adivinarla.";
 }
 
-function rememberMobileGuessScroll() {
+function scheduleGuessInputVisibility() {
   if (!window.matchMedia("(max-width: 760px)").matches) return;
-  mobileGuessScrollLock = { x: window.scrollX, y: window.scrollY };
+  [0, 80, 180, 350, 600].forEach((delay) => window.setTimeout(ensureGuessInputVisible, delay));
 }
 
-function lockMobileGuessScroll() {
-  if (!window.matchMedia("(max-width: 760px)").matches) return;
-  if (!mobileGuessScrollLock) rememberMobileGuessScroll();
-  restoreMobileGuessScroll();
-  [40, 120, 280, 500].forEach((delay) => window.setTimeout(restoreMobileGuessScroll, delay));
-}
-
-function restoreMobileGuessScroll() {
-  if (!mobileGuessScrollLock || document.activeElement !== guessInput) return;
-  if (window.scrollX !== mobileGuessScrollLock.x || window.scrollY !== mobileGuessScrollLock.y) {
-    window.scrollTo(mobileGuessScrollLock.x, mobileGuessScrollLock.y);
-  }
-}
-
-function unlockMobileGuessScroll() {
-  window.setTimeout(() => { mobileGuessScrollLock = null; }, 120);
+function ensureGuessInputVisible() {
+  if (document.activeElement !== guessInput || !window.matchMedia("(max-width: 760px)").matches) return;
+  const viewport = window.visualViewport;
+  const visibleTop = viewport?.offsetTop || 0;
+  const visibleBottom = visibleTop + (viewport?.height || window.innerHeight);
+  const rect = guessInput.getBoundingClientRect();
+  const margin = 20;
+  if (rect.bottom > visibleBottom - margin) window.scrollBy({ top: rect.bottom - visibleBottom + margin, behavior: "auto" });
+  else if (rect.top < visibleTop + margin) window.scrollBy({ top: rect.top - visibleTop - margin, behavior: "auto" });
 }
 
 function playerStatus(player) {
   if (room.status === "lobby") return player.isHost ? "Anfitrión" : player.isTestPlayer ? "Bot" : "En sala";
   if (room.status === "proposing") return player.hasProposed ? "Palabra lista" : "Pensando…";
   if (player.solved) return "Resuelta";
-  if (player.submittedAttempt) return "Intento listo";
+  if (player.finished) return "Sin intentos";
   return "Jugando…";
 }
 
@@ -348,6 +369,25 @@ function syncTestModeFields() {
   const enabled = $("#wordDuelCreateTestMode").checked;
   $("#wordDuelBotCountField").hidden = !enabled;
   $("#wordDuelCreatePlayerLimit").closest("label").hidden = enabled;
+}
+
+function renderRoundLengthFields() {
+  const previous = [...roundLengthFields.querySelectorAll("input")].map((input) => input.value);
+  const count = Math.max(1, Math.min(10, Number(roundCountInput.value) || 1));
+  const fields = Array.from({ length: count }, (_, index) => {
+    const label = document.createElement("label");
+    label.textContent = `Ronda ${index + 1}`;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "4";
+    input.max = "8";
+    input.required = true;
+    input.value = previous[index] || "5";
+    input.setAttribute("aria-label", `Longitud de palabra de la ronda ${index + 1}`);
+    label.append(input);
+    return label;
+  });
+  roundLengthFields.replaceChildren(...fields);
 }
 
 async function loadAvailableRooms() {
@@ -388,7 +428,7 @@ function showNewEvents(payload, silent = false) {
   const newEvents = (payload.events || []).filter((event) => event.id && !seenEventIds.has(event.id));
   (payload.events || []).forEach((event) => seenEventIds.add(event.id));
   if (silent) return;
-  newEvents.filter((event) => event.playerId !== session?.playerId).forEach((event, index) => {
+  newEvents.filter((event) => ["correct", "failed"].includes(event.type) && event.playerId !== session?.playerId).forEach((event, index) => {
     let stack = document.querySelector(".word-duel-notifications");
     if (!stack) {
       stack = document.createElement("div");
@@ -399,7 +439,7 @@ function showNewEvents(payload, silent = false) {
     const notification = document.createElement("article");
     notification.className = `word-duel-notification is-${event.type}`;
     notification.style.setProperty("--notification-delay", `${index * 100}ms`);
-    notification.innerHTML = `<span>${escapeHtml(event.playerEmoji)}</span><div><strong>${escapeHtml(event.playerName)}</strong><small>${event.type === "correct" ? "ha acertado" : `ha fallado: ${escapeHtml(event.guess).toLocaleUpperCase("es")}`}</small></div><b>${event.type === "correct" ? `+${event.points}` : "✕"}</b>`;
+    notification.innerHTML = `<span>${escapeHtml(event.playerEmoji)}</span><div><strong>${escapeHtml(event.playerName)}</strong><small>${event.type === "correct" ? "ha acertado" : "se ha quedado sin intentos"}</small></div><b>${event.type === "correct" ? `+${event.points}` : "✕"}</b>`;
     stack.append(notification);
     window.setTimeout(() => {
       notification.remove();
@@ -425,7 +465,7 @@ async function leaveRoom() {
 }
 
 function clearSession() {
-  stopPolling(); stopRoomDirectoryPolling(); localStorage.removeItem(SESSION_KEY); session = null; room = null; selectedPlayerId = ""; resetLobby();
+  sessionRevision += 1; stopPolling(); stopRoomDirectoryPolling(); localStorage.removeItem(SESSION_KEY); session = null; room = null; selectedPlayerId = ""; resetLobby();
 }
 
 function readSession() {
@@ -435,6 +475,7 @@ function readSession() {
 async function api(path, options = {}) {
   const response = await fetch(path, {
     method: options.method || "GET",
+    cache: "no-store",
     headers: options.body ? { "Content-Type": "application/json" } : undefined,
     body: options.body ? JSON.stringify(options.body) : undefined
   });

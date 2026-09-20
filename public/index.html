@@ -696,7 +696,7 @@
             <header class="word-duel-hero">
               <div class="word-duel-logo" aria-hidden="true"><span>D</span><span>U</span><span>E</span><span>L</span><span>O</span></div>
               <h1 id="wordDuelTitle">Duelo de Palabras</h1>
-              <p>Cinco palabras, cinco rondas y todos jugando a la vez.</p>
+              <p>Configura las rondas y juega cada intento a la vez.</p>
             </header>
             <div id="wordDuelChoice" class="word-duel-choice">
               <button type="button" id="wordDuelChooseCreate"><span>+</span><strong>Crear sala</strong></button>
@@ -707,6 +707,11 @@
               <label>Nombre de la sala<input id="wordDuelCreateRoomName" maxlength="16" required placeholder="Sala verde"></label>
               <div class="word-duel-identity"><select id="wordDuelCreateEmoji" aria-label="Emoji"></select><input id="wordDuelCreatePlayerName" maxlength="16" required placeholder="Tu nombre"></div>
               <label>Jugadores<input id="wordDuelCreatePlayerLimit" type="number" min="2" max="10" value="4" required></label>
+              <label>Número de rondas<input id="wordDuelCreateRoundCount" type="number" min="1" max="10" value="5" required></label>
+              <fieldset class="word-duel-round-config">
+                <legend>Longitud de palabra por ronda</legend>
+                <div id="wordDuelRoundLengthFields"></div>
+              </fieldset>
               <label class="word-duel-test-toggle"><input id="wordDuelCreateTestMode" type="checkbox"><span>Modo de prueba con bots</span></label>
               <label id="wordDuelBotCountField" hidden>Número de bots<input id="wordDuelCreateBotCount" type="number" min="1" max="9" value="3"></label>
               <div class="word-duel-form-actions"><button type="button" class="secondary" data-word-duel-back>Atrás</button><button type="submit">Crear</button></div>
@@ -729,7 +734,7 @@
               <div><span>Sala</span><strong id="wordDuelRoomLabel"></strong></div>
               <div class="word-duel-header-actions"><button id="wordDuelShareButton" class="secondary" type="button"><span class="button-icon" aria-hidden="true">🔗</span> Copiar enlace</button><button id="wordDuelRestartButton" class="secondary" type="button" hidden>Reiniciar</button><button id="wordDuelLeaveButton" class="secondary" type="button">Atrás</button></div>
             </header>
-            <div class="word-duel-round-strip"><strong id="wordDuelRoundLabel">Ronda 1/5</strong><span id="wordDuelLengthLabel">4 letras</span><span id="wordDuelAttemptLabel"></span></div>
+            <div class="word-duel-round-strip"><strong id="wordDuelRoundLabel">Ronda 1/5</strong><span id="wordDuelLengthLabel">5 letras</span><span id="wordDuelAttemptLabel"></span></div>
             <div class="word-duel-layout">
               <aside><h2>Jugadores</h2><div id="wordDuelPlayers" class="word-duel-players"></div></aside>
               <main class="word-duel-stage">
@@ -746,7 +751,8 @@
                   <div id="wordDuelGrid" class="word-duel-grid" aria-label="Tablero Wordle"></div>
                   <form id="wordDuelGuessForm" class="word-duel-guess-form"><input id="wordDuelGuessInput" required autocomplete="off" autocapitalize="none" spellcheck="false"><button type="submit">Probar</button></form>
                   <section id="wordDuelGuessWaiting" class="word-duel-guess-waiting" hidden>
-                    <p>Esperando otros jugadores</p>
+                    <p id="wordDuelGuessWaitingTitle">Esperando jugadores:</p>
+                    <ul id="wordDuelPendingPlayers" class="word-duel-pending-players"></ul>
                     <strong id="wordDuelWaitingPoints" hidden></strong>
                     <span id="wordDuelWaitingWord" hidden></span>
                   </section>
