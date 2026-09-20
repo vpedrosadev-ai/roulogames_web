@@ -297,6 +297,7 @@ function currentLength(room) {
 function normalizeRoundLengths(rawLengths, rawCount) {
   const requestedCount = Math.floor(Number(rawCount));
   const source = Array.isArray(rawLengths) ? rawLengths : [];
+  if (!source.length && !requestedCount) return [4, 5, 6, 7, 8];
   const count = Math.max(WORD_DUEL_MIN_ROUNDS, Math.min(WORD_DUEL_MAX_ROUNDS, requestedCount || source.length || 5));
   const lengths = Array.from({ length: count }, (_, index) => Math.floor(Number(source[index])) || WORD_DUEL_DEFAULT_ROUND_LENGTH);
   if (lengths.some((length) => length < WORD_DUEL_MIN_LENGTH || length > WORD_DUEL_MAX_LENGTH)) {

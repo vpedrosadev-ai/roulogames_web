@@ -1,6 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const EMOJIS = ["🟩", "🟨", "🧠", "✏️", "📚", "🎯", "⚡", "🔥", "⭐", "🦊", "🐙", "🦄"];
 const SESSION_KEY = "roulogames.wordDuelSession";
+const CLASSIC_ROUND_LENGTHS = [4, 5, 6, 7, 8];
 
 const view = $("#wordDuelView");
 const lobby = $("#wordDuelLobby");
@@ -25,7 +26,10 @@ const waitingWord = $("#wordDuelWaitingWord");
 const restartButton = $("#wordDuelRestartButton");
 const roundCountInput = $("#wordDuelCreateRoundCount");
 const roundLengthFields = $("#wordDuelRoundLengthFields");
-let session = readSession();
+const customConfig = $("#wordDuelCustomConfig");
+localStorage.removeItem(SESSION_KEY);
+sessionStorage.removeItem(SESSION_KEY);
+let session = null;
 let room = null;
 let pollTimer = null;
 let roomDirectoryTimer = null;
@@ -43,12 +47,18 @@ $("#wordDuelChooseJoin").addEventListener("click", () => showLobbyForm(joinForm)
 document.querySelectorAll("[data-word-duel-back]").forEach((button) => button.addEventListener("click", resetLobby));
 $("#wordDuelRefreshRooms").addEventListener("click", loadAvailableRooms);
 $("#wordDuelCreateTestMode").addEventListener("change", syncTestModeFields);
-roundCountInput.addEventListener("input", renderRoundLengthFields);
+document.querySelectorAll("input[name='wordDuelGameMode']").forEach((input) => input.addEventListener("change", syncGameMode));
+roundCountInput.addEventListener("input", () => { renderRoundLengthFields(); syncGameMode(); });
 renderRoundLengthFields();
+syncGameMode();
 
 createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await perform(async () => {
+    const customMode = getGameMode() === "custom";
+    const roundLengths = customMode
+      ? [...roundLengthFields.querySelectorAll("input")].map((input) => Number(input.value))
+      : CLASSIC_ROUND_LENGTHS;
     const payload = await api("/api/word-duel/rooms", {
       method: "POST",
       body: {
@@ -56,8 +66,8 @@ createForm.addEventListener("submit", async (event) => {
         name: $("#wordDuelCreatePlayerName").value,
         emoji: $("#wordDuelCreateEmoji").value,
         playerLimit: Number($("#wordDuelCreatePlayerLimit").value),
-        roundCount: Number(roundCountInput.value),
-        roundLengths: [...roundLengthFields.querySelectorAll("input")].map((input) => Number(input.value)),
+        roundCount: roundLengths.length,
+        roundLengths,
         testMode: $("#wordDuelCreateTestMode").checked,
         botCount: Number($("#wordDuelCreateBotCount").value)
       }
@@ -119,11 +129,11 @@ document.addEventListener("click", (event) => {
   if (!target) return;
   const active = target.dataset.viewTarget === "wordDuelView";
   document.body.classList.toggle("word-duel-active", active);
-  if (active) activateView(); else { stopPolling(); stopRoomDirectoryPolling(); }
+  if (active) activateView(); else void releaseRoomSession();
 });
 document.querySelectorAll("[data-home-link]").forEach((link) => link.addEventListener("click", () => {
   document.body.classList.remove("word-duel-active");
-  stopPolling();
+  void releaseRoomSession();
   const url = new URL(location.href); url.searchParams.delete("wordduel"); history.replaceState({}, "", url);
 }));
 
@@ -171,7 +181,6 @@ function enterRoom(payload) {
   stopRoomDirectoryPolling();
   room = payload;
   session = { roomName: payload.roomName, playerId: payload.player.id, token: payload.player.token, isHost: payload.player.isHost };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   seenEventIds = new Set((payload.events || []).map((event) => event.id));
   selectedPlayerId = session.playerId;
   const url = new URL(location.href); url.searchParams.set("wordduel", payload.roomName); history.replaceState({}, "", url);
@@ -371,6 +380,17 @@ function syncTestModeFields() {
   $("#wordDuelCreatePlayerLimit").closest("label").hidden = enabled;
 }
 
+function getGameMode() {
+  return document.querySelector("input[name='wordDuelGameMode']:checked")?.value || "classic";
+}
+
+function syncGameMode() {
+  const customMode = getGameMode() === "custom";
+  customConfig.hidden = !customMode;
+  roundCountInput.disabled = !customMode;
+  roundLengthFields.querySelectorAll("input").forEach((input) => { input.disabled = !customMode; });
+}
+
 function renderRoundLengthFields() {
   const previous = [...roundLengthFields.querySelectorAll("input")].map((input) => input.value);
   const count = Math.max(1, Math.min(10, Number(roundCountInput.value) || 1));
@@ -455,21 +475,21 @@ async function copyInvite() {
 }
 
 async function leaveRoom() {
-  if (session) {
-    await api(`/api/word-duel/rooms/${encodeURIComponent(session.roomName)}/leave`, {
-      method: "POST", body: { playerId: session.playerId, token: session.token }
-    }).catch(() => {});
-  }
-  clearSession();
+  await releaseRoomSession();
   document.querySelector("[data-home-link]")?.click();
 }
 
-function clearSession() {
-  sessionRevision += 1; stopPolling(); stopRoomDirectoryPolling(); localStorage.removeItem(SESSION_KEY); session = null; room = null; selectedPlayerId = ""; resetLobby();
+async function releaseRoomSession() {
+  const leavingSession = session;
+  clearSession();
+  if (!leavingSession) return;
+  await api(`/api/word-duel/rooms/${encodeURIComponent(leavingSession.roomName)}/leave`, {
+    method: "POST", body: { playerId: leavingSession.playerId, token: leavingSession.token }
+  }).catch(() => {});
 }
 
-function readSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; } catch { return null; }
+function clearSession() {
+  sessionRevision += 1; stopPolling(); stopRoomDirectoryPolling(); localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); session = null; room = null; selectedPlayerId = ""; resetLobby();
 }
 
 async function api(path, options = {}) {
