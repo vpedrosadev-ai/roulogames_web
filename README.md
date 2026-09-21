@@ -7,6 +7,7 @@ Browser party-game collection, including:
 - La resistencia
 - Hombres Lobo (automatic narrator)
 - Palabra maestra
+- Código Emoji (películas, códigos solo con emojis y roles rotativos)
 - Duelo de Palabras (Wordle multijugador simultáneo)
 - Shared scoreboard
 

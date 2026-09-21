@@ -35,6 +35,25 @@ import {
   touchWordDuelRoom,
   wordDuelRoomResponse
 } from "./word-duel-engine.js";
+import {
+  EmojiCodeError,
+  advanceEmojiCodeTurn,
+  authenticateEmojiCodePlayer,
+  createEmojiCodeRoom,
+  emojiCodeDirectoryEntry,
+  emojiCodeRoomResponse,
+  isEmojiCodeHostConnected,
+  joinEmojiCodeRoom,
+  kickEmojiCodePlayer,
+  leaveEmojiCodeRoom,
+  normalizeEmojiCodeKey,
+  restartEmojiCodeGame,
+  startEmojiCodeGame,
+  submitEmojiCode,
+  submitEmojiCodeGuess,
+  submitEmojiCodeTitle,
+  touchEmojiCodeRoom
+} from "./emoji-code-engine.js";
 
 const jobs = new Map();
 const MULTIPLAYER_TEST_IDENTITIES = [
@@ -597,6 +616,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(request, env);
       if (request.method === "GET" && url.pathname === "/api/word-duel/rooms") return listWordDuelRoomsWorker(env);
       if (request.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomWorker(request, env);
+      if (request.method === "GET" && url.pathname === "/api/emoji-code/rooms") return listEmojiCodeRoomsWorker(env);
+      if (request.method === "POST" && url.pathname === "/api/emoji-code/rooms") return createEmojiCodeRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
       if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
@@ -693,6 +714,11 @@ export default {
       if (request.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomWorker(wordDuelRoomMatch[1], request, env);
       const wordDuelActionMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)\/(join|start|proposal|guess|advance|restart|kick|leave)$/);
       if (request.method === "POST" && wordDuelActionMatch) return handleWordDuelActionWorker(request, wordDuelActionMatch[1], wordDuelActionMatch[2], env);
+
+      const emojiCodeRoomMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && emojiCodeRoomMatch) return getEmojiCodeRoomWorker(emojiCodeRoomMatch[1], request, env);
+      const emojiCodeActionMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/(join|start|title|code|guess|advance|restart|kick|leave)$/);
+      if (request.method === "POST" && emojiCodeActionMatch) return handleEmojiCodeActionWorker(request, emojiCodeActionMatch[1], emojiCodeActionMatch[2], env);
 
       const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
       if (request.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(scoreboardRoomMatch[1], request, env);
@@ -1338,6 +1364,104 @@ const impostor_WORD_SETS = {
     ["Georgina Rodriguez", "Jaca"], ["Risto Mejide", "Chester"], ["Chicote", "Cuchillo rojo"]
   ].map(([word, hint]) => ({ word, hint }))
 };
+
+async function createEmojiCodeRoomWorker(request, env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  try {
+    const room = createEmojiCodeRoom(await request.json().catch(() => ({})));
+    const existing = await loadEmojiCodeRoom(room.key, env);
+    if (existing && isEmojiCodeHostConnected(existing)) return json({ error: "El nombre de sala ya está en uso" }, 409);
+    if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(emojiCodeStorageKey(room.key)).run();
+    await saveEmojiCodeRoom(room, env, true);
+    return json(emojiCodeRoomResponse(room, room.players[0]), 201);
+  } catch (error) { return sendEmojiCodeErrorWorker(error); }
+}
+
+async function listEmojiCodeRoomsWorker(env) {
+  if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const result = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson FROM multiplayer_rooms WHERE room_key LIKE 'emojicode:%'").all();
+  const rooms = (result.results || [])
+    .map((row) => { try { return JSON.parse(row.stateJson); } catch { return null; } })
+    .filter((room) => room?.status === "lobby" && isEmojiCodeHostConnected(room))
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+    .map(emojiCodeDirectoryEntry);
+  return json({ rooms });
+}
+
+async function getEmojiCodeRoomWorker(roomName, request, env) {
+  const room = await loadEmojiCodeRoom(normalizeEmojiCodeKey(roomName), env);
+  if (!room) return json({ error: "Sala no encontrada" }, 404);
+  const url = new URL(request.url);
+  const viewer = touchEmojiCodeRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  await saveEmojiCodeRoom(room, env).catch(() => false);
+  return json(emojiCodeRoomResponse(room, viewer));
+}
+
+async function handleEmojiCodeActionWorker(request, roomName, action, env) {
+  const key = normalizeEmojiCodeKey(roomName);
+  const body = await request.json().catch(() => ({}));
+  try {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const room = await loadEmojiCodeRoom(key, env);
+      if (!room) return json({ error: "Sala no encontrada" }, 404);
+      let viewer;
+      if (action === "join") viewer = joinEmojiCodeRoom(room, body);
+      else {
+        viewer = authenticateEmojiCodePlayer(room, body);
+        if (action === "start") startEmojiCodeGame(room, viewer);
+        else if (action === "title") submitEmojiCodeTitle(room, viewer, body.title);
+        else if (action === "code") submitEmojiCode(room, viewer, body.code);
+        else if (action === "guess") submitEmojiCodeGuess(room, viewer, body.guess);
+        else if (action === "advance") advanceEmojiCodeTurn(room, viewer);
+        else if (action === "restart") restartEmojiCodeGame(room, viewer);
+        else if (action === "kick") kickEmojiCodePlayer(room, viewer, String(body.targetPlayerId || ""));
+        else if (action === "leave") {
+          if (leaveEmojiCodeRoom(room, viewer).closeRoom) {
+            await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(emojiCodeStorageKey(key)).run();
+            return json({ ok: true });
+          }
+        }
+      }
+      if (await saveEmojiCodeRoom(room, env)) {
+        if (action === "leave") return json({ ok: true });
+        return json(emojiCodeRoomResponse(room, viewer), action === "join" ? 201 : 200);
+      }
+    }
+    throw new EmojiCodeError("La sala cambió al mismo tiempo; inténtalo de nuevo", 409);
+  } catch (error) { return sendEmojiCodeErrorWorker(error); }
+}
+
+async function loadEmojiCodeRoom(key, env) {
+  if (!key || !env.LEADERBOARD_DB) return null;
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(emojiCodeStorageKey(key)).first();
+  return row?.stateJson ? { ...JSON.parse(row.stateJson), _version: row.updatedAt } : null;
+}
+
+async function saveEmojiCodeRoom(room, env, create = false) {
+  const storageKey = emojiCodeStorageKey(room.key);
+  const version = `${Date.now()}-${crypto.randomUUID()}`;
+  const stored = { ...room };
+  delete stored._version;
+  if (create) {
+    await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(storageKey, JSON.stringify(stored), version).run();
+    room._version = version;
+    return true;
+  }
+  const result = await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+    .bind(JSON.stringify(stored), version, storageKey, room._version || "").run();
+  if (!result.meta?.changes) return false;
+  room._version = version;
+  return true;
+}
+
+function emojiCodeStorageKey(key) { return `emojicode:${key}`; }
+
+function sendEmojiCodeErrorWorker(error) {
+  if (error instanceof EmojiCodeError) return json({ error: error.message }, error.status);
+  throw error;
+}
 
 async function createWordDuelRoomWorker(request, env) {
   if (!env.LEADERBOARD_DB) return json({ error: "El almacenamiento de salas no está configurado" }, 503);

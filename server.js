@@ -42,6 +42,25 @@ import {
   touchWordDuelRoom,
   wordDuelRoomResponse
 } from "./word-duel-engine.js";
+import {
+  EmojiCodeError,
+  advanceEmojiCodeTurn,
+  authenticateEmojiCodePlayer,
+  createEmojiCodeRoom,
+  emojiCodeDirectoryEntry,
+  emojiCodeRoomResponse,
+  isEmojiCodeHostConnected,
+  joinEmojiCodeRoom,
+  kickEmojiCodePlayer,
+  leaveEmojiCodeRoom,
+  normalizeEmojiCodeKey,
+  restartEmojiCodeGame,
+  startEmojiCodeGame,
+  submitEmojiCode,
+  submitEmojiCodeGuess,
+  submitEmojiCodeTitle,
+  touchEmojiCodeRoom
+} from "./emoji-code-engine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -603,6 +622,7 @@ const resistanceRooms = new Map();
 const wolfRooms = new Map();
 const masterWordRooms = new Map();
 const wordDuelRooms = new Map();
+const emojiCodeRooms = new Map();
 const scoreboardRooms = new Map();
 let spotifyToken = null;
 const songGroupCache = new Map();
@@ -636,6 +656,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/masterword/rooms") return createMasterWordRoom(req, res);
     if (req.method === "GET" && url.pathname === "/api/word-duel/rooms") return listWordDuelRoomsNode(res);
     if (req.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomNode(req, res);
+    if (req.method === "GET" && url.pathname === "/api/emoji-code/rooms") return listEmojiCodeRoomsNode(res);
+    if (req.method === "POST" && url.pathname === "/api/emoji-code/rooms") return createEmojiCodeRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
     if (req.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return sendJson(res, getSongGroups());
@@ -727,6 +749,11 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomNode(res, wordDuelRoomMatch[1], url.searchParams);
     const wordDuelActionMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)\/(join|start|proposal|guess|advance|restart|kick|leave)$/);
     if (req.method === "POST" && wordDuelActionMatch) return handleWordDuelActionNode(req, res, wordDuelActionMatch[1], wordDuelActionMatch[2]);
+
+    const emojiCodeRoomMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && emojiCodeRoomMatch) return getEmojiCodeRoomNode(res, emojiCodeRoomMatch[1], url.searchParams);
+    const emojiCodeActionMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/(join|start|title|code|guess|advance|restart|kick|leave)$/);
+    if (req.method === "POST" && emojiCodeActionMatch) return handleEmojiCodeActionNode(req, res, emojiCodeActionMatch[1], emojiCodeActionMatch[2]);
 
     const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
     if (req.method === "GET" && scoreboardRoomMatch) return getScoreboardRoom(res, scoreboardRoomMatch[1], url.searchParams);
@@ -1377,6 +1404,62 @@ function isLobbyRoomJoinable(room) {
 function isMultiplayerRoomJoinable(room) {
   const players = Array.isArray(room.players) ? room.players : [];
   return room.status !== "finished" && Number(room.roundIndex || 0) <= 0 && players.length < 12;
+}
+
+async function createEmojiCodeRoomNode(req, res) {
+  try {
+    const room = createEmojiCodeRoom(await readJson(req));
+    const existing = emojiCodeRooms.get(room.key);
+    if (existing && isEmojiCodeHostConnected(existing)) return sendJson(res, { error: "El nombre de sala ya está en uso" }, 409);
+    emojiCodeRooms.set(room.key, room);
+    return sendJson(res, emojiCodeRoomResponse(room, room.players[0]), 201);
+  } catch (error) { return sendEmojiCodeErrorNode(res, error); }
+}
+
+function listEmojiCodeRoomsNode(res) {
+  const rooms = [...emojiCodeRooms.values()]
+    .filter((room) => room.status === "lobby" && isEmojiCodeHostConnected(room))
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+    .map(emojiCodeDirectoryEntry);
+  return sendJson(res, { rooms });
+}
+
+function getEmojiCodeRoomNode(res, roomName, searchParams) {
+  const room = emojiCodeRooms.get(normalizeEmojiCodeKey(roomName));
+  if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+  const viewer = touchEmojiCodeRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  return sendJson(res, emojiCodeRoomResponse(room, viewer));
+}
+
+async function handleEmojiCodeActionNode(req, res, roomName, action) {
+  try {
+    const key = normalizeEmojiCodeKey(roomName);
+    const room = emojiCodeRooms.get(key);
+    if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+    const body = await readJson(req);
+    if (action === "join") {
+      const player = joinEmojiCodeRoom(room, body);
+      return sendJson(res, emojiCodeRoomResponse(room, player), 201);
+    }
+    const player = authenticateEmojiCodePlayer(room, body);
+    if (action === "start") startEmojiCodeGame(room, player);
+    else if (action === "title") submitEmojiCodeTitle(room, player, body.title);
+    else if (action === "code") submitEmojiCode(room, player, body.code);
+    else if (action === "guess") submitEmojiCodeGuess(room, player, body.guess);
+    else if (action === "advance") advanceEmojiCodeTurn(room, player);
+    else if (action === "restart") restartEmojiCodeGame(room, player);
+    else if (action === "kick") kickEmojiCodePlayer(room, player, String(body.targetPlayerId || ""));
+    else if (action === "leave") {
+      if (leaveEmojiCodeRoom(room, player).closeRoom) emojiCodeRooms.delete(key);
+      return sendJson(res, { ok: true });
+    }
+    return sendJson(res, emojiCodeRoomResponse(room, player));
+  } catch (error) { return sendEmojiCodeErrorNode(res, error); }
+}
+
+function sendEmojiCodeErrorNode(res, error) {
+  if (error instanceof EmojiCodeError) return sendJson(res, { error: error.message }, error.status);
+  throw error;
 }
 
 async function createWordDuelRoomNode(req, res) {

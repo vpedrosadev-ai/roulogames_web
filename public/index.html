@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/impostor-fixes.css">
     <link rel="stylesheet" href="/word-duel.css">
+    <link rel="stylesheet" href="/emoji-code.css">
   </head>
   <body>
     <div class="arcade-vinyl-field" aria-hidden="true">
@@ -55,6 +56,7 @@
         <button type="button" class="nav-link" data-view-target="resistanceView"><span class="nav-icon" aria-hidden="true">R</span>La resistencia</button>
         <button type="button" class="nav-link" data-view-target="wolfView"><span class="nav-icon wolf-nav-icon" aria-hidden="true">W</span>Hombres Lobo</button>
         <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
+        <button type="button" class="nav-link" data-view-target="emojiCodeView"><span class="nav-icon" aria-hidden="true">🎬</span>Código Emoji</button>
         <button type="button" class="nav-link" data-view-target="wordDuelView"><span class="nav-icon" aria-hidden="true">W</span>Duelo de Palabras</button>
         <button type="button" class="nav-link" data-view-target="scoreboardView"><span class="nav-icon" aria-hidden="true">#</span>Tabla de puntuacion</button>
         <button type="button" id="mobileNavMoreButton" class="mobile-nav-more" aria-label="More sections" aria-expanded="false" aria-controls="mobileNavMenu">•••</button>
@@ -120,6 +122,12 @@
               <strong>Palabra maestra</strong>
               <small id="homeMasterWordHint">Pistas secretas y palabras cooperativas</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMasterWordPlayers">Min. 3 players</small></em>
+            </button>
+            <button type="button" class="home-menu-card emoji-code-home-card" data-view-target="emojiCodeView">
+              <span aria-hidden="true">🎬</span>
+              <strong>Código Emoji</strong>
+              <small>Convierte películas en pistas hechas solo con emojis</small>
+              <em class="home-player-min"><span aria-hidden="true">👥</span><small>2–10 jugadores</small></em>
             </button>
             <button type="button" class="home-menu-card word-duel-home-card" data-view-target="wordDuelView">
               <span aria-hidden="true">W</span>
@@ -689,6 +697,85 @@
             </header>
             <div id="masterWordResultBody" class="masterword-popup-content"></div>
           </div>
+        </section>
+
+        <section id="emojiCodeView" class="view emoji-code-view" aria-labelledby="emojiCodeTitle" hidden>
+          <section id="emojiCodeLobby" class="emoji-code-lobby">
+            <header class="emoji-code-hero">
+              <span class="emoji-code-kicker">🎬 Mensajes cifrados 🍿</span>
+              <h1 id="emojiCodeTitle">Código Emoji</h1>
+              <p>Un líder propone una película. Su equipo la convierte en emojis. El adivinador tiene tres intentos.</p>
+            </header>
+            <div id="emojiCodeChoice" class="emoji-code-choice">
+              <button type="button" id="emojiCodeChooseCreate"><span>＋</span><strong>Crear sala</strong></button>
+              <button type="button" id="emojiCodeChooseJoin"><span>→</span><strong>Unirse</strong></button>
+            </div>
+            <form id="emojiCodeCreateForm" class="emoji-code-form" hidden>
+              <h2>Crear sala</h2>
+              <label>Nombre de la sala<input id="emojiCodeCreateRoomName" maxlength="16" required placeholder="Sala cine"></label>
+              <div class="emoji-code-identity"><select id="emojiCodeCreateEmoji" aria-label="Emoji"></select><input id="emojiCodeCreatePlayerName" maxlength="16" required placeholder="Tu nombre"></div>
+              <div class="emoji-code-config-grid">
+                <label>Jugadores<input id="emojiCodeCreatePlayerLimit" type="number" min="2" max="10" value="4" required></label>
+                <label>Rondas<input id="emojiCodeCreateRounds" type="number" min="1" max="12" value="3" required></label>
+              </div>
+              <p class="emoji-code-rules-note">Cada jugador será adivinador una vez por ronda. Acierto: 10, 7 o 5 puntos; cada autor de código gana 2.</p>
+              <div class="emoji-code-form-actions"><button type="button" class="secondary" data-emoji-code-back>Atrás</button><button type="submit">Crear sala</button></div>
+            </form>
+            <form id="emojiCodeJoinForm" class="emoji-code-form" hidden>
+              <h2>Unirse a sala</h2>
+              <label>Nombre de la sala<input id="emojiCodeJoinRoomName" maxlength="16" required placeholder="Sala cine"></label>
+              <div class="emoji-code-identity"><select id="emojiCodeJoinEmoji" aria-label="Emoji"></select><input id="emojiCodeJoinPlayerName" maxlength="16" required placeholder="Tu nombre"></div>
+              <div class="emoji-code-form-actions"><button type="button" class="secondary" data-emoji-code-back>Atrás</button><button type="submit">Entrar</button></div>
+            </form>
+            <p id="emojiCodeLobbyMessage" class="message"></p>
+          </section>
+
+          <section id="emojiCodeGame" class="emoji-code-game" hidden>
+            <div class="emoji-code-command-strip">
+              <button type="button" id="emojiCodeShareButton" class="secondary">🔗 Copiar enlace</button>
+              <button type="button" id="emojiCodeRestartButton" class="secondary" hidden>Reiniciar</button>
+              <button type="button" id="emojiCodeLeaveButton" class="secondary">Atrás</button>
+            </div>
+            <div class="emoji-code-board" aria-live="polite">
+              <aside class="emoji-code-sidebar">
+                <strong id="emojiCodeRoomLabel"></strong>
+                <div id="emojiCodePlayers" class="emoji-code-players"></div>
+              </aside>
+              <main class="emoji-code-stage">
+                <div class="emoji-code-stats">
+                  <article><span>Ronda</span><strong id="emojiCodeRound">0/3</strong></article>
+                  <article><span>Turno</span><strong id="emojiCodeTurn">0/0</strong></article>
+                  <article><span>Intentos</span><strong id="emojiCodeAttempts">3</strong></article>
+                </div>
+                <section class="emoji-code-role-card">
+                  <span id="emojiCodeRoleLabel">Esperando</span>
+                  <strong id="emojiCodeRoleName">—</strong>
+                  <p id="emojiCodeRoleHint"></p>
+                </section>
+                <p id="emojiCodeGameMessage" class="message"></p>
+                <form id="emojiCodeTitleForm" class="emoji-code-action-card" hidden>
+                  <label for="emojiCodeTitleInput">Título de película</label>
+                  <input id="emojiCodeTitleInput" maxlength="80" required autocomplete="off" placeholder="Escribe la película secreta">
+                  <button type="submit">Enviar al equipo</button>
+                </form>
+                <form id="emojiCodeCodeForm" class="emoji-code-action-card" hidden>
+                  <label for="emojiCodeCodeInput">Tu código de emojis</label>
+                  <div class="emoji-code-input-row"><input id="emojiCodeCodeInput" maxlength="64" required autocomplete="off" placeholder="🚢🧊💔" aria-describedby="emojiCodeCodeHelp"><button type="submit">Enviar código</button></div>
+                  <small id="emojiCodeCodeHelp">Solo emojis · máximo 12 símbolos</small>
+                </form>
+                <section id="emojiCodeCodesPanel" class="emoji-code-codes-panel" hidden>
+                  <h2>Códigos recibidos</h2><div id="emojiCodeCodes" class="emoji-code-codes"></div>
+                </section>
+                <form id="emojiCodeGuessForm" class="emoji-code-action-card" hidden>
+                  <label for="emojiCodeGuessInput">¿Qué película es?</label>
+                  <div class="emoji-code-input-row"><input id="emojiCodeGuessInput" maxlength="80" required autocomplete="off" placeholder="Título de la película"><button type="submit">Adivinar</button></div>
+                  <div id="emojiCodeGuessHistory" class="emoji-code-guess-history"></div>
+                </form>
+                <section id="emojiCodeResult" class="emoji-code-result" hidden></section>
+                <button type="button" id="emojiCodePrimaryButton" class="emoji-code-primary">Esperando jugadores</button>
+              </main>
+            </div>
+          </section>
         </section>
 
         <section id="wordDuelView" class="view word-duel-view" aria-label="Duelo de Palabras" hidden>
@@ -1555,5 +1642,6 @@
     </div>
     <script src="/app.js" type="module"></script>
     <script src="/word-duel.js" type="module"></script>
+    <script src="/emoji-code.js" type="module"></script>
   </body>
 </html>

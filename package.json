@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "cloudflare:pages:build": "node scripts/build-pages.js",
+    "test:emoji-code": "node tests/emoji-code-engine.test.js && node tests/emoji-code-ui-contract.test.js",
     "cloudflare:dev": "wrangler dev",
     "cloudflare:deploy": "wrangler deploy"
   },
