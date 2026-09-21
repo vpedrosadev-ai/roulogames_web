@@ -11,6 +11,9 @@ for (const id of new Set(ids)) assert.match(html, new RegExp(`id=["']${id}["']`)
 assert.match(html, /data-view-target="emojiCodeView"/);
 assert.match(html, /id="emojiCodeCreateRounds"[^>]*value="3"/);
 assert.match(html, /id="emojiCodeCreatePlayerLimit"[^>]*min="2"[^>]*max="10"/);
+assert.match(html, /id="emojiCodeCreateTestMode"/);
+assert.match(html, /id="emojiCodeCreateBotCount"[^>]*min="1"[^>]*max="9"/);
+assert.match(html, /id="emojiCodeLeaderCodeInput"[^>]*maxlength="64"/);
 assert.match(html, /id="emojiCodeCodeInput"[^>]*maxlength="64"/);
 assert.match(html, /\/emoji-code\.css/);
 assert.match(html, /\/emoji-code\.js/);

@@ -718,6 +718,14 @@
                 <label>Jugadores<input id="emojiCodeCreatePlayerLimit" type="number" min="2" max="10" value="4" required></label>
                 <label>Rondas<input id="emojiCodeCreateRounds" type="number" min="1" max="12" value="3" required></label>
               </div>
+              <label class="solo-test-create-toggle">
+                <input id="emojiCodeCreateTestMode" type="checkbox">
+                <span><strong>Modo de prueba individual</strong><small>Añade bots que completan automáticamente sus acciones.</small></span>
+              </label>
+              <label id="emojiCodeBotCountField" class="test-bot-count-field" hidden>
+                <span><strong>Número de bots</strong><small>De 1 a 9 jugadores virtuales.</small></span>
+                <input id="emojiCodeCreateBotCount" type="number" min="1" max="9" value="3">
+              </label>
               <p class="emoji-code-rules-note">Cada jugador será adivinador una vez por ronda. Acierto: 10, 7 o 5 puntos; cada autor de código gana 2.</p>
               <div class="emoji-code-form-actions"><button type="button" class="secondary" data-emoji-code-back>Atrás</button><button type="submit">Crear sala</button></div>
             </form>
@@ -733,8 +741,8 @@
           <section id="emojiCodeGame" class="emoji-code-game" hidden>
             <div class="emoji-code-command-strip">
               <button type="button" id="emojiCodeShareButton" class="secondary">🔗 Copiar enlace</button>
-              <button type="button" id="emojiCodeRestartButton" class="secondary" hidden>Reiniciar</button>
               <button type="button" id="emojiCodeLeaveButton" class="secondary">Atrás</button>
+              <button type="button" id="emojiCodeRestartButton" class="secondary" hidden>Reiniciar</button>
             </div>
             <div class="emoji-code-board" aria-live="polite">
               <aside class="emoji-code-sidebar">
@@ -756,7 +764,10 @@
                 <form id="emojiCodeTitleForm" class="emoji-code-action-card" hidden>
                   <label for="emojiCodeTitleInput">Título de película</label>
                   <input id="emojiCodeTitleInput" maxlength="80" required autocomplete="off" placeholder="Escribe la película secreta">
-                  <button type="submit">Enviar al equipo</button>
+                  <label for="emojiCodeLeaderCodeInput">Tu código de emojis</label>
+                  <input id="emojiCodeLeaderCodeInput" maxlength="64" required autocomplete="off" placeholder="🚢🧊💔" aria-describedby="emojiCodeLeaderCodeHelp">
+                  <small id="emojiCodeLeaderCodeHelp">El equipo verá primero la película y después añadirá sus códigos.</small>
+                  <button type="submit">Enviar película y código</button>
                 </form>
                 <form id="emojiCodeCodeForm" class="emoji-code-action-card" hidden>
                   <label for="emojiCodeCodeInput">Tu código de emojis</label>

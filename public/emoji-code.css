@@ -83,8 +83,10 @@
 .emoji-code-action-card { display: grid; gap: 12px; margin: 18px 0; padding: 18px; border: 3px solid var(--ec-ink); border-radius: 20px; background: white; }
 .emoji-code-action-card label { font-size: 1.25rem; font-weight: 900; }
 .emoji-code-input-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
-#emojiCodeCodeInput { font-size: 2rem; letter-spacing: .08em; }
-#emojiCodeCodeInput[aria-invalid="true"] { border-color: #d72f55; background: #fff0f3; }
+#emojiCodeCodeInput,
+#emojiCodeLeaderCodeInput { font-size: 2rem; letter-spacing: .08em; }
+#emojiCodeCodeInput[aria-invalid="true"],
+#emojiCodeLeaderCodeInput[aria-invalid="true"] { border-color: #d72f55; background: #fff0f3; }
 
 .emoji-code-codes-panel { margin: 18px 0; }
 .emoji-code-codes-panel h2 { margin-bottom: 10px; }

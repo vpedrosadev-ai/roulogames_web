@@ -1409,7 +1409,7 @@ async function handleEmojiCodeActionWorker(request, roomName, action, env) {
       else {
         viewer = authenticateEmojiCodePlayer(room, body);
         if (action === "start") startEmojiCodeGame(room, viewer);
-        else if (action === "title") submitEmojiCodeTitle(room, viewer, body.title);
+        else if (action === "title") submitEmojiCodeTitle(room, viewer, body.title, body.code);
         else if (action === "code") submitEmojiCode(room, viewer, body.code);
         else if (action === "guess") submitEmojiCodeGuess(room, viewer, body.guess);
         else if (action === "advance") advanceEmojiCodeTurn(room, viewer);

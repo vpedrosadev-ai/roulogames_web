@@ -1443,7 +1443,7 @@ async function handleEmojiCodeActionNode(req, res, roomName, action) {
     }
     const player = authenticateEmojiCodePlayer(room, body);
     if (action === "start") startEmojiCodeGame(room, player);
-    else if (action === "title") submitEmojiCodeTitle(room, player, body.title);
+    else if (action === "title") submitEmojiCodeTitle(room, player, body.title, body.code);
     else if (action === "code") submitEmojiCode(room, player, body.code);
     else if (action === "guess") submitEmojiCodeGuess(room, player, body.guess);
     else if (action === "advance") advanceEmojiCodeTurn(room, player);

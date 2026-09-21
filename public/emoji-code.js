@@ -14,6 +14,9 @@ const titleForm = $("#emojiCodeTitleForm");
 const codeForm = $("#emojiCodeCodeForm");
 const guessForm = $("#emojiCodeGuessForm");
 const codeInput = $("#emojiCodeCodeInput");
+const leaderCodeInput = $("#emojiCodeLeaderCodeInput");
+const testModeInput = $("#emojiCodeCreateTestMode");
+const botCountInput = $("#emojiCodeCreateBotCount");
 
 let session = null;
 let room = null;
@@ -39,6 +42,9 @@ titleForm?.addEventListener("submit", submitTitle);
 codeForm?.addEventListener("submit", submitCode);
 guessForm?.addEventListener("submit", submitGuess);
 codeInput?.addEventListener("input", validateEmojiDraft);
+leaderCodeInput?.addEventListener("input", validateLeaderEmojiDraft);
+testModeInput?.addEventListener("change", syncTestMode);
+botCountInput?.addEventListener("input", syncTestMode);
 $("#emojiCodePlayers")?.addEventListener("click", kickPlayer);
 
 const invite = new URLSearchParams(window.location.search).get("emojicode");
@@ -83,6 +89,7 @@ function showForm(kind) {
   createForm.hidden = kind !== "create";
   joinForm.hidden = kind !== "join";
   message.textContent = "";
+  if (kind === "create") syncTestMode();
   (kind === "create" ? $("#emojiCodeCreateRoomName") : $("#emojiCodeJoinRoomName"))?.focus();
 }
 
@@ -97,7 +104,9 @@ async function createRoom(event) {
         playerName: $("#emojiCodeCreatePlayerName").value.trim(),
         emoji: $("#emojiCodeCreateEmoji").value,
         playerLimit: Number($("#emojiCodeCreatePlayerLimit").value),
-        rounds: Number($("#emojiCodeCreateRounds").value) || 3
+        rounds: Number($("#emojiCodeCreateRounds").value) || 3,
+        testMode: Boolean(testModeInput?.checked),
+        botCount: Number(botCountInput?.value) || 3
       })
     });
     enterRoom(payload);
@@ -165,9 +174,14 @@ function submitTitle(event) {
   event.preventDefault();
   const input = $("#emojiCodeTitleInput");
   const title = input.value.trim();
-  if (!title) return;
+  const code = leaderCodeInput.value.trim();
+  if (!title || !isEmojiOnly(code)) {
+    gameMessage.textContent = "Escribe el título y un código formado solo por emojis.";
+    return;
+  }
   input.value = "";
-  performAction("title", { title });
+  leaderCodeInput.value = "";
+  performAction("title", { title, code });
 }
 
 function submitCode(event) {
@@ -195,6 +209,24 @@ function validateEmojiDraft() {
   codeForm.querySelector("button[type=submit]").disabled = !valid || !codeInput.value.trim();
 }
 
+function validateLeaderEmojiDraft() {
+  const valid = !leaderCodeInput.value || isEmojiOnly(leaderCodeInput.value);
+  leaderCodeInput.setAttribute("aria-invalid", valid ? "false" : "true");
+  titleForm.querySelector("button[type=submit]").disabled = !valid;
+}
+
+function syncTestMode() {
+  const enabled = Boolean(testModeInput?.checked);
+  $("#emojiCodeBotCountField").hidden = !enabled;
+  const botCount = Math.max(1, Math.min(9, Number(botCountInput?.value) || 3));
+  if (botCountInput) botCountInput.value = String(botCount);
+  const playerLimit = $("#emojiCodeCreatePlayerLimit");
+  if (playerLimit) {
+    playerLimit.disabled = enabled;
+    if (enabled) playerLimit.value = String(botCount + 1);
+  }
+}
+
 function renderRoom() {
   if (!room?.player) return;
   const player = room.player;
@@ -204,7 +236,7 @@ function renderRoom() {
   $("#emojiCodeTurn").textContent = `${room.turnInRound || 0}/${room.turnsPerRound || room.config.playerLimit}`;
   $("#emojiCodeAttempts").textContent = String(room.guessesRemaining ?? 3);
   $("#emojiCodeShareButton").hidden = !isHost;
-  $("#emojiCodeRestartButton").hidden = !(isHost && room.status === "finished");
+  $("#emojiCodeRestartButton").hidden = !(isHost && room.status !== "lobby");
   renderPlayers(isHost);
   renderRole(player);
 
@@ -215,6 +247,12 @@ function renderRoom() {
     codeInput.dataset.turn = `${room.roundNumber}:${room.turnInRound}`;
     codeInput.value = "";
     validateEmojiDraft();
+  }
+  if (!titleForm.hidden && leaderCodeInput.dataset.turn !== `${room.roundNumber}:${room.turnInRound}`) {
+    leaderCodeInput.dataset.turn = `${room.roundNumber}:${room.turnInRound}`;
+    $("#emojiCodeTitleInput").value = "";
+    leaderCodeInput.value = "";
+    validateLeaderEmojiDraft();
   }
   const showCodes = room.codes.length > 0;
   $("#emojiCodeCodesPanel").hidden = !showCodes;
@@ -256,7 +294,7 @@ function renderRole(player) {
   if (room.status === "lobby") {
     roleLabel.textContent = "Preparando la sala";
     roleName.textContent = `${room.players.length}/${room.config.playerLimit} jugadores`;
-    roleHint.textContent = "La partida comienza cuando se complete la sala.";
+    roleHint.textContent = "La partida comenzará automáticamente cuando se complete la sala.";
     return;
   }
   if (room.status === "finished") {
@@ -269,10 +307,10 @@ function renderRole(player) {
   roleLabel.textContent = labels[player.role];
   if (player.role === "guesser") {
     roleName.textContent = room.phase === "guessing" ? "Descifra los códigos" : "Película oculta";
-    roleHint.textContent = room.phase === "codes" ? `Esperando códigos: ${room.codesSubmitted}/${room.codesRequired}` : "Tienes tres intentos para encontrar el título exacto.";
+    roleHint.textContent = ["leader", "team_codes"].includes(room.phase) ? `Esperando códigos: ${room.codesSubmitted}/${room.codesRequired}` : "Tienes tres intentos para encontrar el título exacto.";
   } else {
     roleName.textContent = room.movieTitle || (player.role === "leader" ? "Propón una película" : "Esperando al líder");
-    roleHint.textContent = room.phase === "codes" ? "Representa el título usando únicamente emojis." : `Adivina ${room.guesserName}.`;
+    roleHint.textContent = room.phase === "team_codes" ? (player.role === "leader" ? "Tu código ya está enviado. Espera al resto del equipo." : "Representa el título usando únicamente emojis.") : `Adivina ${room.guesserName}.`;
   }
 }
 
@@ -296,9 +334,7 @@ function renderPrimary(isHost) {
   primaryButton.hidden = false;
   primaryButton.disabled = true;
   if (room.status === "lobby") {
-    primaryButton.hidden = !isHost;
-    primaryButton.disabled = room.players.length !== room.config.playerLimit;
-    primaryButton.textContent = room.players.length === room.config.playerLimit ? "Iniciar partida" : `Esperando ${room.players.length}/${room.config.playerLimit}`;
+    primaryButton.hidden = true;
   } else if (room.phase === "result") {
     primaryButton.hidden = !isHost;
     primaryButton.disabled = !isHost;
@@ -315,8 +351,8 @@ function renderPrimary(isHost) {
 function statusMessage() {
   if (room.status === "lobby") return room.player.isHost ? "Comparte el enlace y espera al resto." : "Esperando a que el creador inicie la partida.";
   if (room.status === "finished") return "Todos han sido adivinadores en todas las rondas.";
-  if (room.phase === "title") return room.player.canSubmitTitle ? "Elige una película que todo el equipo conozca." : `${room.leaderName} está eligiendo película.`;
-  if (room.phase === "codes") return room.player.canSubmitCode ? "Escribe tu código secreto." : `Esperando códigos: ${room.codesSubmitted}/${room.codesRequired}.`;
+  if (room.phase === "leader") return room.player.canSubmitTitle ? "Elige una película y crea el primer código." : `${room.leaderName} está preparando la película y su código.`;
+  if (room.phase === "team_codes") return room.player.canSubmitCode ? "Ya conoces la película. Escribe tu código secreto." : `Esperando códigos: ${room.codesSubmitted}/${room.codesRequired}.`;
   if (room.phase === "guessing") return room.player.canGuess ? "Compara todos los códigos antes de responder." : `${room.guesserName} está intentando adivinar.`;
   if (room.phase === "result") return room.player.isHost ? "Revisa el resultado y continúa." : "Esperando el siguiente turno.";
   return "";

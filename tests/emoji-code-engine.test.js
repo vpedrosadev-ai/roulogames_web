@@ -5,7 +5,6 @@ import {
   createEmojiCodeRoom,
   emojiCodeRoomResponse,
   joinEmojiCodeRoom,
-  startEmojiCodeGame,
   submitEmojiCode,
   submitEmojiCodeGuess,
   submitEmojiCodeTitle
@@ -15,19 +14,17 @@ const room = createEmojiCodeRoom({ roomName: "Cine", playerName: "Ana", emoji: "
 const ana = room.players[0];
 const bea = joinEmojiCodeRoom(room, { playerName: "Bea", emoji: "🦊" });
 const carlos = joinEmojiCodeRoom(room, { playerName: "Carlos", emoji: "🤖" });
-startEmojiCodeGame(room, ana);
 
 assert.equal(room.guesserId, ana.id);
 assert.equal(room.leaderId, bea.id);
-assert.equal(room.phase, "title");
-submitEmojiCodeTitle(room, bea, "Titanic");
+assert.equal(room.phase, "leader");
+submitEmojiCodeTitle(room, bea, "Titanic", "🚢🧊💔");
 assert.equal(emojiCodeRoomResponse(room, ana).movieTitle, "");
 assert.equal(emojiCodeRoomResponse(room, carlos).movieTitle, "Titanic");
 
 assert.throws(() => submitEmojiCode(room, ana, "🚢🧊"), EmojiCodeError);
-assert.throws(() => submitEmojiCode(room, bea, "barco 🧊"), /solo puede contener emojis/i);
-submitEmojiCode(room, bea, "🚢🧊💔");
-assert.equal(room.phase, "codes");
+assert.throws(() => submitEmojiCode(room, carlos, "barco 🧊"), /solo puede contener emojis/i);
+assert.equal(room.phase, "team_codes");
 assert.deepEqual(emojiCodeRoomResponse(room, ana).codes, []);
 submitEmojiCode(room, carlos, "🛳️🌊🥶");
 assert.equal(room.phase, "guessing");
@@ -51,14 +48,20 @@ assert.equal(emojiCodeRoomResponse(room, bea).turnInRound, 2);
 const duel = createEmojiCodeRoom({ roomName: "Duo", playerName: "Uno", emoji: "🐼", playerLimit: 2, rounds: 1 });
 const one = duel.players[0];
 const two = joinEmojiCodeRoom(duel, { playerName: "Dos", emoji: "🐸" });
-startEmojiCodeGame(duel, one);
 assert.equal(duel.guesserId, one.id);
 assert.equal(duel.leaderId, two.id);
-submitEmojiCodeTitle(duel, two, "Up");
-submitEmojiCode(duel, two, "🎈🏠☁️");
+submitEmojiCodeTitle(duel, two, "Up", "🎈🏠☁️");
+assert.equal(duel.phase, "guessing");
 submitEmojiCodeGuess(duel, one, "Up");
 advanceEmojiCodeTurn(duel, one);
 assert.equal(duel.guesserId, two.id);
 assert.equal(duel.leaderId, one.id);
+
+const botRoom = createEmojiCodeRoom({ roomName: "Bots", playerName: "Tester", emoji: "🧪", rounds: 3, testMode: true, botCount: 3 });
+assert.equal(botRoom.players.length, 4);
+assert.equal(botRoom.status, "playing");
+assert.equal(botRoom.phase, "guessing");
+assert.equal(botRoom.codes[botRoom.leaderId], "🚢🧊💔");
+assert.equal(emojiCodeRoomResponse(botRoom, botRoom.players[0]).testMode, true);
 
 console.log("EMOJI_CODE_ENGINE_OK");
