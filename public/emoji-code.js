@@ -247,7 +247,7 @@ function renderRoom() {
   $("#emojiCodeTurn").textContent = `${room.turnInRound || 0}/${room.turnsPerRound || room.config.playerLimit}`;
   $("#emojiCodeAttempts").textContent = String(room.guessesRemaining ?? 3);
   $("#emojiCodeShareButton").hidden = !isHost;
-  $("#emojiCodeRestartButton").hidden = !(isHost && room.status === "finished");
+  $("#emojiCodeRestartButton").hidden = !isHost || isLobby;
   $(".emoji-code-stats").hidden = isLobby;
   $(".emoji-code-stage").classList.toggle("is-lobby", isLobby);
   renderPlayers(isHost);
@@ -354,6 +354,19 @@ function renderResult() {
   const points = document.createElement("p");
   points.textContent = result.correct ? `${result.guesserName} +${result.guesserPoints} · autores +${result.codePoints}` : "Sin puntos en este turno";
   panel.append(title, movie, points);
+  const guessLimit = Number(room.config.guessLimit || 3);
+  if (!result.correct && result.attempts >= guessLimit) {
+    const attemptsTitle = document.createElement("h3");
+    attemptsTitle.textContent = "Intentos realizados";
+    const attempts = document.createElement("ol");
+    attempts.className = "emoji-code-result-attempts";
+    attempts.replaceChildren(...room.guesses.filter((guess) => !guess.correct).map((guess) => {
+      const item = document.createElement("li");
+      item.textContent = guess.text;
+      return item;
+    }));
+    panel.append(attemptsTitle, attempts);
+  }
 }
 
 function renderPrimary(isHost) {
