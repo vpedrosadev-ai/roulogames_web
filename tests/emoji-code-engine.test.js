@@ -36,6 +36,7 @@ assert.equal(emojiCodeRoomResponse(room, ana).codes.length, 2);
 submitEmojiCodeGuess(room, ana, "Avatar");
 assert.equal(room.phase, "guessing");
 assert.equal(emojiCodeRoomResponse(room, ana).guessesRemaining, 2);
+assert.deepEqual(emojiCodeRoomResponse(room, carlos).guesses, [{ text: "Avatar", correct: false }]);
 submitEmojiCodeGuess(room, ana, "Títánic!");
 assert.equal(room.phase, "result");
 assert.equal(ana.score, 7);

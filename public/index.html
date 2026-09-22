@@ -780,8 +780,11 @@
                 <form id="emojiCodeGuessForm" class="emoji-code-action-card" hidden>
                   <label for="emojiCodeGuessInput">¿Qué película es?</label>
                   <div class="emoji-code-input-row"><input id="emojiCodeGuessInput" maxlength="80" required autocomplete="off" placeholder="Título de la película"><button type="submit">Adivinar</button></div>
-                  <div id="emojiCodeGuessHistory" class="emoji-code-guess-history"></div>
                 </form>
+                <section id="emojiCodeGuessHistoryPanel" class="emoji-code-guess-history-panel" hidden>
+                  <h2>Intentos fallidos</h2>
+                  <div id="emojiCodeGuessHistory" class="emoji-code-guess-history" aria-live="polite"></div>
+                </section>
                 <section id="emojiCodeResult" class="emoji-code-result" hidden></section>
                 <button type="button" id="emojiCodePrimaryButton" class="emoji-code-primary">Esperando jugadores</button>
               </main>

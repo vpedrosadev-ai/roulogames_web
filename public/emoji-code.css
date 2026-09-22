@@ -49,9 +49,9 @@
 .emoji-code-form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
 
 .emoji-code-command-strip { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 14px; }
-.emoji-code-board { display: grid; grid-template-columns: minmax(230px, 300px) 1fr; gap: 20px; }
+.emoji-code-board { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); gap: 20px; }
 .emoji-code-sidebar,
-.emoji-code-stage { border: 4px solid var(--ec-ink); border-radius: 28px; background: #fff9ec; box-shadow: 0 8px 0 var(--ec-ink); }
+.emoji-code-stage { min-width: 0; box-sizing: border-box; border: 4px solid var(--ec-ink); border-radius: 28px; background: #fff9ec; box-shadow: 0 8px 0 var(--ec-ink); }
 .emoji-code-sidebar { padding: 18px; align-self: start; }
 .emoji-code-sidebar > strong { display: block; margin-bottom: 14px; font-size: 1.2rem; }
 .emoji-code-players { display: grid; gap: 10px; }
@@ -86,9 +86,10 @@
 .emoji-code-role-card strong { margin: 5px 0; font-size: clamp(1.7rem, 4vw, 2.7rem); }
 .emoji-code-role-card p { margin: 0; font-weight: 700; }
 
-.emoji-code-action-card { display: grid; gap: 12px; margin: 18px 0; padding: 18px; border: 3px solid var(--ec-ink); border-radius: 20px; background: white; }
+.emoji-code-action-card { display: grid; min-width: 0; gap: 12px; margin: 18px 0; padding: 18px; border: 3px solid var(--ec-ink); border-radius: 20px; background: white; }
 .emoji-code-action-card label { font-size: 1.25rem; font-weight: 900; }
-.emoji-code-input-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.emoji-code-input-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.emoji-code-input-row input { width: 100%; min-width: 0; box-sizing: border-box; }
 #emojiCodeCodeInput,
 #emojiCodeLeaderCodeInput { font-size: 2rem; letter-spacing: .08em; }
 #emojiCodeCodeInput[aria-invalid="true"],
@@ -100,9 +101,10 @@
 .emoji-code-codes article { padding: 14px 10px; border: 3px solid var(--ec-ink); border-radius: 18px; background: white; text-align: center; }
 .emoji-code-codes strong { display: block; min-height: 44px; font-size: 2rem; overflow-wrap: anywhere; }
 .emoji-code-codes span { font-weight: 800; }
+.emoji-code-guess-history-panel { display: grid; gap: 10px; margin: 18px 0; padding: 14px; border: 3px solid var(--ec-ink); border-radius: 18px; background: white; }
+.emoji-code-guess-history-panel h2 { margin: 0; font-size: 1rem; }
 .emoji-code-guess-history { display: flex; flex-wrap: wrap; gap: 8px; }
 .emoji-code-guess-history p { margin: 0; padding: 6px 10px; border-radius: 999px; background: #ffe3e8; color: #9d1737; font-weight: 800; }
-.emoji-code-guess-history .is-correct { background: #d9fbe6; color: #176c3b; }
 
 .emoji-code-result { margin: 18px 0; padding: 24px; border: 4px solid var(--ec-ink); border-radius: 24px; text-align: center; }
 .emoji-code-result.is-correct { background: #d9fbe6; }
@@ -133,33 +135,52 @@
   .emoji-code-hero { padding: 30px 14px 25px; border-radius: 24px; }
   .emoji-code-choice { grid-template-columns: 1fr; }
   .emoji-code-choice button { min-height: 120px; }
-  .emoji-code-board { grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr); gap: 5px; align-items: start; }
-  .emoji-code-sidebar { min-width: 0; padding: 8px; }
-  .emoji-code-sidebar > strong { overflow-wrap: anywhere; font-size: .9rem; }
-  .emoji-code-players { gap: 6px; }
-  .emoji-code-player { min-width: 0; grid-template-columns: 31px minmax(0, 1fr); gap: 1px 6px; padding: 6px; }
-  .emoji-code-player b { grid-column: 2; font-size: .68rem; }
-  .emoji-code-player strong { font-size: .9rem; }
-  .emoji-code-player small { font-size: .68rem; }
-  .emoji-code-avatar { font-size: 1.1rem; }
-  .emoji-code-stage { min-width: 0; min-height: 0; padding: 8px; }
+  .emoji-code-board { grid-template-columns: minmax(108px, 35vw) minmax(0, 1fr); gap: 5px; align-items: start; }
+  .emoji-code-sidebar,
+  .emoji-code-stage { min-width: 0; min-height: 0; border-width: 3px; border-radius: 18px; box-shadow: 0 5px 0 var(--ec-ink); }
+  .emoji-code-sidebar { padding: 6px; }
+  .emoji-code-sidebar > strong { margin-bottom: 8px; overflow-wrap: anywhere; font-size: .72rem; line-height: 1.08; }
+  .emoji-code-players { gap: 5px; }
+  .emoji-code-player { min-width: 0; grid-template-columns: 25px minmax(0, 1fr); gap: 1px 4px; padding: 4px; border-width: 2px; border-radius: 11px; }
+  .emoji-code-player b { grid-column: 2; overflow: hidden; font-size: .56rem; line-height: 1.05; text-overflow: ellipsis; }
+  .emoji-code-player strong { font-size: .72rem; line-height: 1.05; }
+  .emoji-code-player small { font-size: .56rem; line-height: 1.05; }
+  .emoji-code-avatar { font-size: .92rem; }
+  .emoji-code-stage { padding: 7px; }
   .emoji-code-stats { gap: 4px; }
-  .emoji-code-stats article { min-width: 0; padding: 6px 2px; border-width: 2px; }
-  .emoji-code-stats span { font-size: .58rem; letter-spacing: .02em; }
-  .emoji-code-stats strong { font-size: 1rem; }
-  .emoji-code-role-card { margin: 8px 0; padding: 10px 6px; }
-  .emoji-code-role-card span { font-size: .68rem; }
-  .emoji-code-role-card strong { font-size: clamp(1.05rem, 5vw, 1.6rem); overflow-wrap: anywhere; }
-  .emoji-code-role-card p { font-size: .76rem; }
-  .emoji-code-action-card { margin: 8px 0; padding: 8px; }
-  .emoji-code-action-card label { font-size: .9rem; }
-  .emoji-code-action-card input { width: 100%; min-width: 0; font-size: 16px; }
+  .emoji-code-stats article { min-width: 0; padding: 5px 1px; border-width: 2px; border-radius: 10px; }
+  .emoji-code-stats span { overflow: hidden; font-size: .5rem; letter-spacing: 0; text-overflow: ellipsis; }
+  .emoji-code-stats strong { font-size: .88rem; }
+  .emoji-code-role-card { margin: 7px 0; padding: 8px 5px; border-radius: 13px; }
+  .emoji-code-role-card span { font-size: .58rem; letter-spacing: .04em; }
+  .emoji-code-role-card strong { font-size: clamp(.9rem, 4.4vw, 1.25rem); line-height: 1.08; overflow-wrap: anywhere; }
+  .emoji-code-role-card p { font-size: .65rem; line-height: 1.18; }
+  .emoji-code-action-card { gap: 7px; margin: 7px 0; padding: 7px; border-width: 2px; border-radius: 13px; }
+  .emoji-code-action-card label { font-size: .76rem; line-height: 1.1; }
+  .emoji-code-action-card input { width: 100%; min-width: 0; min-height: 42px; padding: 7px 8px; font-size: 16px; }
+  .emoji-code-action-card small { font-size: .62rem; line-height: 1.15; }
+  .emoji-code-action-card button { min-width: 0; padding: 8px 5px; font-size: .74rem; white-space: normal; }
   #emojiCodeCodeInput,
-  #emojiCodeLeaderCodeInput { font-size: 1.3rem; }
+  #emojiCodeLeaderCodeInput { font-size: 1.1rem; }
   .emoji-code-command-strip { overflow-x: auto; justify-content: flex-start; }
   .emoji-code-command-strip button { white-space: nowrap; }
   .emoji-code-input-row { grid-template-columns: 1fr; }
   .emoji-code-input-row button { width: 100%; }
+  .emoji-code-codes-panel { min-width: 0; margin: 8px 0; }
+  .emoji-code-codes-panel h2 { margin: 0 0 6px; font-size: .88rem; }
+  .emoji-code-codes { grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 5px; }
+  .emoji-code-codes article { min-width: 0; padding: 7px 4px; border-width: 2px; border-radius: 11px; }
+  .emoji-code-codes strong { min-height: 28px; font-size: 1.2rem; line-height: 1.05; }
+  .emoji-code-codes span { display: block; overflow: hidden; font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+  .emoji-code-guess-history-panel { gap: 6px; margin: 7px 0; padding: 7px; border-width: 2px; border-radius: 12px; }
+  .emoji-code-guess-history-panel h2 { font-size: .76rem; }
+  .emoji-code-guess-history { gap: 4px; }
+  .emoji-code-guess-history p { max-width: 100%; padding: 4px 7px; overflow: hidden; font-size: .66rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+  .emoji-code-result { margin: 7px 0; padding: 10px 6px; border-width: 2px; border-radius: 13px; }
+  .emoji-code-result h2 { font-size: .9rem; }
+  .emoji-code-result strong { font-size: 1.1rem; overflow-wrap: anywhere; }
+  .emoji-code-result p { font-size: .68rem; }
+  .emoji-code-primary { min-height: 44px; margin-top: 8px; padding: 7px 5px; font-size: .74rem; }
   .emoji-code-config-grid { grid-template-columns: 1fr; gap: 0; }
   .emoji-code-form { padding: 20px 14px; }
 }

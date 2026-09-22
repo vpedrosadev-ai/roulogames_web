@@ -270,9 +270,11 @@ function renderRoom() {
   const showCodes = ["guessing", "result", "finished"].includes(room.phase) && room.codes.length > 0;
   $("#emojiCodeCodesPanel").hidden = !showCodes;
   $("#emojiCodeCodes").replaceChildren(...room.codes.map((item) => makeCodeCard(item)));
-  $("#emojiCodeGuessHistory").replaceChildren(...room.guesses.map((guess, index) => {
+  const failedGuesses = room.guesses.filter((guess) => !guess.correct);
+  $("#emojiCodeGuessHistoryPanel").hidden = room.phase !== "guessing" || failedGuesses.length === 0;
+  $("#emojiCodeGuessHistory").replaceChildren(...failedGuesses.map((guess, index) => {
     const line = document.createElement("p");
-    line.className = guess.correct ? "is-correct" : "is-wrong";
+    line.className = "is-wrong";
     line.textContent = `${index + 1}. ${guess.text}`;
     return line;
   }));
