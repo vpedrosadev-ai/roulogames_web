@@ -1,3 +1,9 @@
+import {
+  findEmojiCodeMovieMatches,
+  randomEmojiCodeMovieTitle,
+  resolveEmojiCodeMovieTitle
+} from "./emoji-code-movies.js";
+
 export class EmojiCodeError extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -6,7 +12,7 @@ export class EmojiCodeError extends Error {
   }
 }
 
-const PLAYER_COLORS = ["#ff6b6b", "#4dabf7", "#ffd43b", "#69db7c", "#b197fc", "#ffa94d", "#f783ac", "#63e6be", "#74c0fc", "#e599f7"];
+const PLAYER_COLORS = ["#ffd8d8", "#d8edff", "#fff2bd", "#d9f7df", "#eadcff", "#ffe2c2", "#ffdced", "#d5f5ed", "#ddecff", "#f1dcfa"];
 const MAX_EMOJI_GRAPHEMES = 12;
 const BOT_IDENTITIES = [
   { name: "Bot Lumière", emoji: "🎥" },
@@ -22,10 +28,10 @@ const BOT_IDENTITIES = [
 const BOT_MOVIES = [
   { title: "Titanic", code: "🚢🧊💔" },
   { title: "Up", code: "🎈🏠☁️" },
-  { title: "El rey león", code: "🦁👑🌅" },
+  { title: "Shrek", code: "🧌👸🐉" },
   { title: "Buscando a Nemo", code: "🐠🌊🔎" },
-  { title: "Jurassic Park", code: "🦖🏝️🚙" },
-  { title: "Harry Potter", code: "🧙‍♂️⚡🏰" }
+  { title: "Jurassic World", code: "🦖🏝️🚙" },
+  { title: "Avatar", code: "🔵🌳🌌" }
 ];
 
 export function normalizeEmojiCodeKey(value) {
@@ -60,6 +66,7 @@ export function createEmojiCodeRoom(value = {}) {
     guesserId: "",
     leaderId: "",
     movieTitle: "",
+    movieSuggestion: "",
     codes: {},
     guesses: [],
     lastTurnResult: null,
@@ -127,7 +134,8 @@ export function startEmojiCodeGame(room, player) {
 export function submitEmojiCodeTitle(room, player, value, emojiCode) {
   if (room.status !== "playing" || room.phase !== "leader") throw new EmojiCodeError("Ahora no se puede proponer película", 409);
   if (player.id !== room.leaderId) throw new EmojiCodeError("Solo el líder propone la película", 403);
-  const title = String(value || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  const enteredTitle = String(value || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  const title = resolveEmojiCodeMovieTitle(enteredTitle) || enteredTitle;
   if (title.length < 2) throw new EmojiCodeError("Escribe un título de película válido");
   const code = normalizeEmojiSequence(emojiCode);
   if (!code || !isEmojiOnly(code)) throw new EmojiCodeError("El código solo puede contener emojis");
@@ -136,6 +144,21 @@ export function submitEmojiCodeTitle(room, player, value, emojiCode) {
   room.phase = getTeamCoders(room).length ? "team_codes" : "guessing";
   markChanged(room, "title-ready");
   settleEmojiCodeBots(room);
+}
+
+export function rerollEmojiCodeMovie(room, player) {
+  if (room.status !== "playing" || room.phase !== "leader") throw new EmojiCodeError("Ahora no se puede cambiar la película", 409);
+  if (player.id !== room.leaderId) throw new EmojiCodeError("Solo el líder puede cambiar la película", 403);
+  room.movieSuggestion = randomEmojiCodeMovieTitle(room.movieSuggestion);
+  markChanged(room, "movie-rerolled");
+}
+
+export function searchEmojiCodeMovies(room, player, value, limit = 8) {
+  if (!player) throw new EmojiCodeError("Sesión de jugador no válida", 401);
+  if (room.status !== "playing" || room.phase !== "guessing" || player.id !== room.guesserId) {
+    throw new EmojiCodeError("Las sugerencias solo están disponibles para quien adivina", 403);
+  }
+  return findEmojiCodeMovieMatches(value, [room.movieTitle], limit);
 }
 
 export function submitEmojiCode(room, player, value) {
@@ -186,6 +209,7 @@ export function restartEmojiCodeGame(room, player) {
   room.guesserId = "";
   room.leaderId = "";
   room.movieTitle = "";
+  room.movieSuggestion = "";
   room.codes = {};
   room.guesses = [];
   room.lastTurnResult = null;
@@ -217,6 +241,9 @@ export function leaveEmojiCodeRoom(room, player) {
 }
 
 export function emojiCodeRoomResponse(room, privatePlayer = null, sessionPlayer = privatePlayer) {
+  if (room.status === "playing" && room.phase === "leader" && !room.movieSuggestion) {
+    room.movieSuggestion = randomEmojiCodeMovieTitle();
+  }
   const now = Date.now();
   const guesser = room.players.find((player) => player.id === room.guesserId);
   const leader = room.players.find((player) => player.id === room.leaderId);
@@ -241,7 +268,16 @@ export function emojiCodeRoomResponse(room, privatePlayer = null, sessionPlayer 
     leaderId: room.leaderId,
     leaderName: leader?.name || "",
     movieTitle: revealTitle ? room.movieTitle : "",
-    codes: revealCodes ? getCoders(room).map((coder) => ({ playerId: coder.id, name: coder.name, emoji: coder.emoji, code: room.codes[coder.id] || "" })) : [],
+    suggestedMovieTitle: room.phase === "leader" && privatePlayer?.id === room.leaderId
+      ? room.movieSuggestion
+      : "",
+    codes: revealCodes ? getCoders(room).map((coder) => ({
+      playerId: coder.id,
+      name: coder.name,
+      emoji: coder.emoji,
+      color: playerColor(coder),
+      code: room.codes[coder.id] || ""
+    })) : [],
     codesSubmitted: Object.keys(room.codes || {}).length,
     codesRequired: Math.max(0, room.players.length - 1),
     guesses: room.guesses || [],
@@ -252,7 +288,7 @@ export function emojiCodeRoomResponse(room, privatePlayer = null, sessionPlayer 
       id: player.id,
       name: player.name,
       emoji: player.emoji,
-      color: player.color,
+      color: playerColor(player),
       seatNumber: player.seatNumber,
       score: Number(player.score || 0),
       isTestPlayer: Boolean(player.isTestPlayer),
@@ -305,6 +341,7 @@ function beginTurn(room) {
   room.guesserId = room.players[guesserIndex].id;
   room.leaderId = room.players[leaderIndex].id;
   room.movieTitle = "";
+  room.movieSuggestion = randomEmojiCodeMovieTitle(room.movieSuggestion);
   room.codes = {};
   room.guesses = [];
   room.lastTurnResult = null;
@@ -414,6 +451,10 @@ function createPlayer(identity, seatNumber) {
     codeWins: 0,
     lastSeen: Date.now()
   };
+}
+
+function playerColor(player) {
+  return PLAYER_COLORS[(Math.max(1, Number(player?.seatNumber) || 1) - 1) % PLAYER_COLORS.length];
 }
 
 function nextSeat(room) {

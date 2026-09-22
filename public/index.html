@@ -763,15 +763,19 @@
                 <p id="emojiCodeGameMessage" class="message"></p>
                 <form id="emojiCodeTitleForm" class="emoji-code-action-card" hidden>
                   <label for="emojiCodeTitleInput">Título de película</label>
-                  <input id="emojiCodeTitleInput" maxlength="80" required autocomplete="off" placeholder="Escribe la película secreta">
+                  <div class="emoji-code-movie-picker">
+                    <input id="emojiCodeTitleInput" maxlength="80" required autocomplete="off" aria-describedby="emojiCodeTitleHelp">
+                    <button type="button" id="emojiCodeChangeMovieButton" class="secondary">Cambiar película</button>
+                  </div>
+                  <small id="emojiCodeTitleHelp">Puedes editar el título para usar una película personalizada.</small>
                   <label for="emojiCodeLeaderCodeInput">Tu código de emojis</label>
-                  <input id="emojiCodeLeaderCodeInput" maxlength="64" required autocomplete="off" placeholder="🚢🧊💔" aria-describedby="emojiCodeLeaderCodeHelp">
+                  <input id="emojiCodeLeaderCodeInput" maxlength="64" required autocomplete="off" aria-describedby="emojiCodeLeaderCodeHelp">
                   <small id="emojiCodeLeaderCodeHelp">El equipo verá primero la película y después añadirá sus códigos.</small>
                   <button type="submit">Enviar película y código</button>
                 </form>
                 <form id="emojiCodeCodeForm" class="emoji-code-action-card" hidden>
                   <label for="emojiCodeCodeInput">Tu código de emojis</label>
-                  <div class="emoji-code-input-row"><input id="emojiCodeCodeInput" maxlength="64" required autocomplete="off" placeholder="🚢🧊💔" aria-describedby="emojiCodeCodeHelp"><button type="submit">Enviar código</button></div>
+                  <div class="emoji-code-input-row"><input id="emojiCodeCodeInput" maxlength="64" required autocomplete="off" aria-describedby="emojiCodeCodeHelp"><button type="submit">Enviar código</button></div>
                   <small id="emojiCodeCodeHelp">Solo emojis · máximo 12 símbolos</small>
                 </form>
                 <section id="emojiCodeCodesPanel" class="emoji-code-codes-panel" hidden>
@@ -779,7 +783,13 @@
                 </section>
                 <form id="emojiCodeGuessForm" class="emoji-code-action-card" hidden>
                   <label for="emojiCodeGuessInput">¿Qué película es?</label>
-                  <div class="emoji-code-input-row"><input id="emojiCodeGuessInput" maxlength="80" required autocomplete="off" placeholder="Título de la película"><button type="submit">Adivinar</button></div>
+                  <div class="emoji-code-input-row">
+                    <div class="emoji-code-autocomplete">
+                      <input id="emojiCodeGuessInput" maxlength="80" required autocomplete="off" placeholder="Título de la película" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="emojiCodeGuessSuggestions">
+                      <div id="emojiCodeGuessSuggestions" class="emoji-code-suggestions" role="listbox" hidden></div>
+                    </div>
+                    <button type="submit">Adivinar</button>
+                  </div>
                 </form>
                 <section id="emojiCodeGuessHistoryPanel" class="emoji-code-guess-history-panel" hidden>
                   <h2>Intentos fallidos</h2>

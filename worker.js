@@ -48,7 +48,9 @@ import {
   leaveEmojiCodeRoom,
   normalizeEmojiCodeKey,
   resolveEmojiCodeTestViewPlayer,
+  rerollEmojiCodeMovie,
   restartEmojiCodeGame,
+  searchEmojiCodeMovies,
   startEmojiCodeGame,
   submitEmojiCode,
   submitEmojiCodeGuess,
@@ -718,7 +720,9 @@ export default {
 
       const emojiCodeRoomMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)$/);
       if (request.method === "GET" && emojiCodeRoomMatch) return getEmojiCodeRoomWorker(emojiCodeRoomMatch[1], request, env);
-      const emojiCodeActionMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/(join|start|title|code|guess|advance|restart|kick|leave)$/);
+      const emojiCodeMoviesMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/movies$/);
+      if (request.method === "GET" && emojiCodeMoviesMatch) return searchEmojiCodeMoviesWorker(emojiCodeMoviesMatch[1], request, env);
+      const emojiCodeActionMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/(join|start|title|reroll-movie|code|guess|advance|restart|kick|leave)$/);
       if (request.method === "POST" && emojiCodeActionMatch) return handleEmojiCodeActionWorker(request, emojiCodeActionMatch[1], emojiCodeActionMatch[2], env);
 
       const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
@@ -1395,8 +1399,21 @@ async function getEmojiCodeRoomWorker(roomName, request, env) {
   const url = new URL(request.url);
   const sessionPlayer = touchEmojiCodeRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
   const viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, url.searchParams.get("viewPlayerId"));
+  const response = emojiCodeRoomResponse(room, viewer, sessionPlayer);
   await saveEmojiCodeRoom(room, env).catch(() => false);
-  return json(emojiCodeRoomResponse(room, viewer, sessionPlayer));
+  return json(response);
+}
+
+async function searchEmojiCodeMoviesWorker(roomName, request, env) {
+  try {
+    const room = await loadEmojiCodeRoom(normalizeEmojiCodeKey(roomName), env);
+    if (!room) return json({ error: "Sala no encontrada" }, 404);
+    const url = new URL(request.url);
+    const sessionPlayer = touchEmojiCodeRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+    const viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, url.searchParams.get("viewPlayerId"));
+    await saveEmojiCodeRoom(room, env).catch(() => false);
+    return json({ matches: searchEmojiCodeMovies(room, viewer, url.searchParams.get("q"), 8) });
+  } catch (error) { return sendEmojiCodeErrorWorker(error); }
 }
 
 async function handleEmojiCodeActionWorker(request, roomName, action, env) {
@@ -1417,6 +1434,7 @@ async function handleEmojiCodeActionWorker(request, roomName, action, env) {
         const actingPlayer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, body.asPlayerId);
         if (action === "start") startEmojiCodeGame(room, sessionPlayer);
         else if (action === "title") submitEmojiCodeTitle(room, actingPlayer, body.title, body.code);
+        else if (action === "reroll-movie") rerollEmojiCodeMovie(room, actingPlayer);
         else if (action === "code") submitEmojiCode(room, actingPlayer, body.code);
         else if (action === "guess") submitEmojiCodeGuess(room, actingPlayer, body.guess);
         else if (action === "advance") advanceEmojiCodeTurn(room, sessionPlayer);

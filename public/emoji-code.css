@@ -55,15 +55,14 @@
 .emoji-code-sidebar { padding: 18px; align-self: start; }
 .emoji-code-sidebar > strong { display: block; margin-bottom: 14px; font-size: 1.2rem; }
 .emoji-code-players { display: grid; gap: 10px; }
-.emoji-code-player { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; padding: 10px; border: 3px solid var(--ec-ink); border-radius: 16px; background: white; }
-.emoji-code-player.is-guesser { background: #dff9ff; border-color: #167f9b; }
-.emoji-code-player.is-leader { background: #fff0c2; border-color: #aa6f00; }
+.emoji-code-player { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 3px solid var(--ec-ink); border-radius: 16px; background: white; }
+.emoji-code-player.is-guesser { border-color: #167f9b; }
+.emoji-code-player.is-leader { border-color: #aa6f00; }
 .emoji-code-player.is-current { box-shadow: 0 0 0 3px var(--ec-pink); }
 .emoji-code-player.is-offline { opacity: .5; }
 .emoji-code-player[data-kick-id],
 .emoji-code-player[role="button"] { cursor: pointer; }
 .emoji-code-player[role="button"]:focus-visible { outline: 4px solid var(--ec-cyan); outline-offset: 2px; }
-.emoji-code-avatar { font-size: 1.7rem; text-align: center; }
 .emoji-code-player div { min-width: 0; }
 .emoji-code-player strong,
 .emoji-code-player small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -90,6 +89,16 @@
 .emoji-code-action-card label { font-size: 1.25rem; font-weight: 900; }
 .emoji-code-input-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
 .emoji-code-input-row input { width: 100%; min-width: 0; box-sizing: border-box; }
+.emoji-code-movie-picker { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.emoji-code-movie-picker input { width: 100%; min-width: 0; box-sizing: border-box; }
+.emoji-code-autocomplete { position: relative; min-width: 0; }
+.emoji-code-suggestions { position: absolute; z-index: 20; top: calc(100% + 5px); right: 0; left: 0; max-height: 280px; overflow-y: auto; border: 3px solid var(--ec-ink); border-radius: 14px; background: #fff; box-shadow: 0 6px 0 rgba(35, 29, 59, .22); }
+.emoji-code-suggestions button { display: flex; width: 100%; min-height: 0; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-bottom: 1px solid #ded6ef; border-radius: 0; background: #fff; color: var(--ec-ink); text-align: left; box-shadow: none; }
+.emoji-code-suggestions button:last-child { border-bottom: 0; }
+.emoji-code-suggestions button:hover,
+.emoji-code-suggestions button:focus-visible { background: #f0e7ff; transform: none; }
+.emoji-code-suggestions strong { overflow-wrap: anywhere; }
+.emoji-code-suggestions small { flex: 0 0 auto; opacity: .65; }
 #emojiCodeCodeInput,
 #emojiCodeLeaderCodeInput { font-size: 2rem; letter-spacing: .08em; }
 #emojiCodeCodeInput[aria-invalid="true"],
@@ -145,11 +154,10 @@
   .emoji-code-sidebar { padding: 4px; }
   .emoji-code-sidebar > strong { margin-bottom: 6px; overflow-wrap: anywhere; font-size: .6rem; line-height: 1.05; }
   .emoji-code-players { gap: 4px; }
-  .emoji-code-player { min-width: 0; grid-template-columns: 18px minmax(0, 1fr); gap: 1px 3px; padding: 3px; overflow: hidden; border-width: 2px; border-radius: 9px; }
-  .emoji-code-player b { grid-column: 2; overflow: hidden; font-size: .48rem; line-height: 1.05; text-overflow: ellipsis; }
+  .emoji-code-player { min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 4px; overflow: hidden; border-width: 2px; border-radius: 9px; }
+  .emoji-code-player b { grid-column: 1; overflow: hidden; font-size: .48rem; line-height: 1.05; text-overflow: ellipsis; }
   .emoji-code-player strong { font-size: .62rem; line-height: 1.05; }
   .emoji-code-player small { font-size: .48rem; line-height: 1.05; }
-  .emoji-code-avatar { font-size: .74rem; }
   .emoji-code-stage { padding: 8px; }
   .emoji-code-stats { gap: 4px; }
   .emoji-code-stats article { min-width: 0; padding: 5px 1px; border-width: 2px; border-radius: 10px; }
@@ -170,6 +178,9 @@
   .emoji-code-command-strip button { min-width: 0; padding: 7px 4px; font-size: clamp(.62rem, 2.6vw, .8rem); line-height: 1.05; white-space: normal; }
   .emoji-code-input-row { grid-template-columns: 1fr; }
   .emoji-code-input-row button { width: 100%; }
+  .emoji-code-movie-picker { grid-template-columns: 1fr; }
+  .emoji-code-movie-picker button { width: 100%; }
+  .emoji-code-suggestions button { flex-direction: row; width: 100%; padding: 8px; text-align: left; }
   .emoji-code-codes-panel { min-width: 0; margin: 8px 0; }
   .emoji-code-codes-panel h2 { margin: 0 0 6px; font-size: .88rem; }
   .emoji-code-codes { grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 5px; }

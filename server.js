@@ -55,7 +55,9 @@ import {
   leaveEmojiCodeRoom,
   normalizeEmojiCodeKey,
   resolveEmojiCodeTestViewPlayer,
+  rerollEmojiCodeMovie,
   restartEmojiCodeGame,
+  searchEmojiCodeMovies,
   startEmojiCodeGame,
   submitEmojiCode,
   submitEmojiCodeGuess,
@@ -753,7 +755,9 @@ const server = createServer(async (req, res) => {
 
     const emojiCodeRoomMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)$/);
     if (req.method === "GET" && emojiCodeRoomMatch) return getEmojiCodeRoomNode(res, emojiCodeRoomMatch[1], url.searchParams);
-    const emojiCodeActionMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/(join|start|title|code|guess|advance|restart|kick|leave)$/);
+    const emojiCodeMoviesMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/movies$/);
+    if (req.method === "GET" && emojiCodeMoviesMatch) return searchEmojiCodeMoviesNode(res, emojiCodeMoviesMatch[1], url.searchParams);
+    const emojiCodeActionMatch = url.pathname.match(/^\/api\/emoji-code\/rooms\/([^/]+)\/(join|start|title|reroll-movie|code|guess|advance|restart|kick|leave)$/);
     if (req.method === "POST" && emojiCodeActionMatch) return handleEmojiCodeActionNode(req, res, emojiCodeActionMatch[1], emojiCodeActionMatch[2]);
 
     const scoreboardRoomMatch = url.pathname.match(/^\/api\/scoreboard\/rooms\/([^/]+)$/);
@@ -1433,6 +1437,16 @@ function getEmojiCodeRoomNode(res, roomName, searchParams) {
   return sendJson(res, emojiCodeRoomResponse(room, viewer, sessionPlayer));
 }
 
+function searchEmojiCodeMoviesNode(res, roomName, searchParams) {
+  try {
+    const room = emojiCodeRooms.get(normalizeEmojiCodeKey(roomName));
+    if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
+    const sessionPlayer = touchEmojiCodeRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+    const viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, searchParams.get("viewPlayerId"));
+    return sendJson(res, { matches: searchEmojiCodeMovies(room, viewer, searchParams.get("q"), 8) });
+  } catch (error) { return sendEmojiCodeErrorNode(res, error); }
+}
+
 async function handleEmojiCodeActionNode(req, res, roomName, action) {
   try {
     const key = normalizeEmojiCodeKey(roomName);
@@ -1447,6 +1461,7 @@ async function handleEmojiCodeActionNode(req, res, roomName, action) {
     const actingPlayer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, body.asPlayerId);
     if (action === "start") startEmojiCodeGame(room, sessionPlayer);
     else if (action === "title") submitEmojiCodeTitle(room, actingPlayer, body.title, body.code);
+    else if (action === "reroll-movie") rerollEmojiCodeMovie(room, actingPlayer);
     else if (action === "code") submitEmojiCode(room, actingPlayer, body.code);
     else if (action === "guess") submitEmojiCodeGuess(room, actingPlayer, body.guess);
     else if (action === "advance") advanceEmojiCodeTurn(room, sessionPlayer);

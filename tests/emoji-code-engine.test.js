@@ -5,11 +5,18 @@ import {
   createEmojiCodeRoom,
   emojiCodeRoomResponse,
   joinEmojiCodeRoom,
+  rerollEmojiCodeMovie,
   resolveEmojiCodeTestViewPlayer,
+  searchEmojiCodeMovies,
   submitEmojiCode,
   submitEmojiCodeGuess,
   submitEmojiCodeTitle
 } from "../emoji-code-engine.js";
+import { EMOJI_CODE_MOVIES, findEmojiCodeMovieMatches, resolveEmojiCodeMovieTitle } from "../emoji-code-movies.js";
+
+assert.ok(EMOJI_CODE_MOVIES.length >= 200);
+assert.equal(resolveEmojiCodeMovieTitle("Spirited Away"), "El viaje de Chihiro");
+assert.equal(findEmojiCodeMovieMatches("oppenhaimer")[0].title, "Oppenheimer");
 
 const room = createEmojiCodeRoom({ roomName: "Cine", playerName: "Ana", emoji: "😎", playerLimit: 3, rounds: 2 });
 const ana = room.players[0];
@@ -21,6 +28,11 @@ assert.equal(room.status, "playing");
 assert.equal(room.guesserId, ana.id);
 assert.equal(room.leaderId, bea.id);
 assert.equal(room.phase, "leader");
+const firstSuggestion = emojiCodeRoomResponse(room, bea).suggestedMovieTitle;
+assert.ok(firstSuggestion);
+assert.equal(emojiCodeRoomResponse(room, ana).suggestedMovieTitle, "");
+rerollEmojiCodeMovie(room, bea);
+assert.notEqual(emojiCodeRoomResponse(room, bea).suggestedMovieTitle, firstSuggestion);
 submitEmojiCodeTitle(room, bea, "Titanic", "🚢🧊💔");
 assert.equal(emojiCodeRoomResponse(room, ana).movieTitle, "");
 assert.equal(emojiCodeRoomResponse(room, carlos).movieTitle, "Titanic");
@@ -32,6 +44,9 @@ assert.deepEqual(emojiCodeRoomResponse(room, ana).codes, []);
 submitEmojiCode(room, carlos, "🛳️🌊🥶");
 assert.equal(room.phase, "guessing");
 assert.equal(emojiCodeRoomResponse(room, ana).codes.length, 2);
+assert.equal(emojiCodeRoomResponse(room, ana).codes[0].color, emojiCodeRoomResponse(room, ana).players.find((player) => player.id === bea.id).color);
+assert.equal(searchEmojiCodeMovies(room, ana, "Tita")[0].title, "Titanic");
+assert.equal(searchEmojiCodeMovies(room, ana, "Tita")[0].custom, true);
 
 submitEmojiCodeGuess(room, ana, "Avatar");
 assert.equal(room.phase, "guessing");

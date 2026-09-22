@@ -15,6 +15,10 @@ const codeForm = $("#emojiCodeCodeForm");
 const guessForm = $("#emojiCodeGuessForm");
 const codeInput = $("#emojiCodeCodeInput");
 const leaderCodeInput = $("#emojiCodeLeaderCodeInput");
+const titleInput = $("#emojiCodeTitleInput");
+const changeMovieButton = $("#emojiCodeChangeMovieButton");
+const guessInput = $("#emojiCodeGuessInput");
+const guessSuggestions = $("#emojiCodeGuessSuggestions");
 const testModeInput = $("#emojiCodeCreateTestMode");
 const botCountInput = $("#emojiCodeCreateBotCount");
 
@@ -23,6 +27,8 @@ let room = null;
 let pollTimer = null;
 let lastEventId = "";
 let testViewPlayerId = "";
+let movieSearchTimer = null;
+let movieSearchSequence = 0;
 
 populateIdentityEmojis();
 
@@ -42,6 +48,13 @@ primaryButton?.addEventListener("click", handlePrimaryAction);
 titleForm?.addEventListener("submit", submitTitle);
 codeForm?.addEventListener("submit", submitCode);
 guessForm?.addEventListener("submit", submitGuess);
+changeMovieButton?.addEventListener("click", () => performAction("reroll-movie"));
+titleInput?.addEventListener("input", () => { titleInput.dataset.userEdited = "true"; });
+guessInput?.addEventListener("input", scheduleMovieSearch);
+guessInput?.addEventListener("focus", scheduleMovieSearch);
+guessInput?.addEventListener("keydown", handleMovieSearchKeydown);
+guessInput?.addEventListener("blur", () => window.setTimeout(hideMovieSuggestions, 140));
+guessSuggestions?.addEventListener("mousedown", chooseMovieSuggestion);
 codeInput?.addEventListener("input", validateEmojiDraft);
 leaderCodeInput?.addEventListener("input", validateLeaderEmojiDraft);
 testModeInput?.addEventListener("change", syncTestMode);
@@ -181,14 +194,13 @@ function handlePrimaryAction() {
 
 function submitTitle(event) {
   event.preventDefault();
-  const input = $("#emojiCodeTitleInput");
-  const title = input.value.trim();
+  const title = titleInput.value.trim();
   const code = leaderCodeInput.value.trim();
   if (!title || !isEmojiOnly(code)) {
     gameMessage.textContent = "Escribe el título y un código formado solo por emojis.";
     return;
   }
-  input.value = "";
+  titleInput.value = "";
   leaderCodeInput.value = "";
   performAction("title", { title, code });
 }
@@ -205,11 +217,74 @@ function submitCode(event) {
 
 function submitGuess(event) {
   event.preventDefault();
-  const input = $("#emojiCodeGuessInput");
-  const guess = input.value.trim();
+  const guess = guessInput.value.trim();
   if (!guess) return;
-  input.value = "";
+  guessInput.value = "";
+  hideMovieSuggestions();
   performAction("guess", { guess });
+}
+
+function scheduleMovieSearch() {
+  clearTimeout(movieSearchTimer);
+  if (guessForm.hidden || guessInput.value.trim().length < 2) {
+    hideMovieSuggestions();
+    return;
+  }
+  movieSearchTimer = window.setTimeout(searchMovies, 120);
+}
+
+async function searchMovies() {
+  if (!session || guessForm.hidden) return;
+  const query = guessInput.value.trim();
+  if (query.length < 2) return hideMovieSuggestions();
+  const sequence = ++movieSearchSequence;
+  const params = new URLSearchParams({ playerId: session.playerId, token: session.token, q: query });
+  if (room?.test?.enabled) params.set("viewPlayerId", testViewPlayerId);
+  try {
+    const payload = await request(`/api/emoji-code/rooms/${encodeURIComponent(session.roomName)}/movies?${params}`);
+    if (sequence !== movieSearchSequence || query !== guessInput.value.trim()) return;
+    renderMovieSuggestions(payload.matches || []);
+  } catch {
+    if (sequence === movieSearchSequence) hideMovieSuggestions();
+  }
+}
+
+function renderMovieSuggestions(matches) {
+  guessSuggestions.replaceChildren(...matches.map((movie) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.role = "option";
+    button.dataset.title = movie.title;
+    const title = document.createElement("strong");
+    title.textContent = movie.title;
+    const detail = document.createElement("small");
+    detail.textContent = movie.year ? String(movie.year) : "Película personalizada";
+    button.append(title, detail);
+    return button;
+  }));
+  guessSuggestions.hidden = matches.length === 0;
+  guessInput.setAttribute("aria-expanded", matches.length ? "true" : "false");
+}
+
+function chooseMovieSuggestion(event) {
+  const button = event.target.closest("button[data-title]");
+  if (!button) return;
+  event.preventDefault();
+  guessInput.value = button.dataset.title;
+  hideMovieSuggestions();
+  guessInput.focus();
+}
+
+function handleMovieSearchKeydown(event) {
+  if (event.key === "Escape") hideMovieSuggestions();
+}
+
+function hideMovieSuggestions() {
+  clearTimeout(movieSearchTimer);
+  movieSearchSequence += 1;
+  guessSuggestions.hidden = true;
+  guessSuggestions.replaceChildren();
+  guessInput.setAttribute("aria-expanded", "false");
 }
 
 function validateEmojiDraft() {
@@ -256,6 +331,7 @@ function renderRoom() {
   titleForm.hidden = !player.canSubmitTitle;
   codeForm.hidden = !player.canSubmitCode;
   guessForm.hidden = !player.canGuess;
+  if (guessForm.hidden) hideMovieSuggestions();
   if (!codeForm.hidden && codeInput.dataset.turn !== `${room.roundNumber}:${room.turnInRound}`) {
     codeInput.dataset.turn = `${room.roundNumber}:${room.turnInRound}`;
     codeInput.value = "";
@@ -263,9 +339,15 @@ function renderRoom() {
   }
   if (!titleForm.hidden && leaderCodeInput.dataset.turn !== `${room.roundNumber}:${room.turnInRound}`) {
     leaderCodeInput.dataset.turn = `${room.roundNumber}:${room.turnInRound}`;
-    $("#emojiCodeTitleInput").value = "";
+    titleInput.dataset.suggestion = "";
+    titleInput.dataset.userEdited = "false";
     leaderCodeInput.value = "";
     validateLeaderEmojiDraft();
+  }
+  if (!titleForm.hidden && room.suggestedMovieTitle && titleInput.dataset.suggestion !== room.suggestedMovieTitle) {
+    titleInput.value = room.suggestedMovieTitle;
+    titleInput.dataset.suggestion = room.suggestedMovieTitle;
+    titleInput.dataset.userEdited = "false";
   }
   const showCodes = ["guessing", "result", "finished"].includes(room.phase) && room.codes.length > 0;
   $("#emojiCodeCodesPanel").hidden = !showCodes;
@@ -291,6 +373,7 @@ function renderPlayers(isHost) {
     const card = document.createElement("article");
     card.className = `emoji-code-player is-${item.role}${item.connected ? "" : " is-offline"}`;
     card.dataset.playerId = item.id;
+    card.style.backgroundColor = item.color;
     if (item.id === room.player.id) card.classList.add("is-current");
     if (canSwitchView) {
       card.tabIndex = 0;
@@ -300,8 +383,7 @@ function renderPlayers(isHost) {
       card.title = `Ver como ${item.name}`;
     }
     const role = item.role === "guesser" ? "Adivina" : item.role === "leader" ? "Líder" : "Equipo";
-    card.innerHTML = `<span class="emoji-code-avatar"></span><div><strong></strong><small></small></div><b></b>`;
-    card.querySelector(".emoji-code-avatar").textContent = item.emoji;
+    card.innerHTML = `<div><strong></strong><small></small></div><b></b>`;
     card.querySelector("strong").textContent = item.name;
     card.querySelector("small").textContent = room.status === "lobby" ? `Jugador ${item.seatNumber}` : `${role}${item.submitted ? " · ✓" : ""}`;
     card.querySelector("b").textContent = `${item.score} pt`;
@@ -404,6 +486,7 @@ function winnerText() {
 
 function makeCodeCard(item) {
   const card = document.createElement("article");
+  card.style.backgroundColor = item.color;
   card.innerHTML = "<strong></strong><span></span>";
   card.querySelector("strong").textContent = item.code;
   card.querySelector("span").textContent = `${item.emoji} ${item.name}`;
