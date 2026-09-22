@@ -5,6 +5,7 @@ import {
   createEmojiCodeRoom,
   emojiCodeRoomResponse,
   joinEmojiCodeRoom,
+  resolveEmojiCodeTestViewPlayer,
   submitEmojiCode,
   submitEmojiCodeGuess,
   submitEmojiCodeTitle
@@ -13,8 +14,10 @@ import {
 const room = createEmojiCodeRoom({ roomName: "Cine", playerName: "Ana", emoji: "😎", playerLimit: 3, rounds: 2 });
 const ana = room.players[0];
 const bea = joinEmojiCodeRoom(room, { playerName: "Bea", emoji: "🦊" });
+assert.equal(room.status, "lobby");
 const carlos = joinEmojiCodeRoom(room, { playerName: "Carlos", emoji: "🤖" });
 
+assert.equal(room.status, "playing");
 assert.equal(room.guesserId, ana.id);
 assert.equal(room.leaderId, bea.id);
 assert.equal(room.phase, "leader");
@@ -63,5 +66,13 @@ assert.equal(botRoom.status, "playing");
 assert.equal(botRoom.phase, "guessing");
 assert.equal(botRoom.codes[botRoom.leaderId], "🚢🧊💔");
 assert.equal(emojiCodeRoomResponse(botRoom, botRoom.players[0]).testMode, true);
+const botViewer = resolveEmojiCodeTestViewPlayer(botRoom, botRoom.players[0], botRoom.players[1].id);
+const botViewResponse = emojiCodeRoomResponse(botRoom, botViewer, botRoom.players[0]);
+assert.equal(botViewResponse.player.id, botRoom.players[1].id);
+assert.equal(botViewResponse.player.token, botRoom.players[0].token);
+assert.equal(botViewResponse.player.isHost, true);
+assert.equal(botViewResponse.player.viewingAs, true);
+assert.equal(botViewResponse.test.viewPlayerId, botRoom.players[1].id);
+assert.equal(resolveEmojiCodeTestViewPlayer(botRoom, botRoom.players[1], botRoom.players[0].id), botRoom.players[1]);
 
 console.log("EMOJI_CODE_ENGINE_OK");

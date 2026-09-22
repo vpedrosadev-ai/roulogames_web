@@ -7,6 +7,8 @@
   color: var(--ec-ink);
 }
 
+.emoji-code-view [hidden] { display: none !important; }
+
 .emoji-code-lobby,
 .emoji-code-game {
   width: min(1160px, calc(100% - 24px));
@@ -56,8 +58,11 @@
 .emoji-code-player { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; padding: 10px; border: 3px solid var(--ec-ink); border-radius: 16px; background: white; }
 .emoji-code-player.is-guesser { background: #dff9ff; border-color: #167f9b; }
 .emoji-code-player.is-leader { background: #fff0c2; border-color: #aa6f00; }
+.emoji-code-player.is-current { box-shadow: 0 0 0 3px var(--ec-pink); }
 .emoji-code-player.is-offline { opacity: .5; }
-.emoji-code-player[data-kick-id] { cursor: pointer; }
+.emoji-code-player[data-kick-id],
+.emoji-code-player[role="button"] { cursor: pointer; }
+.emoji-code-player[role="button"]:focus-visible { outline: 4px solid var(--ec-cyan); outline-offset: 2px; }
 .emoji-code-avatar { font-size: 1.7rem; text-align: center; }
 .emoji-code-player div { min-width: 0; }
 .emoji-code-player strong,
@@ -66,6 +71,7 @@
 .emoji-code-player b { color: var(--ec-purple); white-space: nowrap; }
 
 .emoji-code-stage { min-height: 630px; padding: 24px; background: linear-gradient(180deg, #fff9ec, #fff 58%, #f3ecff); }
+.emoji-code-stage.is-lobby { display: grid; min-height: 0; align-content: center; }
 .emoji-code-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .emoji-code-stats article { padding: 10px; border: 3px solid var(--ec-ink); border-radius: 15px; background: white; text-align: center; }
 .emoji-code-stats span,
@@ -107,15 +113,49 @@
 .emoji-code-primary:disabled { filter: grayscale(.65); opacity: .65; box-shadow: none; }
 .emoji-code-home-card > span { filter: none !important; }
 
+.emoji-code-home-card,
+.word-duel-home-card {
+  grid-column: span 3;
+  min-height: clamp(168px, 24vh, 230px);
+}
+
+@media (max-width: 820px) {
+  .emoji-code-home-card,
+  .word-duel-home-card {
+    grid-column: 1;
+    min-height: 132px;
+  }
+}
+
 @media (max-width: 760px) {
   .emoji-code-lobby,
   .emoji-code-game { width: min(100% - 14px, 1160px); margin-top: 10px; }
   .emoji-code-hero { padding: 30px 14px 25px; border-radius: 24px; }
   .emoji-code-choice { grid-template-columns: 1fr; }
   .emoji-code-choice button { min-height: 120px; }
-  .emoji-code-board { grid-template-columns: 1fr; }
-  .emoji-code-sidebar { order: 2; }
-  .emoji-code-stage { min-height: 0; padding: 14px; }
+  .emoji-code-board { grid-template-columns: minmax(132px, 43vw) minmax(0, 1fr); gap: 5px; align-items: start; }
+  .emoji-code-sidebar { min-width: 0; padding: 8px; }
+  .emoji-code-sidebar > strong { overflow-wrap: anywhere; font-size: .9rem; }
+  .emoji-code-players { gap: 6px; }
+  .emoji-code-player { min-width: 0; grid-template-columns: 31px minmax(0, 1fr); gap: 1px 6px; padding: 6px; }
+  .emoji-code-player b { grid-column: 2; font-size: .68rem; }
+  .emoji-code-player strong { font-size: .9rem; }
+  .emoji-code-player small { font-size: .68rem; }
+  .emoji-code-avatar { font-size: 1.1rem; }
+  .emoji-code-stage { min-width: 0; min-height: 0; padding: 8px; }
+  .emoji-code-stats { gap: 4px; }
+  .emoji-code-stats article { min-width: 0; padding: 6px 2px; border-width: 2px; }
+  .emoji-code-stats span { font-size: .58rem; letter-spacing: .02em; }
+  .emoji-code-stats strong { font-size: 1rem; }
+  .emoji-code-role-card { margin: 8px 0; padding: 10px 6px; }
+  .emoji-code-role-card span { font-size: .68rem; }
+  .emoji-code-role-card strong { font-size: clamp(1.05rem, 5vw, 1.6rem); overflow-wrap: anywhere; }
+  .emoji-code-role-card p { font-size: .76rem; }
+  .emoji-code-action-card { margin: 8px 0; padding: 8px; }
+  .emoji-code-action-card label { font-size: .9rem; }
+  .emoji-code-action-card input { width: 100%; min-width: 0; font-size: 16px; }
+  #emojiCodeCodeInput,
+  #emojiCodeLeaderCodeInput { font-size: 1.3rem; }
   .emoji-code-command-strip { overflow-x: auto; justify-content: flex-start; }
   .emoji-code-command-strip button { white-space: nowrap; }
   .emoji-code-input-row { grid-template-columns: 1fr; }

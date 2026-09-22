@@ -22,6 +22,7 @@ let session = null;
 let room = null;
 let pollTimer = null;
 let lastEventId = "";
+let testViewPlayerId = "";
 
 populateIdentityEmojis();
 
@@ -45,7 +46,8 @@ codeInput?.addEventListener("input", validateEmojiDraft);
 leaderCodeInput?.addEventListener("input", validateLeaderEmojiDraft);
 testModeInput?.addEventListener("change", syncTestMode);
 botCountInput?.addEventListener("input", syncTestMode);
-$("#emojiCodePlayers")?.addEventListener("click", kickPlayer);
+$("#emojiCodePlayers")?.addEventListener("click", handlePlayerCardClick);
+$("#emojiCodePlayers")?.addEventListener("keydown", handlePlayerCardKeydown);
 
 const invite = new URLSearchParams(window.location.search).get("emojicode");
 if (invite) {
@@ -129,6 +131,7 @@ async function joinRoom(event) {
 function enterRoom(payload) {
   room = payload;
   session = { roomName: payload.roomName, playerId: payload.player.id, token: payload.player.token, isHost: payload.player.isHost };
+  testViewPlayerId = payload.test?.viewPlayerId || payload.player.id;
   lastEventId = payload.eventId || "";
   lobby.hidden = true;
   game.hidden = false;
@@ -142,6 +145,7 @@ async function pollRoom() {
   if (!session) return;
   try {
     const params = new URLSearchParams({ playerId: session.playerId, token: session.token });
+    if (room?.test?.enabled) params.set("viewPlayerId", testViewPlayerId);
     const payload = await request(`/api/emoji-code/rooms/${encodeURIComponent(session.roomName)}?${params}`);
     room = payload;
     session.isHost = Boolean(payload.player?.isHost);
@@ -157,7 +161,12 @@ async function performAction(action, extra = {}) {
   try {
     const payload = await request(`/api/emoji-code/rooms/${encodeURIComponent(session.roomName)}/${action}`, {
       method: "POST",
-      body: JSON.stringify({ playerId: session.playerId, token: session.token, ...extra })
+      body: JSON.stringify({
+        playerId: session.playerId,
+        token: session.token,
+        asPlayerId: room?.test?.enabled ? testViewPlayerId : "",
+        ...extra
+      })
     });
     room = payload;
     renderRoom();
@@ -231,12 +240,16 @@ function renderRoom() {
   if (!room?.player) return;
   const player = room.player;
   const isHost = Boolean(player.isHost);
+  const isLobby = room.status === "lobby";
+  if (room.test?.enabled && room.test.viewPlayerId) testViewPlayerId = room.test.viewPlayerId;
   $("#emojiCodeRoomLabel").textContent = `Sala: ${room.roomName}`;
   $("#emojiCodeRound").textContent = `${room.roundNumber || 0}/${room.config.rounds}`;
   $("#emojiCodeTurn").textContent = `${room.turnInRound || 0}/${room.turnsPerRound || room.config.playerLimit}`;
   $("#emojiCodeAttempts").textContent = String(room.guessesRemaining ?? 3);
   $("#emojiCodeShareButton").hidden = !isHost;
-  $("#emojiCodeRestartButton").hidden = !(isHost && room.status !== "lobby");
+  $("#emojiCodeRestartButton").hidden = !(isHost && room.status === "finished");
+  $(".emoji-code-stats").hidden = isLobby;
+  $(".emoji-code-stage").classList.toggle("is-lobby", isLobby);
   renderPlayers(isHost);
   renderRole(player);
 
@@ -254,7 +267,7 @@ function renderRoom() {
     leaderCodeInput.value = "";
     validateLeaderEmojiDraft();
   }
-  const showCodes = room.codes.length > 0;
+  const showCodes = ["guessing", "result", "finished"].includes(room.phase) && room.codes.length > 0;
   $("#emojiCodeCodesPanel").hidden = !showCodes;
   $("#emojiCodeCodes").replaceChildren(...room.codes.map((item) => makeCodeCard(item)));
   $("#emojiCodeGuessHistory").replaceChildren(...room.guesses.map((guess, index) => {
@@ -266,20 +279,31 @@ function renderRoom() {
   renderResult();
   renderPrimary(isHost);
   gameMessage.textContent = statusMessage();
+  gameMessage.hidden = isLobby || !gameMessage.textContent;
   if (room.eventId && room.eventId !== lastEventId) lastEventId = room.eventId;
 }
 
 function renderPlayers(isHost) {
+  const canSwitchView = Boolean(room.test?.enabled && session?.isHost);
   $("#emojiCodePlayers").replaceChildren(...room.players.map((item) => {
     const card = document.createElement("article");
     card.className = `emoji-code-player is-${item.role}${item.connected ? "" : " is-offline"}`;
+    card.dataset.playerId = item.id;
+    if (item.id === room.player.id) card.classList.add("is-current");
+    if (canSwitchView) {
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Ver como ${item.name}`);
+      card.setAttribute("aria-pressed", item.id === room.player.id ? "true" : "false");
+      card.title = `Ver como ${item.name}`;
+    }
     const role = item.role === "guesser" ? "Adivina" : item.role === "leader" ? "Líder" : "Equipo";
     card.innerHTML = `<span class="emoji-code-avatar"></span><div><strong></strong><small></small></div><b></b>`;
     card.querySelector(".emoji-code-avatar").textContent = item.emoji;
     card.querySelector("strong").textContent = item.name;
     card.querySelector("small").textContent = room.status === "lobby" ? `Jugador ${item.seatNumber}` : `${role}${item.submitted ? " · ✓" : ""}`;
     card.querySelector("b").textContent = `${item.score} pt`;
-    if (isHost && room.status === "lobby" && item.id !== room.player.id) {
+    if (!canSwitchView && isHost && room.status === "lobby" && item.id !== room.player.id) {
       card.dataset.kickId = item.id;
       card.title = "Toca para expulsar";
     }
@@ -371,10 +395,29 @@ function makeCodeCard(item) {
   return card;
 }
 
-async function kickPlayer(event) {
-  const card = event.target.closest("[data-kick-id]");
+async function handlePlayerCardClick(event) {
+  const card = event.target.closest(".emoji-code-player[data-player-id]");
   if (!card || !session?.isHost) return;
+  if (room?.test?.enabled) {
+    selectTestView(card.dataset.playerId);
+    return;
+  }
+  if (!card.dataset.kickId) return;
   if (window.confirm("¿Expulsar a este jugador?")) await performAction("kick", { targetPlayerId: card.dataset.kickId });
+}
+
+function handlePlayerCardKeydown(event) {
+  if (!room?.test?.enabled || !["Enter", " "].includes(event.key)) return;
+  const card = event.target.closest(".emoji-code-player[data-player-id]");
+  if (!card) return;
+  event.preventDefault();
+  selectTestView(card.dataset.playerId);
+}
+
+function selectTestView(playerId) {
+  if (!room?.test?.enabled || !session?.isHost || !playerId) return;
+  testViewPlayerId = playerId;
+  void pollRoom();
 }
 
 async function shareRoom() {
@@ -411,6 +454,7 @@ function leaveLocal() {
   pollTimer = null;
   session = null;
   room = null;
+  testViewPlayerId = "";
   lobby.hidden = false;
   game.hidden = true;
   showChoice();

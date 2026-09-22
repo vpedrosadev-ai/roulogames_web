@@ -54,6 +54,7 @@ import {
   kickEmojiCodePlayer,
   leaveEmojiCodeRoom,
   normalizeEmojiCodeKey,
+  resolveEmojiCodeTestViewPlayer,
   restartEmojiCodeGame,
   startEmojiCodeGame,
   submitEmojiCode,
@@ -1412,7 +1413,7 @@ async function createEmojiCodeRoomNode(req, res) {
     const existing = emojiCodeRooms.get(room.key);
     if (existing && isEmojiCodeHostConnected(existing)) return sendJson(res, { error: "El nombre de sala ya está en uso" }, 409);
     emojiCodeRooms.set(room.key, room);
-    return sendJson(res, emojiCodeRoomResponse(room, room.players[0]), 201);
+    return sendJson(res, emojiCodeRoomResponse(room, room.players[0], room.players[0]), 201);
   } catch (error) { return sendEmojiCodeErrorNode(res, error); }
 }
 
@@ -1427,8 +1428,9 @@ function listEmojiCodeRoomsNode(res) {
 function getEmojiCodeRoomNode(res, roomName, searchParams) {
   const room = emojiCodeRooms.get(normalizeEmojiCodeKey(roomName));
   if (!room) return sendJson(res, { error: "Sala no encontrada" }, 404);
-  const viewer = touchEmojiCodeRoom(room, searchParams.get("playerId"), searchParams.get("token"));
-  return sendJson(res, emojiCodeRoomResponse(room, viewer));
+  const sessionPlayer = touchEmojiCodeRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+  const viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, searchParams.get("viewPlayerId"));
+  return sendJson(res, emojiCodeRoomResponse(room, viewer, sessionPlayer));
 }
 
 async function handleEmojiCodeActionNode(req, res, roomName, action) {
@@ -1439,21 +1441,23 @@ async function handleEmojiCodeActionNode(req, res, roomName, action) {
     const body = await readJson(req);
     if (action === "join") {
       const player = joinEmojiCodeRoom(room, body);
-      return sendJson(res, emojiCodeRoomResponse(room, player), 201);
+      return sendJson(res, emojiCodeRoomResponse(room, player, player), 201);
     }
-    const player = authenticateEmojiCodePlayer(room, body);
-    if (action === "start") startEmojiCodeGame(room, player);
-    else if (action === "title") submitEmojiCodeTitle(room, player, body.title, body.code);
-    else if (action === "code") submitEmojiCode(room, player, body.code);
-    else if (action === "guess") submitEmojiCodeGuess(room, player, body.guess);
-    else if (action === "advance") advanceEmojiCodeTurn(room, player);
-    else if (action === "restart") restartEmojiCodeGame(room, player);
-    else if (action === "kick") kickEmojiCodePlayer(room, player, String(body.targetPlayerId || ""));
+    const sessionPlayer = authenticateEmojiCodePlayer(room, body);
+    const actingPlayer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, body.asPlayerId);
+    if (action === "start") startEmojiCodeGame(room, sessionPlayer);
+    else if (action === "title") submitEmojiCodeTitle(room, actingPlayer, body.title, body.code);
+    else if (action === "code") submitEmojiCode(room, actingPlayer, body.code);
+    else if (action === "guess") submitEmojiCodeGuess(room, actingPlayer, body.guess);
+    else if (action === "advance") advanceEmojiCodeTurn(room, sessionPlayer);
+    else if (action === "restart") restartEmojiCodeGame(room, sessionPlayer);
+    else if (action === "kick") kickEmojiCodePlayer(room, sessionPlayer, String(body.targetPlayerId || ""));
     else if (action === "leave") {
-      if (leaveEmojiCodeRoom(room, player).closeRoom) emojiCodeRooms.delete(key);
+      if (leaveEmojiCodeRoom(room, sessionPlayer).closeRoom) emojiCodeRooms.delete(key);
       return sendJson(res, { ok: true });
     }
-    return sendJson(res, emojiCodeRoomResponse(room, player));
+    const viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, body.asPlayerId);
+    return sendJson(res, emojiCodeRoomResponse(room, viewer, sessionPlayer));
   } catch (error) { return sendEmojiCodeErrorNode(res, error); }
 }
 

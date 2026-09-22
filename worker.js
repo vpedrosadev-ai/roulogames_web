@@ -47,6 +47,7 @@ import {
   kickEmojiCodePlayer,
   leaveEmojiCodeRoom,
   normalizeEmojiCodeKey,
+  resolveEmojiCodeTestViewPlayer,
   restartEmojiCodeGame,
   startEmojiCodeGame,
   submitEmojiCode,
@@ -1373,7 +1374,7 @@ async function createEmojiCodeRoomWorker(request, env) {
     if (existing && isEmojiCodeHostConnected(existing)) return json({ error: "El nombre de sala ya está en uso" }, 409);
     if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(emojiCodeStorageKey(room.key)).run();
     await saveEmojiCodeRoom(room, env, true);
-    return json(emojiCodeRoomResponse(room, room.players[0]), 201);
+    return json(emojiCodeRoomResponse(room, room.players[0], room.players[0]), 201);
   } catch (error) { return sendEmojiCodeErrorWorker(error); }
 }
 
@@ -1392,9 +1393,10 @@ async function getEmojiCodeRoomWorker(roomName, request, env) {
   const room = await loadEmojiCodeRoom(normalizeEmojiCodeKey(roomName), env);
   if (!room) return json({ error: "Sala no encontrada" }, 404);
   const url = new URL(request.url);
-  const viewer = touchEmojiCodeRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  const sessionPlayer = touchEmojiCodeRoom(room, url.searchParams.get("playerId"), url.searchParams.get("token"));
+  const viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, url.searchParams.get("viewPlayerId"));
   await saveEmojiCodeRoom(room, env).catch(() => false);
-  return json(emojiCodeRoomResponse(room, viewer));
+  return json(emojiCodeRoomResponse(room, viewer, sessionPlayer));
 }
 
 async function handleEmojiCodeActionWorker(request, roomName, action, env) {
@@ -1405,26 +1407,32 @@ async function handleEmojiCodeActionWorker(request, roomName, action, env) {
       const room = await loadEmojiCodeRoom(key, env);
       if (!room) return json({ error: "Sala no encontrada" }, 404);
       let viewer;
-      if (action === "join") viewer = joinEmojiCodeRoom(room, body);
+      let sessionPlayer;
+      if (action === "join") {
+        viewer = joinEmojiCodeRoom(room, body);
+        sessionPlayer = viewer;
+      }
       else {
-        viewer = authenticateEmojiCodePlayer(room, body);
-        if (action === "start") startEmojiCodeGame(room, viewer);
-        else if (action === "title") submitEmojiCodeTitle(room, viewer, body.title, body.code);
-        else if (action === "code") submitEmojiCode(room, viewer, body.code);
-        else if (action === "guess") submitEmojiCodeGuess(room, viewer, body.guess);
-        else if (action === "advance") advanceEmojiCodeTurn(room, viewer);
-        else if (action === "restart") restartEmojiCodeGame(room, viewer);
-        else if (action === "kick") kickEmojiCodePlayer(room, viewer, String(body.targetPlayerId || ""));
+        sessionPlayer = authenticateEmojiCodePlayer(room, body);
+        const actingPlayer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, body.asPlayerId);
+        if (action === "start") startEmojiCodeGame(room, sessionPlayer);
+        else if (action === "title") submitEmojiCodeTitle(room, actingPlayer, body.title, body.code);
+        else if (action === "code") submitEmojiCode(room, actingPlayer, body.code);
+        else if (action === "guess") submitEmojiCodeGuess(room, actingPlayer, body.guess);
+        else if (action === "advance") advanceEmojiCodeTurn(room, sessionPlayer);
+        else if (action === "restart") restartEmojiCodeGame(room, sessionPlayer);
+        else if (action === "kick") kickEmojiCodePlayer(room, sessionPlayer, String(body.targetPlayerId || ""));
         else if (action === "leave") {
-          if (leaveEmojiCodeRoom(room, viewer).closeRoom) {
+          if (leaveEmojiCodeRoom(room, sessionPlayer).closeRoom) {
             await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(emojiCodeStorageKey(key)).run();
             return json({ ok: true });
           }
         }
+        viewer = resolveEmojiCodeTestViewPlayer(room, sessionPlayer, body.asPlayerId);
       }
       if (await saveEmojiCodeRoom(room, env)) {
         if (action === "leave") return json({ ok: true });
-        return json(emojiCodeRoomResponse(room, viewer), action === "join" ? 201 : 200);
+        return json(emojiCodeRoomResponse(room, viewer, sessionPlayer), action === "join" ? 201 : 200);
       }
     }
     throw new EmojiCodeError("La sala cambió al mismo tiempo; inténtalo de nuevo", 409);

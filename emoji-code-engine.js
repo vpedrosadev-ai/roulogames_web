@@ -111,6 +111,11 @@ export function touchEmojiCodeRoom(room, playerId, token) {
   return player || null;
 }
 
+export function resolveEmojiCodeTestViewPlayer(room, sessionPlayer, requestedPlayerId = "") {
+  if (!room?.testMode || !sessionPlayer || sessionPlayer.id !== room.hostId) return sessionPlayer || null;
+  return room.players.find((player) => player.id === String(requestedPlayerId || "")) || sessionPlayer;
+}
+
 export function startEmojiCodeGame(room, player) {
   requireHost(room, player);
   if (room.status !== "lobby") throw new EmojiCodeError("La partida ya ha empezado", 409);
@@ -211,7 +216,7 @@ export function leaveEmojiCodeRoom(room, player) {
   return { closeRoom: false };
 }
 
-export function emojiCodeRoomResponse(room, privatePlayer = null) {
+export function emojiCodeRoomResponse(room, privatePlayer = null, sessionPlayer = privatePlayer) {
   const now = Date.now();
   const guesser = room.players.find((player) => player.id === room.guesserId);
   const leader = room.players.find((player) => player.id === room.leaderId);
@@ -253,19 +258,25 @@ export function emojiCodeRoomResponse(room, privatePlayer = null) {
       isTestPlayer: Boolean(player.isTestPlayer),
       role: player.id === room.guesserId ? "guesser" : player.id === room.leaderId ? "leader" : "ally",
       submitted: Boolean(room.codes?.[player.id]),
-      connected: now - Number(player.lastSeen || room.createdAt) < 30_000
+      connected: Boolean(player.isTestPlayer) || now - Number(player.lastSeen || room.createdAt) < 30_000
     })),
     player: privatePlayer ? {
       id: privatePlayer.id,
-      token: privatePlayer.token,
-      isHost: privatePlayer.id === room.hostId,
+      token: sessionPlayer?.token,
+      sessionPlayerId: sessionPlayer?.id || privatePlayer.id,
+      viewingAs: privatePlayer.id !== sessionPlayer?.id,
+      isTestPlayer: Boolean(privatePlayer.isTestPlayer),
+      isHost: sessionPlayer?.id === room.hostId,
       role: privatePlayer.id === room.guesserId ? "guesser" : privatePlayer.id === room.leaderId ? "leader" : "ally",
       canSubmitTitle: room.status === "playing" && room.phase === "leader" && privatePlayer.id === room.leaderId,
       canSubmitCode: room.status === "playing" && room.phase === "team_codes" && privatePlayer.id !== room.guesserId && privatePlayer.id !== room.leaderId && !room.codes?.[privatePlayer.id],
       canGuess: room.status === "playing" && room.phase === "guessing" && privatePlayer.id === room.guesserId,
       canAdvance: room.status === "playing" && room.phase === "result" && privatePlayer.id === room.hostId,
       ownCode: room.codes?.[privatePlayer.id] || ""
-    } : undefined
+    } : undefined,
+    test: room.testMode && sessionPlayer?.id === room.hostId
+      ? { enabled: true, viewPlayerId: privatePlayer?.id || sessionPlayer.id }
+      : null
   };
 }
 
