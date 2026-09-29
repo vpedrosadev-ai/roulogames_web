@@ -51,7 +51,7 @@ $clips = @(
   @{ Name = "doctor-close"; Countdown = $false; Text = "El Doctor cierra los ojos." },
   @{ Name = "witch-open"; Countdown = $true; Text = "La Bruja abre los ojos y decide si usa una p&#243;cima o guarda ambas a la cuenta de" },
   @{ Name = "witch-close"; Countdown = $false; Text = "La Bruja cierra los ojos." },
-  @{ Name = "village-open"; Countdown = $true; Text = "Se hace de d&#237;a. Todos los jugadores abren los ojos a la cuenta de" },
+  @{ Name = "village-open"; Countdown = $false; Text = "Amanece un nuevo d&#237;a y todos abr&#237;s los ojos." },
   @{ Name = "hunter-act"; Countdown = $false; Text = "Cazador, elige tu &#250;ltimo objetivo. No hay l&#237;mite de tiempo." },
   @{ Name = "vote-tie"; Countdown = $false; Text = "La votaci&#243;n termin&#243; en empate. Votad de nuevo entre los candidatos. No hay l&#237;mite de tiempo." },
   @{ Name = "day-banished"; Countdown = $false; Text = "La expulsi&#243;n aparece en pantalla." },

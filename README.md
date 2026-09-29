@@ -8,6 +8,8 @@ Browser party-game collection, including:
 - Hombres Lobo (automatic narrator)
 - Palabra maestra
 - Sincronía (2-6 players, cooperative, one device each)
+- Código Emoji (películas, códigos solo con emojis y roles rotativos)
+- Duelo de Palabras (Wordle multijugador simultáneo)
 - Shared scoreboard
 
 ## Development
