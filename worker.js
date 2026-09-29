@@ -44,6 +44,21 @@ import {
   voteMindStar
 } from "./mind-engine.js";
 import {
+  NUMBERS_HEARTBEAT_MS,
+  NumbersGameError,
+  authenticateNumbersPlayer,
+  createNumbersRoom,
+  dealNumbersRound,
+  isNumbersHostConnected,
+  isNumbersRoomJoinable,
+  joinNumbersRoom,
+  leaveNumbersRoom,
+  normalizeNumbersIdentity,
+  normalizeNumbersRoomKey,
+  numbersRoomResponse,
+  touchNumbersRoom
+} from "./numbers-engine.js";
+import {
   WordDuelError,
   advanceWordDuelRound,
   authenticateWordDuelPlayer,
@@ -647,6 +662,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/emoji-code/rooms") return listEmojiCodeRoomsWorker(env);
       if (request.method === "POST" && url.pathname === "/api/emoji-code/rooms") return createEmojiCodeRoomWorker(request, env);
+      if (request.method === "GET" && url.pathname === "/api/numbers/rooms") return listActiveGameRooms(env, "numbers", isNumbersHostConnected, isNumbersRoomJoinable);
+      if (request.method === "POST" && url.pathname === "/api/numbers/rooms") return createNumbersRoomWorker(request, env);
       if (request.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(env);
       if (request.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(request, env);
       if (request.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return json(getSongGroups());
@@ -743,6 +760,10 @@ export default {
       if (request.method === "GET" && mindRoomMatch) return getMindRoomWorker(mindRoomMatch[1], request, env);
       const mindActionMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)\/(join|start|ready|next-level|play|pause|star-propose|star-vote|kick|restart|leave)$/);
       if (request.method === "POST" && mindActionMatch) return handleMindRoomActionWorker(request, mindActionMatch[1], mindActionMatch[2], env);
+      const numbersRoomMatch = url.pathname.match(/^\/api\/numbers\/rooms\/([^/]+)$/);
+      if (request.method === "GET" && numbersRoomMatch) return getNumbersRoomWorker(numbersRoomMatch[1], request, env);
+      const numbersActionMatch = url.pathname.match(/^\/api\/numbers\/rooms\/([^/]+)\/(join|deal|leave)$/);
+      if (request.method === "POST" && numbersActionMatch) return handleNumbersRoomActionWorker(request, numbersActionMatch[1], numbersActionMatch[2], env);
       const wordDuelRoomMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)$/);
       if (request.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomWorker(wordDuelRoomMatch[1], request, env);
       const wordDuelActionMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)\/(join|start|proposal|guess|advance|restart|kick|leave)$/);
@@ -5348,4 +5369,132 @@ function mindStorageKey(key) {
 function mindWorkerError(error) {
   if (error instanceof MindGameError) return json({ error: error.message }, error.status);
   throw error;
+}
+
+// --- Numbers ---------------------------------------------------------------
+// Mismo esquema que Sincronía: una fila JSON por sala con prefijo "numbers:" y
+// escritura optimista. Cada respuesta es distinta para cada jugador (lleva los
+// valores de los demás y oculta el propio), así que nunca debe cachearse.
+
+function numbersJson(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store, private" }
+  });
+}
+
+function numbersWorkerError(error) {
+  if (error instanceof NumbersGameError) return numbersJson({ error: error.message }, error.status);
+  throw error;
+}
+
+function numbersStorageKey(key) {
+  return `numbers:${key}`;
+}
+
+async function createNumbersRoomWorker(request, env) {
+  if (!env.LEADERBOARD_DB) return numbersJson({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const room = createNumbersRoom(await request.json().catch(() => ({})));
+  if (!room) return numbersJson({ error: "Los datos de la sala o del jugador no son válidos" }, 400);
+  const existing = await loadNumbersRoomWorker(room.key, env);
+  if (existing && isNumbersHostConnected(existing)) return numbersJson({ error: "Ese nombre de sala ya está en uso" }, 409);
+  if (existing) await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(numbersStorageKey(room.key)).run();
+  const saved = await saveNumbersRoomWorker(room, env, true);
+  if (!saved) return numbersJson({ error: "No se pudo crear la sala" }, 409);
+  return numbersJson(numbersRoomResponse(room, room.players[0]), 201);
+}
+
+// El sondeo solo escribe en D1 cuando el lastSeen guardado es lo bastante viejo
+// como para afectar al indicador de conexión. Numbers no tiene fases con reloj.
+async function getNumbersRoomWorker(roomName, request, env) {
+  if (!env.LEADERBOARD_DB) return numbersJson({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const url = new URL(request.url);
+  const key = normalizeNumbersRoomKey(decodeMindRoomPathName(roomName));
+  const playerId = url.searchParams.get("playerId");
+  const token = url.searchParams.get("token");
+  try {
+    const room = await loadNumbersRoomWorker(key, env);
+    if (!room) throw new NumbersGameError("Sala no encontrada", 404);
+    const player = authenticateNumbersPlayer(room, { playerId, token });
+    if (!player || Date.now() - Number(player.lastSeen || 0) <= NUMBERS_HEARTBEAT_MS) {
+      return numbersJson(numbersRoomResponse(room, player));
+    }
+    const result = await mutateNumbersRoomWorker(key, env, (fresh) => touchNumbersRoom(fresh, playerId, token)?.id || "");
+    const saved = result.room.players.find((item) => item.id === result.value) || null;
+    return numbersJson(numbersRoomResponse(result.room, saved));
+  } catch (error) {
+    return numbersWorkerError(error);
+  }
+}
+
+async function handleNumbersRoomActionWorker(request, roomName, action, env) {
+  if (!env.LEADERBOARD_DB) return numbersJson({ error: "El almacenamiento de salas no está configurado" }, 503);
+  const body = await request.json().catch(() => ({}));
+  const key = normalizeNumbersRoomKey(decodeMindRoomPathName(roomName));
+  try {
+    const result = await mutateNumbersRoomWorker(key, env, (room) => {
+      if (action === "join") {
+        const identity = normalizeNumbersIdentity(body);
+        if (!identity) throw new NumbersGameError("Los datos del jugador no son válidos");
+        const joined = joinNumbersRoom(room, identity);
+        return { playerId: joined.player.id, created: joined.created };
+      }
+      const player = touchNumbersRoom(room, body.playerId, body.token);
+      if (!player) throw new NumbersGameError("Sesión no válida o reemplazada", 401);
+      // Si otra petición ganó la carrera, esta se reevalúa contra el estado fresco y
+      // dealNumbersRound() la descarta al ver que la ronda ya avanzó.
+      if (action === "deal") dealNumbersRound(room, player, { mode: body.mode, baseRound: body.baseRound });
+      else if (action === "leave") return { playerId: player.id, created: false, closeRoom: leaveNumbersRoom(room, player).closeRoom };
+      return { playerId: player.id, created: false };
+    });
+    if (action === "leave") {
+      if (result.value.closeRoom) {
+        await env.LEADERBOARD_DB.prepare("DELETE FROM multiplayer_rooms WHERE room_key = ?").bind(numbersStorageKey(key)).run();
+      }
+      return numbersJson({ ok: true });
+    }
+    const player = result.room.players.find((item) => item.id === result.value.playerId) || null;
+    return numbersJson(numbersRoomResponse(result.room, player), action === "join" && result.value.created ? 201 : 200);
+  } catch (error) {
+    return numbersWorkerError(error);
+  }
+}
+
+async function mutateNumbersRoomWorker(key, env, mutator) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const room = await loadNumbersRoomWorker(key, env);
+    if (!room) throw new NumbersGameError("Sala no encontrada", 404);
+    const value = mutator(room);
+    if (await saveNumbersRoomWorker(room, env)) return { room, value };
+  }
+  throw new NumbersGameError("La sala cambió al mismo tiempo. Inténtalo de nuevo.", 409);
+}
+
+async function loadNumbersRoomWorker(key, env) {
+  const row = await env.LEADERBOARD_DB.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM multiplayer_rooms WHERE room_key = ?")
+    .bind(numbersStorageKey(key)).first();
+  if (!row?.stateJson) return null;
+  try {
+    return { ...JSON.parse(row.stateJson), _version: Number(row.updatedAt || 0) };
+  } catch {
+    return null;
+  }
+}
+
+async function saveNumbersRoomWorker(room, env, create = false) {
+  const previousVersion = Number(room._version || 0);
+  const version = Math.max(Date.now(), previousVersion + 1);
+  room.updatedAt = version;
+  const stateJson = JSON.stringify(room, (key, value) => key === "_version" ? undefined : value);
+  let result;
+  if (create) {
+    result = await env.LEADERBOARD_DB.prepare("INSERT INTO multiplayer_rooms (room_key, state_json, updated_at) VALUES (?, ?, ?)")
+      .bind(numbersStorageKey(room.key), stateJson, version).run();
+  } else {
+    result = await env.LEADERBOARD_DB.prepare("UPDATE multiplayer_rooms SET state_json = ?, updated_at = ? WHERE room_key = ? AND updated_at = ?")
+      .bind(stateJson, version, numbersStorageKey(room.key), previousVersion).run();
+  }
+  const changed = Number(result?.meta?.changes ?? result?.changes ?? 0) > 0;
+  if (changed) room._version = version;
+  return changed;
 }
