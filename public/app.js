@@ -3926,7 +3926,7 @@ function renderimpostorPlayers(players, currentPlayer, status, liveVotes = []) {
     chip.querySelector("span").textContent = player.emoji;
     chip.querySelector("strong").textContent = player.name;
     chip.querySelector("small").textContent = roleText;
-    chip.querySelector("b").textContent = voteText;
+    chip.querySelector("b").textContent = voteText;
     return chip;
   });
   const controls = impostorRoom?.test?.enabled
