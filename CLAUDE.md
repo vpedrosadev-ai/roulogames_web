@@ -33,14 +33,14 @@ The same HTTP API is implemented **twice**, and both must be edited together:
 
 Both files open with a long chain of `if (method && pathname)` route checks followed by regex matches for `/api/<game>/rooms/:name/:action`. **When you add or change an endpoint or game rule, mirror it in both files** — the route lists, the normalizers, and the response shapes are duplicated almost line for line. Diffing the two route blocks is the fastest way to spot drift.
 
-`wolf-engine.js` and `mind-engine.js` are the exceptions: shared, runtime-agnostic rules engines (Hombres Lobo; Sincronía) imported by both backends, which only wrap them with persistence + auth. **New game logic belongs in a shared module like these, not duplicated a third time.** Both are copied into `public/` by `scripts/build-pages.js` — anything `worker.js` imports must be added there or the Pages deploy breaks at runtime.
+`wolf-engine.js`, `mind-engine.js` and `numbers-engine.js` are the exceptions: shared, runtime-agnostic rules engines (Hombres Lobo; Sincronía; Numbers) imported by both backends, which only wrap them with persistence + auth. **New game logic belongs in a shared module like these, not duplicated a third time.** Both are copied into `public/` by `scripts/build-pages.js` — anything `worker.js` imports must be added there or the Pages deploy breaks at runtime.
 
 ### D1 storage model (`worker.js`)
 
 All room types share the single `multiplayer_rooms(room_key, state_json, updated_at)` table, namespaced by key prefix:
 
 - MANGOless multiplayer: bare key, no prefix (`listActiveGameRooms` selects `room_key NOT LIKE '%:%'`)
-- `impostor:`, `resistance:`, `masterword:`, `wolf:`, `mind:`, `scoreboard:` — see the `*StorageKey()` helpers
+- `impostor:`, `resistance:`, `masterword:`, `wolf:`, `mind:`, `numbers:`, `scoreboard:` — see the `*StorageKey()` helpers
 
 Writes use **optimistic concurrency**: read the row with its `updated_at` as `_version`, `UPDATE … WHERE updated_at = ?`, and retry on zero `meta.changes`. Two retry styles exist — `mutateWolfRoomWorker()` / `mutateMindRoomWorker()` re-run the whole mutation against fresh state (preferred for new code; this is also what serializes simultaneous plays), while `saveMultiplayerRoom()`/`saveScoreboardRoom()` reload and run a game-specific `merge*Rooms()` function to reconcile. `_version` and `_removedPlayerIds` are stripped before serializing.
 
@@ -99,3 +99,4 @@ Node server (`.env` / shell): `PORT`, `YOUTUBE_API_KEY`, `YOUTUBE_SEARCH_API=1` 
 - User-facing strings are Spanish in the wolf and mind code paths and English in the older ones; follow whatever the surrounding game uses.
 - Sincronía's card values are server-only. `mindRoomResponse()` returns other players' `cardCount` but never their `hand`, and hands stay hidden even after the game ends. Any change there needs the privacy tests in `tests/` to still pass.
 - Sincronía's `/play` accepts an `actionId` and replays are idempotent (the room keeps the last 40 in `recentActions`). Play validity is checked against the hand — the card must still be present and still be the lowest — rather than against a client-supplied revision, so a legitimate fast follow-up play is never rejected while a stale request for an already-discarded card is.
+- Numbers (`numbers-engine.js`, `public/numbers/`) is a hidden-identity game: `numbersRoomResponse()` omits the viewer's own value from every field and throws 401 without a valid session, and its responses carry `Cache-Control: no-store`. `/deal` takes the `baseRound` the host saw and is a no-op if the round already moved, which is how double clicks and concurrent deals collapse into one round.

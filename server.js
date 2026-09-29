@@ -86,6 +86,20 @@ import {
   submitEmojiCodeTitle,
   touchEmojiCodeRoom
 } from "./emoji-code-engine.js";
+import {
+  NumbersGameError,
+  authenticateNumbersPlayer,
+  createNumbersRoom,
+  dealNumbersRound,
+  isNumbersHostConnected,
+  isNumbersRoomJoinable,
+  joinNumbersRoom,
+  leaveNumbersRoom,
+  normalizeNumbersIdentity,
+  normalizeNumbersRoomKey,
+  numbersRoomResponse,
+  touchNumbersRoom
+} from "./numbers-engine.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -649,6 +663,7 @@ const masterWordRooms = new Map();
 const mindRooms = new Map();
 const wordDuelRooms = new Map();
 const emojiCodeRooms = new Map();
+const numbersRooms = new Map();
 const scoreboardRooms = new Map();
 let spotifyToken = null;
 const songGroupCache = new Map();
@@ -686,6 +701,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/word-duel/rooms") return createWordDuelRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/emoji-code/rooms") return listEmojiCodeRoomsNode(res);
     if (req.method === "POST" && url.pathname === "/api/emoji-code/rooms") return createEmojiCodeRoomNode(req, res);
+    if (req.method === "GET" && url.pathname === "/api/numbers/rooms") return listActiveGameRooms(res, numbersRooms, isNumbersHostConnected, isNumbersRoomJoinable);
+    if (req.method === "POST" && url.pathname === "/api/numbers/rooms") return createNumbersRoomNode(req, res);
     if (req.method === "GET" && url.pathname === "/api/scoreboard/rooms") return listScoreboardRooms(res);
     if (req.method === "POST" && url.pathname === "/api/scoreboard/rooms") return createScoreboardRoom(req, res);
     if (req.method === "GET" && ["/api/artists", "/api/song-groups"].includes(url.pathname)) return sendJson(res, getSongGroups());
@@ -777,6 +794,10 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && mindRoomMatch) return getMindRoomNode(res, mindRoomMatch[1], url.searchParams);
     const mindActionMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)\/(join|start|ready|next-level|play|pause|star-propose|star-vote|kick|restart|leave)$/);
     if (req.method === "POST" && mindActionMatch) return handleMindRoomActionNode(req, res, mindActionMatch[1], mindActionMatch[2]);
+    const numbersRoomMatch = url.pathname.match(/^\/api\/numbers\/rooms\/([^/]+)$/);
+    if (req.method === "GET" && numbersRoomMatch) return getNumbersRoomNode(res, numbersRoomMatch[1], url.searchParams);
+    const numbersActionMatch = url.pathname.match(/^\/api\/numbers\/rooms\/([^/]+)\/(join|deal|leave)$/);
+    if (req.method === "POST" && numbersActionMatch) return handleNumbersRoomActionNode(req, res, numbersActionMatch[1], numbersActionMatch[2]);
     const wordDuelRoomMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)$/);
     if (req.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomNode(res, wordDuelRoomMatch[1], url.searchParams);
     const wordDuelActionMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)\/(join|start|proposal|guess|advance|restart|kick|leave)$/);
@@ -6145,5 +6166,64 @@ function decodeMindRoomPathName(value) {
     return decodeURIComponent(String(value || ""));
   } catch {
     return String(value || "");
+  }
+}
+
+// Numbers: cada respuesta se construye para quien la pide y lleva los valores de
+// los demás, así que no puede acabar en ninguna caché compartida.
+function sendNumbersJson(res, payload, status = 200) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store, private" });
+  res.end(JSON.stringify(payload));
+}
+
+function sendNumbersErrorNode(res, error) {
+  if (error instanceof NumbersGameError) return sendNumbersJson(res, { error: error.message }, error.status);
+  throw error;
+}
+
+async function createNumbersRoomNode(req, res) {
+  const room = createNumbersRoom(await readJson(req));
+  if (!room) return sendNumbersJson(res, { error: "Los datos de la sala o del jugador no son válidos" }, 400);
+  const existing = numbersRooms.get(room.key);
+  if (existing && isNumbersHostConnected(existing)) return sendNumbersJson(res, { error: "Ese nombre de sala ya está en uso" }, 409);
+  numbersRooms.set(room.key, room);
+  return sendNumbersJson(res, numbersRoomResponse(room, room.players[0]), 201);
+}
+
+function getNumbersRoomNode(res, roomName, searchParams) {
+  try {
+    const room = numbersRooms.get(normalizeNumbersRoomKey(decodeMindRoomPathName(roomName)));
+    if (!room) throw new NumbersGameError("Sala no encontrada", 404);
+    const player = touchNumbersRoom(room, searchParams.get("playerId"), searchParams.get("token"));
+    return sendNumbersJson(res, numbersRoomResponse(room, player));
+  } catch (error) {
+    return sendNumbersErrorNode(res, error);
+  }
+}
+
+// Node es un solo proceso con el estado en memoria: el bucle de eventos ya serializa
+// las mutaciones, y dealNumbersRound() descarta por sí mismo un reparto repetido.
+async function handleNumbersRoomActionNode(req, res, roomName, action) {
+  try {
+    const key = normalizeNumbersRoomKey(decodeMindRoomPathName(roomName));
+    const room = numbersRooms.get(key);
+    if (!room) throw new NumbersGameError("Sala no encontrada", 404);
+    const body = await readJson(req);
+    if (action === "join") {
+      const identity = normalizeNumbersIdentity(body);
+      if (!identity) throw new NumbersGameError("Los datos del jugador no son válidos");
+      const result = joinNumbersRoom(room, identity);
+      return sendNumbersJson(res, numbersRoomResponse(room, result.player), result.created ? 201 : 200);
+    }
+    const player = touchNumbersRoom(room, body.playerId, body.token);
+    if (!player) throw new NumbersGameError("Sesión no válida o reemplazada", 401);
+    if (action === "deal") dealNumbersRound(room, player, { mode: body.mode, baseRound: body.baseRound });
+    else if (action === "leave") {
+      if (leaveNumbersRoom(room, player).closeRoom) numbersRooms.delete(key);
+      return sendNumbersJson(res, { ok: true });
+    }
+    return sendNumbersJson(res, numbersRoomResponse(room, player));
+  } catch (error) {
+    return sendNumbersErrorNode(res, error);
   }
 }

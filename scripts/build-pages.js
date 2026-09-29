@@ -9,6 +9,7 @@ await copyFile(path.join(root, "worker.js"), path.join(root, "public", "_worker.
 // Los motores compartidos que importa _worker.js deben viajar junto a él.
 await copyFile(path.join(root, "wolf-engine.js"), path.join(root, "public", "wolf-engine.js"));
 await copyFile(path.join(root, "mind-engine.js"), path.join(root, "public", "mind-engine.js"));
+await copyFile(path.join(root, "numbers-engine.js"), path.join(root, "public", "numbers-engine.js"));
 await copyFile(path.join(root, "word-duel-engine.js"), path.join(root, "public", "word-duel-engine.js"));
 await copyFile(path.join(root, "emoji-code-engine.js"), path.join(root, "public", "emoji-code-engine.js"));
 await copyFile(path.join(root, "emoji-code-movies.js"), path.join(root, "public", "emoji-code-movies.js"));

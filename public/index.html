@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/impostor-fixes.css">
     <link rel="stylesheet" href="/mind/mind.css">
+    <link rel="stylesheet" href="/numbers/numbers.css">
     <link rel="stylesheet" href="/word-duel.css">
     <link rel="stylesheet" href="/emoji-code.css">
   </head>
@@ -58,6 +59,7 @@
         <button type="button" class="nav-link" data-view-target="wolfView"><span class="nav-icon wolf-nav-icon" aria-hidden="true">W</span>Hombres Lobo</button>
         <button type="button" class="nav-link" data-view-target="masterWordView"><span class="nav-icon" aria-hidden="true">M</span>Palabra maestra</button>
         <button type="button" class="nav-link" data-view-target="mindView"><span class="nav-icon mind-nav-icon" aria-hidden="true">100</span>Sincronía</button>
+        <button type="button" class="nav-link" data-view-target="numbersView"><span class="nav-icon numbers-nav-icon" aria-hidden="true">42</span>Numbers</button>
         <button type="button" class="nav-link" data-view-target="emojiCodeView"><span class="nav-icon" aria-hidden="true">🎬</span>Código Emoji</button>
         <button type="button" class="nav-link" data-view-target="wordDuelView"><span class="nav-icon" aria-hidden="true">W</span>Duelo de Palabras</button>
         <button type="button" class="nav-link" data-view-target="scoreboardView"><span class="nav-icon" aria-hidden="true">#</span>Tabla de puntuacion</button>
@@ -130,6 +132,12 @@
               <strong>Sincronía</strong>
               <small id="homeMindHint">Sin hablar, jugad las cartas en orden ascendente</small>
               <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small id="homeMindPlayers">2-6 jugadores</small></em>
+            </button>
+            <button type="button" class="home-menu-card numbers-home-card" data-view-target="numbersView">
+              <span aria-hidden="true">42</span>
+              <strong>Numbers</strong>
+              <small data-numbers-i18n="numbers.homeHint">Todos ven tu número menos tú: pregunta hasta adivinarlo</small>
+              <em class="home-player-min"><span aria-hidden="true">&#128101;</span><small data-numbers-i18n="numbers.homePlayers">2-10 jugadores</small></em>
             </button>
             <button type="button" class="home-menu-card emoji-code-home-card" data-view-target="emojiCodeView">
               <span aria-hidden="true">🎬</span>
@@ -826,6 +834,76 @@
               </div>
               <ul id="mindHand" class="mind-hand"></ul>
               <p id="mindHandHint" class="mind-hint" aria-live="polite"></p>
+            </section>
+          </section>
+        </section>
+
+        <section id="numbersView" class="view numbers-view" aria-labelledby="numbersTitle" hidden>
+          <section id="numbersLobby" class="numbers-lobby" aria-label="Numbers">
+            <header class="numbers-hero">
+              <span class="numbers-hero-mark" aria-hidden="true">?</span>
+              <div>
+                <span data-numbers-i18n="numbers.eyebrow">Identidades ocultas</span>
+                <h1 id="numbersTitle">Numbers</h1>
+                <p data-numbers-i18n="numbers.subtitle">Todos ven tu valor menos tú. Haced preguntas en voz alta hasta descubrir qué os ha tocado.</p>
+              </div>
+            </header>
+            <div id="numbersChoice" class="numbers-choice">
+              <button type="button" id="numbersChooseCreate" class="numbers-choice-button"><span aria-hidden="true">+</span><strong data-numbers-i18n="numbers.createRoom">Crear sala</strong><small data-numbers-i18n="numbers.createRoomHint">De 2 a 10 jugadores</small></button>
+              <button type="button" id="numbersChooseJoin" class="numbers-choice-button"><span aria-hidden="true">&#8594;</span><strong data-numbers-i18n="numbers.joinRoom">Unirse a una sala</strong><small data-numbers-i18n="numbers.joinRoomHint">Usa el mismo nombre para reconectar</small></button>
+            </div>
+            <form id="numbersCreateForm" class="numbers-form" hidden>
+              <h2 data-numbers-i18n="numbers.createTitle">Crear sala</h2>
+              <input id="numbersCreateRoomName" maxlength="16" required placeholder="Nombre de la sala" data-numbers-i18n-placeholder="numbers.roomNamePlaceholder" autocomplete="off">
+              <input id="numbersCreatePlayerName" maxlength="16" required placeholder="Tu nombre" data-numbers-i18n-placeholder="numbers.playerNamePlaceholder" autocomplete="off">
+              <fieldset class="numbers-mode-picker">
+                <legend data-numbers-i18n="numbers.modeLegend">Modalidad</legend>
+                <label><input type="radio" name="numbersCreateMode" value="numbers" checked><span data-numbers-i18n="numbers.mode.numbers">Números</span></label>
+                <label><input type="radio" name="numbersCreateMode" value="famous"><span data-numbers-i18n="numbers.mode.famous">Famosos</span></label>
+                <label><input type="radio" name="numbersCreateMode" value="objects"><span data-numbers-i18n="numbers.mode.objects">Objetos</span></label>
+              </fieldset>
+              <p data-numbers-i18n="numbers.createHint">Cada jugador necesita su propio móvil: si compartís pantalla, el secreto deja de funcionar.</p>
+              <div class="numbers-form-actions">
+                <button type="button" class="secondary" data-numbers-back data-numbers-i18n="numbers.back">Volver</button>
+                <button type="submit" data-numbers-i18n="numbers.createRoom">Crear sala</button>
+              </div>
+            </form>
+            <form id="numbersJoinForm" class="numbers-form" hidden>
+              <h2 data-numbers-i18n="numbers.joinTitle">Unirse a la sala</h2>
+              <input id="numbersJoinRoomName" maxlength="16" required placeholder="Nombre de la sala" data-numbers-i18n-placeholder="numbers.roomNamePlaceholder" autocomplete="off">
+              <input id="numbersJoinPlayerName" maxlength="16" required placeholder="Tu nombre" data-numbers-i18n-placeholder="numbers.playerNamePlaceholder" autocomplete="off">
+              <p data-numbers-i18n="numbers.joinHint">El mismo nombre de sala y jugador recupera tu sesión sin cambiar tu valor.</p>
+              <div class="numbers-form-actions">
+                <button type="button" class="secondary" data-numbers-back data-numbers-i18n="numbers.back">Volver</button>
+                <button type="submit" data-numbers-i18n="numbers.join">Unirse</button>
+              </div>
+            </form>
+            <p id="numbersLobbyMessage" class="message" aria-live="polite"></p>
+          </section>
+
+          <section id="numbersGame" class="numbers-game" hidden>
+            <div class="numbers-top">
+              <div class="numbers-chip"><span data-numbers-i18n="numbers.room">Sala</span><strong id="numbersRoomLabel"></strong></div>
+              <div class="numbers-chip"><span id="numbersModeLabel"></span><strong id="numbersRoundLabel"></strong></div>
+              <div class="numbers-top-actions">
+                <button type="button" id="numbersInviteButton" class="numbers-ghost-button" data-numbers-i18n="numbers.invite">Invitar</button>
+                <button type="button" id="numbersLeaveButton" class="numbers-ghost-button" data-numbers-i18n="numbers.leave">Salir</button>
+              </div>
+            </div>
+            <p class="numbers-help" data-numbers-i18n="numbers.help">Pregunta a los demás para descubrir qué te ha tocado. Ellos pueden verlo; tú no.</p>
+            <p id="numbersStatus" class="numbers-status" role="status" aria-live="polite" hidden></p>
+            <h2 id="numbersPlayersTitle" class="numbers-players-title"></h2>
+            <ul id="numbersPlayers" class="numbers-players" aria-labelledby="numbersPlayersTitle"></ul>
+            <p id="numbersWaitHint" class="numbers-wait-hint" data-numbers-i18n="numbers.waitingHost" hidden>Esperando a que el anfitrión reparta.</p>
+            <section id="numbersHostPanel" class="numbers-host-panel" aria-labelledby="numbersHostTitle" hidden>
+              <h2 id="numbersHostTitle" class="numbers-visually-hidden" data-numbers-i18n="numbers.hostControls">Controles del anfitrión</h2>
+              <div id="numbersModeSwitch" class="numbers-mode-switch" role="group" aria-labelledby="numbersHostTitle">
+                <button type="button" data-numbers-mode="numbers" aria-pressed="true">Números</button>
+                <button type="button" data-numbers-mode="famous" aria-pressed="false">Famosos</button>
+                <button type="button" data-numbers-mode="objects" aria-pressed="false">Objetos</button>
+              </div>
+              <button type="button" id="numbersDealButton" class="numbers-deal-button">Repartir</button>
+              <p id="numbersHostHint" class="numbers-host-hint" aria-live="polite"></p>
             </section>
           </section>
         </section>

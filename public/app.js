@@ -1,4 +1,5 @@
 ﻿import { createMindController } from "./mind/mind.js";
+import { createNumbersController } from "./numbers/numbers.js";
 
 const navLinks = document.querySelectorAll(".nav-link");
 const homeMenuCards = document.querySelectorAll(".home-menu-card");
@@ -2429,6 +2430,11 @@ const mindController = createMindController({
   getLanguage: () => currentLanguage,
   showView: (targetId) => showView(targetId)
 });
+// Numbers sigue el mismo patrón que Sincronía (public/numbers/).
+const numbersController = createNumbersController({
+  getLanguage: () => currentLanguage,
+  showView: (targetId) => showView(targetId)
+});
 
 prepareGameSetupLayout();
 
@@ -2450,6 +2456,7 @@ titleHomeLinks.forEach((link) => {
     url.searchParams.delete("masterword");
     url.searchParams.delete("scoreboard");
     url.searchParams.delete("mind");
+    url.searchParams.delete("numbers");
     window.history.replaceState({}, "", url);
     showView("homeView");
     closeMobileNavMenu();
@@ -9081,6 +9088,7 @@ function applyLanguage() {
   syncimpostorWordSetCards();
   applyScoreboardLanguage();
   mindController.applyLanguage();
+  numbersController.applyLanguage();
   if (impostorRoom && !document.querySelector("#impostorView")?.hidden) renderimpostorRoom(impostorRoom);
   if (scoreboardRoom && !document.querySelector("#scoreboardView")?.hidden) renderScoreboardRoom(scoreboardRoom);
 }
@@ -9269,6 +9277,7 @@ function showView(targetId) {
   if (targetId !== "masterWordView" && document.querySelector("#masterWordView")?.classList.contains("active")) leaveMasterWordRoom();
   if (targetId !== "scoreboardView" && document.querySelector("#scoreboardView")?.classList.contains("active")) leaveScoreboardRoom();
   if (targetId !== "mindView" && document.querySelector("#mindView")?.classList.contains("active")) mindController.leaveView();
+  if (targetId !== "numbersView" && document.querySelector("#numbersView")?.classList.contains("active")) numbersController.leaveView();
   document.body.classList.toggle("arcade-game-active", targetId === "gameView");
   document.body.classList.toggle("impostor-active", targetId === "impostorView");
   document.body.classList.toggle("resistance-active", targetId === "resistanceView");
@@ -9276,6 +9285,7 @@ function showView(targetId) {
   document.body.classList.toggle("masterword-active", targetId === "masterWordView");
   document.body.classList.toggle("scoreboard-active", targetId === "scoreboardView");
   document.body.classList.toggle("mind-active", targetId === "mindView");
+  document.body.classList.toggle("numbers-active", targetId === "numbersView");
 
   views.forEach((view) => {
     const active = view.id === targetId;
@@ -9295,6 +9305,7 @@ function showView(targetId) {
   if (targetId === "masterWordView") showMasterWordLobby();
   if (targetId === "scoreboardView") showScoreboardLobby();
   if (targetId === "mindView") mindController.enterView();
+  if (targetId === "numbersView") numbersController.enterView();
   if (targetId === "scoreboardView") window.scrollTo(0, 0);
   updateViewportChromeVars();
 }
@@ -12034,5 +12045,6 @@ applyWolfRoomFromUrl();
 applyMasterWordRoomFromUrl();
 applyScoreboardRoomFromUrl();
 mindController.applyRoomFromUrl();
+numbersController.applyRoomFromUrl();
 setGameBusy(true);
 loadSongGroups();
