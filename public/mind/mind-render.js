@@ -2,7 +2,9 @@
 // los escriben los jugadores, así que nunca se interpolan como HTML.
 
 const PLAYABLE_STATUSES = ["playing"];
-const READY_STATUSES = ["level_preparation", "paused", "level_result"];
+const READY_STATUSES = ["level_preparation", "paused"];
+// En level_result el panel se reutiliza para el resumen y el botón del anfitrión.
+const READY_PANEL_STATUSES = [...READY_STATUSES, "level_result"];
 
 export function createMindRenderer(elements, translate) {
   let pendingCard = 0;
@@ -24,6 +26,8 @@ export function createMindRenderer(elements, translate) {
       item.className = "mind-player";
       item.dataset.ready = String(Boolean(player.ready));
       item.dataset.connected = String(Boolean(player.connected));
+      item.dataset.bot = String(Boolean(player.isBot));
+      item.dataset.self = String(player.id === state.player?.id);
 
       const name = document.createElement("span");
       name.className = "mind-player-name";
@@ -125,7 +129,7 @@ export function createMindRenderer(elements, translate) {
         text = state.player?.isHost ? translate("mind.startHint") : translate("mind.waitingHost");
         break;
       case "level_preparation":
-        text = translate("mind.prepareText");
+        text = translate(state.level === 1 ? "mind.levelDealtOne" : "mind.levelDealt", { level: state.level });
         break;
       case "synchronizing":
         text = translate("mind.levelStarted", { level: state.level });
@@ -139,10 +143,17 @@ export function createMindRenderer(elements, translate) {
       case "star_vote":
         text = translate("mind.starProposed", { name: state.starVote?.proposerName || "" });
         break;
-      case "level_result":
-        text = translate("mind.levelComplete", { level: state.level });
-        tone = "ok";
+      case "level_result": {
+        // Si el último error vació las manos, el nivel acaba en el mismo instante y
+        // el aviso de "Error" no llegaba a verse: parecía que se perdía la ronda
+        // y aun así se repartía una carta más. Ahora el resumen lo explica.
+        const mistakes = Number(event.mistakes ?? state.levelMistakes ?? 0);
+        text = mistakes
+          ? translate(mistakes === 1 ? "mind.levelCompleteMistake" : "mind.levelCompleteMistakes", { level: state.level, count: mistakes })
+          : translate("mind.levelComplete", { level: state.level });
+        tone = mistakes ? "warn" : "ok";
         break;
+      }
       default:
         text = "";
     }
@@ -166,9 +177,10 @@ export function createMindRenderer(elements, translate) {
   }
 
   function renderReadyPanel(state) {
-    const show = READY_STATUSES.includes(state.status) && state.status !== "lobby";
+    const show = READY_PANEL_STATUSES.includes(state.status);
     setHidden(elements.readyPanel, !show);
     if (!show) return;
+    const isResult = state.status === "level_result";
 
     const waiting = state.players.filter((player) => !player.ready).length;
     let text = translate("mind.prepareText");
@@ -179,8 +191,17 @@ export function createMindRenderer(elements, translate) {
       else if (event.granted === "life") text = translate("mind.rewardLife");
       else if (event.rewardLost) text = translate("mind.rewardLost");
       else text = translate("mind.rewardNone");
+      const mistakes = Number(event.mistakes ?? state.levelMistakes ?? 0);
+      if (mistakes) text = `${translate("mind.mistakeRule", { count: mistakes })} ${text}`;
+      if (!state.player?.isHost) text = `${text} ${translate("mind.waitingNextLevel")}`;
     }
     setText(elements.readyText, text);
+
+    setHidden(elements.readyButton, isResult);
+    const canDeal = isResult && Boolean(state.player?.isHost);
+    setHidden(elements.nextLevelButton, !canDeal);
+    if (canDeal) setText(elements.nextLevelButton, translate("mind.dealNextLevel", { level: state.level + 1 }));
+    if (isResult) return;
 
     const ready = Boolean(state.player?.ready);
     if (elements.readyButton) {
@@ -288,6 +309,10 @@ export function createMindRenderer(elements, translate) {
       setText(elements.createTitle, translate("mind.createTitle"));
       setText(elements.joinTitle, translate("mind.joinTitle"));
       setText(elements.createHint, translate("mind.createHint"));
+      setText(elements.testModeTitle, translate("mind.testModeTitle"));
+      setText(elements.testModeHint, translate("mind.testModeHint"));
+      setText(elements.botCountTitle, translate("mind.botCountTitle"));
+      setText(elements.botCountHint, translate("mind.botCountHint"));
       setText(elements.joinHint, translate("mind.joinHint"));
       setText(elements.playersTitle, translate("mind.team"));
       setText(elements.handTitle, translate("mind.yourHand"));

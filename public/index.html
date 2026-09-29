@@ -726,6 +726,14 @@
               <input id="mindCreateRoomName" maxlength="16" required placeholder="Nombre de la sala" autocomplete="off">
               <input id="mindCreatePlayerName" maxlength="16" required placeholder="Tu nombre" autocomplete="off">
               <p id="mindCreateHint">Cada jugador necesita su propio móvil: nadie puede ver las cartas de los demás.</p>
+              <label class="solo-test-create-toggle">
+                <input id="mindCreateTestMode" type="checkbox">
+                <span><strong id="mindTestModeTitle">Modo de prueba individual</strong><small id="mindTestModeHint">Juega contra bots desde este dispositivo, sin abrir otros navegadores.</small></span>
+              </label>
+              <label id="mindBotCountField" class="test-bot-count-field" hidden>
+                <span><strong id="mindBotCountTitle">Número de bots</strong><small id="mindBotCountHint">De 1 a 5 jugadores virtuales.</small></span>
+                <input id="mindCreateBotCount" type="number" min="1" max="5" step="1" inputmode="numeric" value="1" aria-label="Número de bots de prueba">
+              </label>
               <div class="mind-form-actions">
                 <button type="button" class="secondary" data-mind-back>Volver</button>
                 <button type="submit" id="mindCreateSubmit">Crear sala</button>
@@ -784,6 +792,7 @@
                 <div id="mindReadyPanel" class="mind-ready-panel" hidden>
                   <p id="mindReadyText"></p>
                   <button type="button" id="mindReadyButton">Preparado</button>
+                  <button type="button" id="mindNextLevelButton" hidden>Repartir siguiente nivel</button>
                 </div>
 
                 <div id="mindStarVote" class="mind-star-vote" hidden role="group" aria-labelledby="mindStarVoteTitle">

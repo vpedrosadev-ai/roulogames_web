@@ -142,7 +142,12 @@ test("partida completa de 2 jugadores hasta ganar", async () => {
     state = view.payload;
     if (state.status === "victory" || state.status === "defeat") break;
 
-    if (["level_preparation", "paused", "level_result"].includes(state.status)) {
+    if (state.status === "level_result") {
+      // Pasar de nivel es cosa del anfitrión: ya no se pide "Preparado" dos veces.
+      await api("POST", `/api/mind/rooms/${roomName}/next-level`, auth(sessions[0]));
+      continue;
+    }
+    if (["level_preparation", "paused"].includes(state.status)) {
       for (const session of sessions) await api("POST", `/api/mind/rooms/${roomName}/ready`, auth(session));
       continue;
     }

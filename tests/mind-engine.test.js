@@ -8,7 +8,10 @@ import {
   advanceMindTimedPhases,
   createMindRoom,
   leaveMindRoom,
+  isMindRoomJoinable,
+  mindBotPlayDueAt,
   mindRoomResponse,
+  nextMindLevel,
   pauseMindRoom,
   playMindCard,
   proposeMindStar,
@@ -435,4 +438,118 @@ test("el barajado usa todas las posiciones y no pierde cartas", () => {
   const seeded = shuffleMindDeck([...deck], (bound) => (counter++ * 7) % bound);
   const seededAgain = shuffleMindDeck([...deck], ((c) => (bound) => (c++ * 7) % bound)(0));
   assert.deepEqual(seeded, seededAgain);
+});
+
+test("perder una vida en el nivel 1 lo supera igualmente y el resumen cuenta el error", () => {
+  // Es la regla del juego de mesa: el error descarta las cartas más bajas y, si las
+  // manos quedan vacías, el nivel cuenta como superado. El siguiente reparte 2 cartas.
+  const room = playingRoom([[60], [30]]);
+  playMindCard(room, room.players[0], 60);
+  assert.equal(room.status, "level_result");
+  assert.equal(room.lives, 1);
+  assert.equal(room.lastEvent.type, "level-complete");
+  assert.equal(room.lastEvent.mistakes, 1);
+  assert.equal(mindRoomResponse(room, room.players[0]).levelMistakes, 1);
+
+  nextMindLevel(room, room.players[0]);
+  assert.equal(room.level, 2);
+  assert.equal(room.levelMistakes, 0, "el contador de errores es por nivel");
+  room.players.forEach((player) => assert.equal(player.hand.length, 2));
+});
+
+test("solo el anfitrión reparte el siguiente nivel y ya no se pide Preparado dos veces", () => {
+  const room = playingRoom([[5], [9]]);
+  playMindCard(room, room.players[0], 5);
+  playMindCard(room, room.players[1], 9);
+  assert.equal(room.status, "level_result");
+  assert.throws(() => readyMindPlayer(room, room.players[1]), MindGameError);
+  assert.throws(() => nextMindLevel(room, room.players[1]), MindGameError);
+
+  nextMindLevel(room, room.players[0]);
+  assert.equal(room.status, "level_preparation");
+  assert.throws(() => nextMindLevel(room, room.players[0]), MindGameError, "no se puede saltar dos niveles");
+});
+
+function testRoom(botCount) {
+  const room = createMindRoom({ roomName: "PRUEBA", playerName: "Host", testMode: true, botCount });
+  startMindGame(room, room.players[0]);
+  return room;
+}
+
+test("el modo de prueba añade bots y la sala no admite más jugadores", () => {
+  const room = createMindRoom({ roomName: "PRUEBA", playerName: "Host", testMode: true, botCount: 3 });
+  assert.equal(room.players.length, 4);
+  assert.deepEqual(room.players.map((player) => Boolean(player.isBot)), [false, true, true, true]);
+  assert.equal(isMindRoomJoinable(room), false);
+  assert.throws(() => replaceOrJoinMindPlayer(room, { name: "Intruso", emoji: "" }), MindGameError);
+
+  const capped = createMindRoom({ roomName: "PRUEBA", playerName: "Host", testMode: true, botCount: 99 });
+  assert.equal(capped.players.length, 6, "como mucho 5 bots");
+  const normal = createMindRoom({ roomName: "NORMAL", playerName: "Host", botCount: 3 });
+  assert.equal(normal.players.length, 1, "sin modo de prueba no hay bots");
+
+  const view = mindRoomResponse(room, room.players[0]);
+  assert.equal(view.testMode, true);
+  view.players.slice(1).forEach((player) => {
+    assert.equal(player.isBot, true);
+    assert.equal(player.connected, true);
+  });
+});
+
+test("los bots confirman solos: basta con que el anfitrión pulse Preparado", () => {
+  const room = testRoom(2);
+  assert.equal(room.status, "level_preparation");
+  readyMindPlayer(room, room.players[0]);
+  assert.equal(room.status, "synchronizing");
+});
+
+test("los bots juegan su carta cuando les toca según la distancia a la pila", () => {
+  const room = testRoom(2);
+  room.players[0].hand = [80];
+  room.players[1].hand = [10];
+  room.players[2].hand = [40];
+  readyMindPlayer(room, room.players[0]);
+  const start = Date.now();
+  room.syncEndsAt = start;
+  advanceMindTimedPhases(room);
+  assert.equal(room.status, "playing");
+  assert.ok(mindBotPlayDueAt(room, room.players[1]) < mindBotPlayDueAt(room, room.players[2]));
+
+  // Simula que la sala no se consulta hasta después de que ambos bots debían jugar.
+  room.playClockAt = start - 60_000;
+  advanceMindTimedPhases(room);
+  assert.deepEqual(room.playedCards, [10, 40], "en orden, sin errores");
+  assert.equal(room.lives, 3, "3 jugadores empiezan con 3 vidas y nadie ha fallado");
+  assert.equal(room.status, "playing", "falta la carta del humano");
+
+  playMindCard(room, room.players[0], 80);
+  assert.equal(room.status, "level_result");
+});
+
+test("si el humano tarda demasiado, un bot se adelanta y es un error", () => {
+  const room = testRoom(1);
+  room.players[0].hand = [20];
+  room.players[1].hand = [90];
+  readyMindPlayer(room, room.players[0]);
+  room.syncEndsAt = Date.now() - 1;
+  advanceMindTimedPhases(room);
+  room.playClockAt = Date.now() - 60_000;
+  advanceMindTimedPhases(room);
+  assert.equal(room.lastEvent.mistakes, 1);
+  assert.equal(room.status, "level_result");
+  assert.equal(room.lives, 1);
+});
+
+test("en modo prueba los bots votan a favor de la estrella al instante", () => {
+  const room = testRoom(2);
+  room.players[0].hand = [30, 70];
+  room.players[1].hand = [10, 50];
+  room.players[2].hand = [20, 90];
+  readyMindPlayer(room, room.players[0]);
+  room.syncEndsAt = Date.now() - 1;
+  advanceMindTimedPhases(room);
+  proposeMindStar(room, room.players[0]);
+  assert.equal(room.status, "paused", "la estrella se aplica sin esperar votos");
+  assert.deepEqual(room.discardedCards, [10, 20, 30]);
+  assert.equal(room.players[1].ready, true, "los bots ya están listos para seguir");
 });

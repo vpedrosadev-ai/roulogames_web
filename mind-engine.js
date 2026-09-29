@@ -16,6 +16,22 @@ export const MIND_CONNECTED_MS = 30_000;
 // convertir cada poll de cada jugador en una escritura de base de datos.
 export const MIND_HEARTBEAT_MS = 10_000;
 export const MIND_RECENT_ACTION_LIMIT = 40;
+// Modo de prueba: el anfitrión juega contra bots desde un solo dispositivo.
+export const MIND_MIN_BOTS = 1;
+export const MIND_MAX_BOTS = MIND_MAX_PLAYERS - 1;
+// Un bot "cuenta" en silencio desde la última carta jugada: espera una pausa fija
+// y luego un tiempo proporcional a la distancia entre la pila y su carta.
+// Así se comporta como un jugador humano y también puede equivocarse contigo.
+export const MIND_BOT_BASE_DELAY_MS = 1200;
+export const MIND_BOT_MS_PER_STEP = 220;
+
+const MIND_BOT_IDENTITIES = [
+  { name: "Bot Búho", emoji: "🦉" },
+  { name: "Bot Zorro", emoji: "🦊" },
+  { name: "Bot Pulpo", emoji: "🐙" },
+  { name: "Bot Robot", emoji: "🤖" },
+  { name: "Bot Alien", emoji: "👽" }
+];
 
 // Niveles y vidas iniciales según el número de jugadores.
 // De 2 a 4 son los valores del juego de mesa. 5 y 6 son extensión propia: se
@@ -66,7 +82,7 @@ export function normalizeMindIdentity(value) {
   return { name, emoji };
 }
 
-export function createMindPlayer(identity, seatNumber) {
+export function createMindPlayer(identity, seatNumber, isBot = false) {
   return {
     id: randomMindId(),
     token: randomMindToken(),
@@ -75,6 +91,7 @@ export function createMindPlayer(identity, seatNumber) {
     seatNumber,
     hand: [],
     ready: false,
+    isBot: Boolean(isBot),
     lastSeen: Date.now()
   };
 }
@@ -85,13 +102,17 @@ export function createMindRoom(value) {
   const identity = normalizeMindIdentity(value);
   if (!key || !roomName || !identity) return null;
   const host = createMindPlayer(identity, 1);
+  const testMode = Boolean(value?.testMode);
+  const botCount = testMode ? clampInt(value?.botCount, MIND_MIN_BOTS, MIND_MAX_BOTS) : 0;
+  const bots = MIND_BOT_IDENTITIES.slice(0, botCount).map((bot, index) => createMindPlayer(bot, index + 2, true));
   const now = Date.now();
   return {
     key,
     roomName,
     status: "lobby",
+    testMode,
     hostId: host.id,
-    players: [host],
+    players: [host, ...bots],
     // Lo lee gameDirectoryEntry() para mostrar "2/4" en el listado de salas activas.
     maxPlayers: MIND_MAX_PLAYERS,
     level: 0,
@@ -104,6 +125,8 @@ export function createMindRoom(value) {
     playedCards: [],
     discardedCards: [],
     mistakes: 0,
+    levelMistakes: 0,
+    playClockAt: 0,
     levelReward: "",
     pendingStarVote: null,
     syncEndsAt: 0,
@@ -130,6 +153,7 @@ export function replaceOrJoinMindPlayer(room, identity) {
   if (room.status !== "lobby") {
     throw new MindGameError("La partida ya ha empezado. Entra con el mismo nombre para reconectar.", 409);
   }
+  if (room.testMode) throw new MindGameError("Es una sala de prueba con bots: no admite más jugadores", 409);
   if (room.players.length >= MIND_MAX_PLAYERS) throw new MindGameError("La sala está llena", 409);
   const seatNumber = Math.max(0, ...room.players.map((player) => Number(player.seatNumber) || 0)) + 1;
   const player = createMindPlayer(identity, seatNumber);
@@ -162,7 +186,7 @@ export function isMindHostConnected(room) {
 }
 
 export function isMindRoomJoinable(room) {
-  return room?.status === "lobby" && room.players.length < MIND_MAX_PLAYERS;
+  return room?.status === "lobby" && !room.testMode && room.players.length < MIND_MAX_PLAYERS;
 }
 
 // Las fases con cuenta atrás avanzan de forma perezosa, igual que en wolf-engine:
@@ -175,10 +199,49 @@ export function advanceMindTimedPhases(room) {
   }
   if (room.status === "synchronizing" && Number(room.syncEndsAt || 0) && now >= Number(room.syncEndsAt)) {
     room.status = "playing";
+    // El reloj de los bots arranca cuando acabó la cuenta atrás, no cuando alguien
+    // consultó la sala: así el ritmo no depende de la frecuencia de sondeo.
+    room.playClockAt = Number(room.syncEndsAt);
     room.syncEndsAt = 0;
     setMindEvent(room, { type: "level-started", level: room.level });
     touchMindRevision(room);
   }
+  settleMindBotPlays(room, now);
+}
+
+// Instante en que un bot jugaría su carta más baja si nadie juega antes.
+export function mindBotPlayDueAt(room, bot) {
+  if (!bot?.hand?.length) return Infinity;
+  const gap = Math.max(0, Math.min(...bot.hand) - Number(room.pileTop || 0));
+  return Number(room.playClockAt || 0) + MIND_BOT_BASE_DELAY_MS + gap * MIND_BOT_MS_PER_STEP;
+}
+
+// Juega, en orden, todas las cartas de bots cuyo momento ya pasó. Cada jugada se
+// fecha en su instante teórico y no en "ahora", para que una sala que nadie ha
+// consultado durante un rato llegue al mismo resultado que una sondeada sin parar.
+function settleMindBotPlays(room, now) {
+  if (!room.testMode) return;
+  for (let guard = 0; guard < MIND_DECK_SIZE && room.status === "playing"; guard += 1) {
+    let next = null;
+    let nextDue = Infinity;
+    room.players.forEach((player) => {
+      if (!player.isBot) return;
+      const due = mindBotPlayDueAt(room, player);
+      if (due < nextDue) {
+        next = player;
+        nextDue = due;
+      }
+    });
+    if (!next || nextDue > now) return;
+    applyMindPlay(room, next, Math.min(...next.hand), nextDue);
+  }
+}
+
+// Los bots nunca hacen esperar al resto: confirman y votan a favor al instante.
+function markMindBotsReady(room) {
+  room.players.forEach((player) => {
+    if (player.isBot) player.ready = true;
+  });
 }
 
 export function startMindGame(room, player) {
@@ -195,6 +258,7 @@ export function startMindGame(room, player) {
   room.maxLives = Math.max(MIND_MAX_LIVES, setup.lives);
   room.stars = MIND_START_STARS;
   room.mistakes = 0;
+  room.levelMistakes = 0;
   room.level = 0;
   room.playedCards = [];
   room.discardedCards = [];
@@ -221,26 +285,33 @@ export function restartMindGame(room, player) {
 }
 
 export function readyMindPlayer(room, player) {
-  if (!["level_preparation", "paused", "level_result"].includes(room.status)) {
+  if (!["level_preparation", "paused"].includes(room.status)) {
     throw new MindGameError("Ahora no hace falta confirmar que estás preparado", 409);
   }
   player.ready = true;
+  markMindBotsReady(room);
   if (room.players.some((item) => !item.ready)) {
     setMindEvent(room, { type: "player-ready", playerName: player.name });
     touchMindRevision(room);
     return;
   }
-  if (room.status === "level_result") {
-    beginMindLevel(room, Number(room.level || 0) + 1);
-    return;
-  }
   beginMindSynchronizing(room);
+}
+
+// Al superar un nivel ya no hace falta que todo el mundo pulse "Preparado" dos
+// veces (una para recibir cartas y otra para empezar): el anfitrión reparte el
+// siguiente nivel y el único "Preparado" es el de antes de jugar.
+export function nextMindLevel(room, player) {
+  requireMindHost(room, player, "Solo el anfitrión puede repartir el siguiente nivel");
+  if (room.status !== "level_result") throw new MindGameError("Ahora no se puede pasar de nivel", 409);
+  beginMindLevel(room, Number(room.level || 0) + 1);
 }
 
 export function pauseMindRoom(room, player) {
   if (room.status !== "playing") throw new MindGameError("Solo se puede pausar durante el nivel", 409);
   room.status = "paused";
   room.players.forEach((item) => { item.ready = false; });
+  markMindBotsReady(room);
   setMindEvent(room, { type: "paused", playerName: player.name });
   touchMindRevision(room);
 }
@@ -248,6 +319,8 @@ export function pauseMindRoom(room, player) {
 export function playMindCard(room, player, cardValue, actionId = "") {
   const replay = findMindRecentAction(room, actionId);
   if (replay) return replay.result;
+  // Los bots a los que ya "tocaba" jugar lo hacen antes que esta jugada.
+  advanceMindTimedPhases(room);
   if (room.status !== "playing") throw new MindGameError("Ahora no se pueden jugar cartas", 409);
 
   const card = Math.floor(Number(cardValue));
@@ -259,7 +332,14 @@ export function playMindCard(room, player, cardValue, actionId = "") {
   const lowest = Math.min(...player.hand);
   if (card !== lowest) throw new MindGameError("Solo puedes jugar tu carta más baja", 409);
 
+  const result = applyMindPlay(room, player, card, Date.now());
+  rememberMindAction(room, actionId, result);
+  return result;
+}
+
+function applyMindPlay(room, player, card, playedAt) {
   player.hand = player.hand.filter((item) => item !== card);
+  room.playClockAt = playedAt;
   room.playedCards.push(card);
   room.pileTop = card;
 
@@ -276,6 +356,7 @@ export function playMindCard(room, player, cardValue, actionId = "") {
   if (missed.length) {
     outcome = "mistake";
     room.mistakes = Number(room.mistakes || 0) + 1;
+    room.levelMistakes = Number(room.levelMistakes || 0) + 1;
     room.lives = Math.max(0, Number(room.lives || 0) - 1);
     const values = missed.map((item) => item.value).sort((a, b) => a - b);
     room.discardedCards.push(...values);
@@ -299,9 +380,7 @@ export function playMindCard(room, player, cardValue, actionId = "") {
     touchMindRevision(room);
   }
 
-  const result = { outcome, card, discardedCards: missed.map((item) => item.value) };
-  rememberMindAction(room, actionId, result);
-  return result;
+  return { outcome, card, discardedCards: missed.map((item) => item.value) };
 }
 
 export function proposeMindStar(room, player) {
@@ -316,10 +395,17 @@ export function proposeMindStar(room, player) {
     id: randomMindId(),
     proposerId: player.id,
     proposerName: player.name,
-    votes: { [player.id]: true },
+    votes: Object.fromEntries([
+      [player.id, true],
+      ...room.players.filter((item) => item.isBot).map((item) => [item.id, true])
+    ]),
     endsAt: Date.now() + MIND_STAR_VOTE_MS
   };
   setMindEvent(room, { type: "star-proposed", playerName: player.name });
+  if (room.players.every((item) => room.pendingStarVote.votes[item.id] === true)) {
+    resolveMindStarVote(room, true, "accepted");
+    return;
+  }
   touchMindRevision(room);
 }
 
@@ -354,6 +440,8 @@ export function kickMindPlayer(room, player, targetId) {
 export function leaveMindRoom(room, player) {
   if (room.status === "lobby") {
     room.players = room.players.filter((item) => item.id !== player.id);
+    // Una sala de prueba sin su anfitrión solo tendría bots: se vacía.
+    if (room.testMode && room.hostId === player.id) room.players = [];
     if (room.hostId === player.id && room.players.length) room.hostId = room.players[0].id;
     setMindEvent(room, { type: "player-left", playerName: player.name });
     touchMindRevision(room);
@@ -373,6 +461,7 @@ export function mindRoomResponse(room, privatePlayer = null) {
   return {
     roomName: room.roomName,
     status: room.status,
+    testMode: Boolean(room.testMode),
     level: Number(room.level || 0),
     maxLevel: Number(room.maxLevel || 0),
     lives: Number(room.lives || 0),
@@ -385,6 +474,7 @@ export function mindRoomResponse(room, privatePlayer = null) {
     playedCards: room.playedCards || [],
     discardedCards: room.discardedCards || [],
     mistakes: Number(room.mistakes || 0),
+    levelMistakes: Number(room.levelMistakes || 0),
     levelReward: room.levelReward || "",
     nextReward: mindRewardForLevel(Number(room.level || 0)),
     syncEndsAt: Number(room.syncEndsAt || 0),
@@ -408,7 +498,8 @@ export function mindRoomResponse(room, privatePlayer = null) {
       seatNumber: item.seatNumber,
       cardCount: item.hand.length,
       ready: Boolean(item.ready),
-      connected: now - Number(item.lastSeen || 0) < MIND_CONNECTED_MS,
+      isBot: Boolean(item.isBot),
+      connected: Boolean(item.isBot) || now - Number(item.lastSeen || 0) < MIND_CONNECTED_MS,
       isHost: item.id === room.hostId
     })).sort((a, b) => a.seatNumber - b.seatNumber),
     player: privatePlayer ? {
@@ -435,8 +526,11 @@ function beginMindLevel(room, level) {
     player.ready = false;
     cursor += level;
   });
+  markMindBotsReady(room);
   room.level = level;
   room.status = "level_preparation";
+  room.levelMistakes = 0;
+  room.playClockAt = 0;
   room.pileTop = 0;
   room.playedCards = [];
   room.discardedCards = [];
@@ -482,6 +576,7 @@ function completeMindLevel(room) {
   setMindEvent(room, {
     type: "level-complete",
     level: room.level,
+    mistakes: Number(room.levelMistakes || 0),
     reward,
     granted,
     rewardLost: Boolean(reward && !granted)
@@ -504,6 +599,7 @@ function resolveMindStarVote(room, accepted, reason, rejectedBy = "") {
   if (!accepted) {
     // Rechazada o caducada: no se consume la estrella ni se descarta nada.
     room.status = "playing";
+    room.playClockAt = Date.now();
     setMindEvent(room, { type: "star-rejected", reason, playerName: rejectedBy, proposerName: vote?.proposerName || "" });
     touchMindRevision(room);
     return;
@@ -527,6 +623,7 @@ function resolveMindStarVote(room, accepted, reason, rejectedBy = "") {
   // Tras usar una estrella el equipo se vuelve a sincronizar.
   room.status = "paused";
   room.players.forEach((item) => { item.ready = false; });
+  markMindBotsReady(room);
   touchMindRevision(room);
 }
 

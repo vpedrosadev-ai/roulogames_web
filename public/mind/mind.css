@@ -45,6 +45,13 @@ body.mind-active {
   padding-bottom: 24px;
 }
 
+/* El estilo global de button declara su propio display y gana al [hidden] del
+   navegador: sin esto "Preparado", "Estrella" o "Resincronizar" seguían visibles
+   en fases donde no se pueden usar. */
+.mind-view button[hidden] {
+  display: none !important;
+}
+
 .mind-visually-hidden {
   position: absolute;
   width: 1px;
@@ -306,6 +313,11 @@ body.mind-active {
   border-color: rgba(95, 208, 160, 0.45);
 }
 
+.mind-status-banner[data-tone="warn"] {
+  background: rgba(255, 209, 102, 0.12);
+  border-color: rgba(255, 209, 102, 0.45);
+}
+
 /* --- Tablero ------------------------------------------------------------ */
 
 .mind-board {
@@ -351,6 +363,7 @@ body.mind-active {
 }
 
 .mind-player[data-ready="true"] { border-color: rgba(95, 208, 160, 0.5); }
+.mind-player[data-self="true"] { background: var(--mind-accent-soft); }
 .mind-player[data-connected="false"] { opacity: 0.5; }
 
 .mind-player-name {
@@ -485,6 +498,8 @@ body.mind-active {
 .mind-star-vote-actions,
 .mind-result-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
 }
 
@@ -598,20 +613,93 @@ body.mind-active {
 
 /* --- Responsive --------------------------------------------------------- */
 
+/* En móvil se mantienen las dos columnas, como en el resto de juegos de Roulogames:
+   el equipo en una lista estrecha a la izquierda, la mesa a la derecha y la mano
+   anclada abajo. Apilarlas obligaba a hacer scroll para ver pila y equipo a la vez. */
 @media (max-width: 860px) {
+  .mind-view {
+    gap: 10px;
+  }
+
+  .mind-control-strip {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .mind-status-banner {
+    padding: 8px 10px;
+    font-size: 0.88rem;
+  }
+
   .mind-board {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(96px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .mind-players-panel {
+    padding: 10px 8px;
+  }
+
+  .mind-players-panel h2 {
+    margin-bottom: 8px;
+    font-size: 0.7rem;
+  }
+
+  .mind-players-list {
+    gap: 6px;
+  }
+
+  .mind-player {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 8px;
+  }
+
+  .mind-player-name {
+    width: 100%;
+    font-size: 0.85rem;
+  }
+
+  .mind-player-cards,
+  .mind-player-flag {
+    font-size: 0.74rem;
+  }
+
+  .mind-lobby-actions button {
+    padding: 10px 8px;
   }
 
   .mind-play-panel {
-    order: -1;
-    min-height: 200px;
+    padding: 12px 8px;
+    min-height: 0;
+    gap: 10px;
   }
 
   .mind-pile-top {
-    width: 108px;
-    height: 140px;
-    font-size: 2.8rem;
+    width: 96px;
+    height: 124px;
+    font-size: 2.6rem;
+  }
+
+  .mind-countdown {
+    font-size: 2.4rem;
+  }
+
+  .mind-ready-panel p,
+  .mind-star-vote p,
+  .mind-result-panel p {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  .mind-hand-panel {
+    padding: 10px 12px;
+  }
+
+  .mind-hand-header {
+    margin-bottom: 8px;
   }
 }
 

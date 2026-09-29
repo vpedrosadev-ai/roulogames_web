@@ -28,6 +28,7 @@ import {
   isMindHostConnected,
   isMindRoomJoinable,
   kickMindPlayer,
+  nextMindLevel,
   leaveMindRoom,
   mindRoomResponse,
   normalizeMindIdentity,
@@ -740,7 +741,7 @@ export default {
 
       const mindRoomMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)$/);
       if (request.method === "GET" && mindRoomMatch) return getMindRoomWorker(mindRoomMatch[1], request, env);
-      const mindActionMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)\/(join|start|ready|play|pause|star-propose|star-vote|kick|restart|leave)$/);
+      const mindActionMatch = url.pathname.match(/^\/api\/mind\/rooms\/([^/]+)\/(join|start|ready|next-level|play|pause|star-propose|star-vote|kick|restart|leave)$/);
       if (request.method === "POST" && mindActionMatch) return handleMindRoomActionWorker(request, mindActionMatch[1], mindActionMatch[2], env);
       const wordDuelRoomMatch = url.pathname.match(/^\/api\/word-duel\/rooms\/([^/]+)$/);
       if (request.method === "GET" && wordDuelRoomMatch) return getWordDuelRoomWorker(wordDuelRoomMatch[1], request, env);
@@ -5273,6 +5274,7 @@ async function handleMindRoomActionWorker(request, roomName, action, env) {
       if (!player) throw new MindGameError("Sesión no válida o reemplazada", 401);
       if (action === "start") startMindGame(room, player);
       else if (action === "ready") readyMindPlayer(room, player);
+      else if (action === "next-level") nextMindLevel(room, player);
       else if (action === "play") playMindCard(room, player, body.card, String(body.actionId || ""));
       else if (action === "pause") pauseMindRoom(room, player);
       else if (action === "star-propose") proposeMindStar(room, player);

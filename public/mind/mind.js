@@ -41,6 +41,13 @@ function collectElements() {
     createPlayerName: query("#mindCreatePlayerName"),
     joinRoomName: query("#mindJoinRoomName"),
     joinPlayerName: query("#mindJoinPlayerName"),
+    createTestMode: query("#mindCreateTestMode"),
+    botCountField: query("#mindBotCountField"),
+    createBotCount: query("#mindCreateBotCount"),
+    testModeTitle: query("#mindTestModeTitle"),
+    testModeHint: query("#mindTestModeHint"),
+    botCountTitle: query("#mindBotCountTitle"),
+    botCountHint: query("#mindBotCountHint"),
     lobbyMessage: query("#mindLobbyMessage"),
 
     roomChipLabel: query("#mindRoomChipLabel"),
@@ -68,6 +75,7 @@ function collectElements() {
     readyPanel: query("#mindReadyPanel"),
     readyText: query("#mindReadyText"),
     readyButton: query("#mindReadyButton"),
+    nextLevelButton: query("#mindNextLevelButton"),
 
     starVote: query("#mindStarVote"),
     starVoteTitle: query("#mindStarVoteTitle"),
@@ -304,8 +312,10 @@ export function createMindController({ getLanguage, showView } = {}) {
     const roomName = elements.createRoomName.value.trim();
     const playerName = elements.createPlayerName.value.trim();
     if (!roomName || !playerName) return;
+    const testMode = Boolean(elements.createTestMode?.checked);
+    const botCount = Number(elements.createBotCount?.value) || 1;
     try {
-      await enterRoom(await api.createRoom(roomName, playerName));
+      await enterRoom(await api.createRoom(roomName, playerName, { testMode, botCount }));
       setMessage("");
     } catch (error) {
       setMessage(error.message);
@@ -327,6 +337,10 @@ export function createMindController({ getLanguage, showView } = {}) {
 
   elements.startButton?.addEventListener("click", () => guarded(() => api.startGame(session.roomName, session)));
   elements.readyButton?.addEventListener("click", () => guarded(() => api.markReady(session.roomName, session)));
+  elements.nextLevelButton?.addEventListener("click", () => guarded(() => api.nextLevel(session.roomName, session)));
+  elements.createTestMode?.addEventListener("change", () => {
+    if (elements.botCountField) elements.botCountField.hidden = !elements.createTestMode.checked;
+  });
   elements.pauseButton?.addEventListener("click", () => guarded(() => api.pauseGame(session.roomName, session)));
   elements.starButton?.addEventListener("click", () => guarded(() => api.proposeStar(session.roomName, session)));
   elements.starYes?.addEventListener("click", () => guarded(() => api.voteStar(session.roomName, session, true, state?.starVote?.id)));

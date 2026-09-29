@@ -34,8 +34,8 @@ function roomUrl(roomName, suffix = "") {
   return `${BASE}/${encodeURIComponent(roomName)}${suffix}`;
 }
 
-export function createRoom(roomName, playerName, playerEmoji = "") {
-  return send("POST", BASE, { roomName, playerName, playerEmoji });
+export function createRoom(roomName, playerName, { playerEmoji = "", testMode = false, botCount = 0 } = {}) {
+  return send("POST", BASE, { roomName, playerName, playerEmoji, testMode, botCount });
 }
 
 export function joinRoom(roomName, playerName, playerEmoji = "") {
@@ -57,6 +57,7 @@ function action(roomName, session, suffix, body = {}) {
 
 export const startGame = (room, session) => action(room, session, "/start");
 export const markReady = (room, session) => action(room, session, "/ready");
+export const nextLevel = (room, session) => action(room, session, "/next-level");
 export const playCard = (room, session, card, actionId) => action(room, session, "/play", { card, actionId });
 export const pauseGame = (room, session) => action(room, session, "/pause");
 export const proposeStar = (room, session) => action(room, session, "/star-propose");

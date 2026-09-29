@@ -82,7 +82,18 @@ export const MIND_TRANSLATIONS = {
     "mind.cards": "cartas",
     "mind.card": "carta",
     "mind.playCardLabel": "Jugar carta {card}",
-    "mind.cardLocked": "Carta {card}, bloqueada"
+    "mind.cardLocked": "Carta {card}, bloqueada",
+    "mind.levelDealt": "Nivel {level}: {level} cartas para cada uno. Pulsa Preparado cuando estés listo.",
+    "mind.levelDealtOne": "Nivel 1: una carta para cada uno. Pulsa Preparado cuando estés listo.",
+    "mind.levelCompleteMistake": "Nivel {level} superado con 1 error (−1 vida)",
+    "mind.levelCompleteMistakes": "Nivel {level} superado con {count} errores (−{count} vidas)",
+    "mind.mistakeRule": "Como en el juego de mesa, un error cuesta una vida pero el nivel cuenta igualmente.",
+    "mind.waitingNextLevel": "Esperando a que el anfitrión reparta el siguiente nivel.",
+    "mind.dealNextLevel": "Repartir nivel {level}",
+    "mind.testModeTitle": "Modo de prueba individual",
+    "mind.testModeHint": "Juega contra bots desde este dispositivo, sin abrir otros navegadores.",
+    "mind.botCountTitle": "Número de bots",
+    "mind.botCountHint": "De 1 a 5 jugadores virtuales."
   },
   ca: {
     "nav.mind": "Sincronia",
@@ -162,7 +173,18 @@ export const MIND_TRANSLATIONS = {
     "mind.cards": "cartes",
     "mind.card": "carta",
     "mind.playCardLabel": "Jugar carta {card}",
-    "mind.cardLocked": "Carta {card}, bloquejada"
+    "mind.cardLocked": "Carta {card}, bloquejada",
+    "mind.levelDealt": "Nivell {level}: {level} cartes per a cadascú. Prem Preparat quan estiguis a punt.",
+    "mind.levelDealtOne": "Nivell 1: una carta per a cadascú. Prem Preparat quan estiguis a punt.",
+    "mind.levelCompleteMistake": "Nivell {level} superat amb 1 error (−1 vida)",
+    "mind.levelCompleteMistakes": "Nivell {level} superat amb {count} errors (−{count} vides)",
+    "mind.mistakeRule": "Com al joc de taula, un error costa una vida però el nivell compta igualment.",
+    "mind.waitingNextLevel": "Esperant que l'amfitrió reparteixi el següent nivell.",
+    "mind.dealNextLevel": "Repartir nivell {level}",
+    "mind.testModeTitle": "Mode de prova individual",
+    "mind.testModeHint": "Juga contra bots des d'aquest dispositiu, sense obrir altres navegadors.",
+    "mind.botCountTitle": "Nombre de bots",
+    "mind.botCountHint": "D'1 a 5 jugadors virtuals."
   },
   en: {
     "nav.mind": "Sincronía",
@@ -242,7 +264,18 @@ export const MIND_TRANSLATIONS = {
     "mind.cards": "cards",
     "mind.card": "card",
     "mind.playCardLabel": "Play card {card}",
-    "mind.cardLocked": "Card {card}, locked"
+    "mind.cardLocked": "Card {card}, locked",
+    "mind.levelDealt": "Level {level}: {level} cards each. Tap Ready when you are set.",
+    "mind.levelDealtOne": "Level 1: one card each. Tap Ready when you are set.",
+    "mind.levelCompleteMistake": "Level {level} cleared with 1 mistake (−1 life)",
+    "mind.levelCompleteMistakes": "Level {level} cleared with {count} mistakes (−{count} lives)",
+    "mind.mistakeRule": "As in the board game, a mistake costs a life but the level still counts.",
+    "mind.waitingNextLevel": "Waiting for the host to deal the next level.",
+    "mind.dealNextLevel": "Deal level {level}",
+    "mind.testModeTitle": "Solo test mode",
+    "mind.testModeHint": "Play against bots from this device, without opening other browsers.",
+    "mind.botCountTitle": "Number of bots",
+    "mind.botCountHint": "1 to 5 virtual players."
   }
 };
 
